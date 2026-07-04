@@ -5,6 +5,9 @@ import Feed from './components/Feed.jsx'
 import Directory from './components/Directory.jsx'
 import Messages from './components/Messages.jsx'
 import Profile from './components/Profile.jsx'
+import Events from './components/Events.jsx'
+import Jobs from './components/Jobs.jsx'
+import Donate from './components/Donate.jsx'
 
 // The three interlinked rings from the Eendrag crest — unity, and the three
 // qualities: Karakter, Styl, Trots.
@@ -21,7 +24,10 @@ export function Rings({ size = 28 }) {
 const TABS = [
   { id: 'directory', label: 'Alumni' },
   { id: 'feed', label: 'Feed' },
+  { id: 'events', label: 'Events' },
+  { id: 'jobs', label: 'Jobs' },
   { id: 'messages', label: 'Messages' },
+  { id: 'donate', label: 'Support' },
   { id: 'profile', label: 'My profile' },
 ]
 
@@ -99,9 +105,12 @@ export default function App() {
         {tab === 'directory' && (
           <Directory session={session} onMessage={openMessage} />
         )}
+        {tab === 'events' && <Events session={session} profile={profile} />}
+        {tab === 'jobs' && <Jobs session={session} profile={profile} />}
         {tab === 'messages' && (
           <Messages session={session} profile={profile} initialTarget={dmTarget} onTargetConsumed={() => setDmTarget(null)} />
         )}
+        {tab === 'donate' && <Donate />}
         {tab === 'profile' && (
           <Profile session={session} profile={profile} onSaved={setProfile} />
         )}

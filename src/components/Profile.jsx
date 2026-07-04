@@ -2,10 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 
+const EMPTY = {
+  full_name: '', grad_year: '', section: '',
+  industry: '', occupation: '', occupation_description: '',
+  company: '', city: '', province: '', country: 'South Africa',
+  bio: '',
+  linkedin_url: '',
+  available_for_mentorship: false,
+  mentorship_description: '',
+  is_current_resident: false,
+}
+
 export default function Profile({ session, profile, onSaved }) {
-  const [form, setForm] = useState({
-    full_name: '', grad_year: '', section: '', occupation: '', company: '', city: '', bio: '',
-  })
+  const [form, setForm] = useState(EMPTY)
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -18,10 +27,18 @@ export default function Profile({ session, profile, onSaved }) {
         full_name: profile.full_name || '',
         grad_year: profile.grad_year || '',
         section: profile.section || '',
+        industry: profile.industry || '',
         occupation: profile.occupation || '',
+        occupation_description: profile.occupation_description || '',
         company: profile.company || '',
         city: profile.city || '',
+        province: profile.province || '',
+        country: profile.country || 'South Africa',
         bio: profile.bio || '',
+        linkedin_url: profile.linkedin_url || '',
+        available_for_mentorship: !!profile.available_for_mentorship,
+        mentorship_description: profile.mentorship_description || '',
+        is_current_resident: !!profile.is_current_resident,
       })
     }
   }, [profile])
@@ -50,7 +67,7 @@ export default function Profile({ session, profile, onSaved }) {
     }
 
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-    const url = `${data.publicUrl}?t=${Date.now()}` // cache-buster so new photo shows immediately
+    const url = `${data.publicUrl}?t=${Date.now()}` // cache-buster
 
     const { data: updated, error: dbErr } = await supabase
       .from('profiles')
@@ -66,7 +83,12 @@ export default function Profile({ session, profile, onSaved }) {
 
   async function save() {
     setBusy(true); setError(null)
-    const payload = { ...form, grad_year: form.grad_year ? Number(form.grad_year) : null }
+    const payload = {
+      ...form,
+      grad_year: form.grad_year ? Number(form.grad_year) : null,
+      // Trim URL to a canonical form; not a strict validator, just gentle.
+      linkedin_url: form.linkedin_url.trim(),
+    }
     const { data, error } = await supabase
       .from('profiles')
       .update(payload)
@@ -82,7 +104,7 @@ export default function Profile({ session, profile, onSaved }) {
     <section className="panel narrow">
       <h2 className="panel-title">My profile</h2>
       <p className="panel-sub">
-        This is what other alumni see on the wall.
+        This is what other Eendragters see on the wall and in the directory.
       </p>
 
       <div className="avatar-editor">
@@ -95,7 +117,7 @@ export default function Profile({ session, profile, onSaved }) {
           >
             {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change photo' : 'Add photo'}
           </button>
-          <p className="hint">JPG or PNG, up to 3MB.</p>
+          <p className="hint">JPG or PNG, up to 3MB. Landscape crops best.</p>
           <input
             ref={fileRef}
             type="file"
@@ -109,6 +131,19 @@ export default function Profile({ session, profile, onSaved }) {
       <label className="field"><span>Full name</span>
         <input value={form.full_name} onChange={(e) => set('full_name', e.target.value)} />
       </label>
+
+      <div className="checkbox-row">
+        <input
+          id="current-resident"
+          type="checkbox"
+          checked={form.is_current_resident}
+          onChange={(e) => set('is_current_resident', e.target.checked)}
+        />
+        <label htmlFor="current-resident">
+          I currently live in Eendrag (tick if you're still a resident, not yet an alumnus)
+        </label>
+      </div>
+
       <div className="field-row">
         <label className="field"><span>Year left Eendrag</span>
           <input type="number" value={form.grad_year} onChange={(e) => set('grad_year', e.target.value)} placeholder="2024" />
@@ -117,17 +152,77 @@ export default function Profile({ session, profile, onSaved }) {
           <input value={form.section} onChange={(e) => set('section', e.target.value)} />
         </label>
       </div>
+
       <div className="field-row">
+        <label className="field"><span>Industry</span>
+          <input value={form.industry} onChange={(e) => set('industry', e.target.value)} placeholder="e.g. Information Technology" />
+        </label>
         <label className="field"><span>Occupation</span>
           <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="Software engineer" />
         </label>
-        <label className="field"><span>Company</span>
-          <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
+      </div>
+
+      <label className="field"><span>Occupation description</span>
+        <input value={form.occupation_description} onChange={(e) => set('occupation_description', e.target.value)} placeholder="Director, Senior, Consultant…" />
+      </label>
+
+      <label className="field"><span>Company</span>
+        <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
+      </label>
+
+      <div className="field-row">
+        <label className="field"><span>City</span>
+          <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Cape Town" />
+        </label>
+        <label className="field"><span>Province</span>
+          <select value={form.province} onChange={(e) => set('province', e.target.value)}>
+            <option value="">Select a province</option>
+            <option>Western Cape</option>
+            <option>Gauteng</option>
+            <option>KwaZulu-Natal</option>
+            <option>Eastern Cape</option>
+            <option>Free State</option>
+            <option>Limpopo</option>
+            <option>Mpumalanga</option>
+            <option>North West</option>
+            <option>Northern Cape</option>
+            <option>N/A (outside SA)</option>
+          </select>
         </label>
       </div>
-      <label className="field"><span>City</span>
-        <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Cape Town" />
+
+      <label className="field"><span>Country</span>
+        <input value={form.country} onChange={(e) => set('country', e.target.value)} placeholder="South Africa" />
       </label>
+
+      <label className="field"><span>LinkedIn URL</span>
+        <input
+          type="url"
+          value={form.linkedin_url}
+          onChange={(e) => set('linkedin_url', e.target.value)}
+          placeholder="https://linkedin.com/in/yourname"
+        />
+      </label>
+
+      <div className="checkbox-row">
+        <input
+          id="mentor-toggle"
+          type="checkbox"
+          checked={form.available_for_mentorship}
+          onChange={(e) => set('available_for_mentorship', e.target.checked)}
+        />
+        <label htmlFor="mentor-toggle">Available for mentorship</label>
+      </div>
+      {form.available_for_mentorship && (
+        <label className="field"><span>Mentorship description</span>
+          <input
+            value={form.mentorship_description}
+            onChange={(e) => set('mentorship_description', e.target.value)}
+            placeholder="e.g. Anybody in the tech space"
+          />
+        </label>
+      )}
+
       <label className="field"><span>Bio</span>
         <textarea rows={3} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="What you've been up to since Eendrag…" />
       </label>
