@@ -19,8 +19,8 @@ export function Rings({ size = 28 }) {
 }
 
 const TABS = [
+  { id: 'directory', label: 'Alumni' },
   { id: 'feed', label: 'Feed' },
-  { id: 'directory', label: 'Directory' },
   { id: 'messages', label: 'Messages' },
   { id: 'profile', label: 'My profile' },
 ]
@@ -28,7 +28,7 @@ const TABS = [
 export default function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [tab, setTab] = useState('feed')
+  const [tab, setTab] = useState('directory')
   const [dmTarget, setDmTarget] = useState(null) // profile to open a DM with
   const [loading, setLoading] = useState(true)
 

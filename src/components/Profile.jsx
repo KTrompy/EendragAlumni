@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { Avatar } from './Directory.jsx'
 
 export default function Profile({ session, profile, onSaved }) {
   const [form, setForm] = useState({
-    full_name: '', grad_year: '', section: '', occupation: '', city: '', bio: '',
+    full_name: '', grad_year: '', section: '', occupation: '', company: '', city: '', bio: '',
   })
   const [busy, setBusy] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const fileRef = useRef(null)
 
   useEffect(() => {
     if (profile) {
@@ -16,6 +19,7 @@ export default function Profile({ session, profile, onSaved }) {
         grad_year: profile.grad_year || '',
         section: profile.section || '',
         occupation: profile.occupation || '',
+        company: profile.company || '',
         city: profile.city || '',
         bio: profile.bio || '',
       })
@@ -23,6 +27,42 @@ export default function Profile({ session, profile, onSaved }) {
   }, [profile])
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false) }
+
+  async function uploadPhoto(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 3 * 1024 * 1024) {
+      setError('Photo must be under 3MB.')
+      return
+    }
+    setUploading(true); setError(null)
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `${session.user.id}/avatar.${ext}`
+
+    const { error: upErr } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true })
+
+    if (upErr) {
+      setError(upErr.message)
+      setUploading(false)
+      return
+    }
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+    const url = `${data.publicUrl}?t=${Date.now()}` // cache-buster so new photo shows immediately
+
+    const { data: updated, error: dbErr } = await supabase
+      .from('profiles')
+      .update({ avatar_url: url })
+      .eq('id', session.user.id)
+      .select()
+      .single()
+
+    if (dbErr) setError(dbErr.message)
+    else onSaved(updated)
+    setUploading(false)
+  }
 
   async function save() {
     setBusy(true); setError(null)
@@ -42,8 +82,29 @@ export default function Profile({ session, profile, onSaved }) {
     <section className="panel narrow">
       <h2 className="panel-title">My profile</h2>
       <p className="panel-sub">
-        This is what other alumni see in the directory.
+        This is what other alumni see on the wall.
       </p>
+
+      <div className="avatar-editor">
+        <Avatar url={profile?.avatar_url} name={form.full_name} size={88} />
+        <div>
+          <button
+            className="btn ghost"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change photo' : 'Add photo'}
+          </button>
+          <p className="hint">JPG or PNG, up to 3MB.</p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style={{ display: 'none' }}
+            onChange={uploadPhoto}
+          />
+        </div>
+      </div>
 
       <label className="field"><span>Full name</span>
         <input value={form.full_name} onChange={(e) => set('full_name', e.target.value)} />
@@ -60,10 +121,13 @@ export default function Profile({ session, profile, onSaved }) {
         <label className="field"><span>Occupation</span>
           <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="Software engineer" />
         </label>
-        <label className="field"><span>City</span>
-          <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Cape Town" />
+        <label className="field"><span>Company</span>
+          <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
         </label>
       </div>
+      <label className="field"><span>City</span>
+        <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Cape Town" />
+      </label>
       <label className="field"><span>Bio</span>
         <textarea rows={3} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="What you've been up to since Eendrag…" />
       </label>

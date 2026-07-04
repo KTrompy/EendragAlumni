@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { Avatar } from './Directory.jsx'
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso)) / 1000)
@@ -18,7 +19,7 @@ export default function Feed({ session, profile }) {
   async function load() {
     const { data, error } = await supabase
       .from('posts')
-      .select('id, content, created_at, author_id, profiles ( full_name, grad_year, occupation )')
+      .select('id, content, created_at, author_id, profiles ( full_name, grad_year, occupation, avatar_url )')
       .order('created_at', { ascending: false })
       .limit(50)
     if (!error) setPosts(data)
@@ -87,6 +88,7 @@ export default function Feed({ session, profile }) {
         {posts.map((p) => (
           <li key={p.id} className="post">
             <div className="post-head">
+              <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={34} />
               <span className="post-author">{p.profiles?.full_name || 'Alumnus'}</span>
               <span className="post-meta">
                 {p.profiles?.grad_year ? `’${String(p.profiles.grad_year).slice(-2)}` : ''}
