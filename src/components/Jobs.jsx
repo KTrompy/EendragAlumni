@@ -35,7 +35,7 @@ export default function Jobs({ session, profile, onMessage }) {
   async function load() {
     const { data } = await supabase
       .from('jobs')
-      .select('id, title, company, location, employment_type, description, apply_url, contact_email, created_at, posted_by, profiles ( full_name )')
+      .select('id, title, company, location, employment_type, description, apply_url, contact_email, created_at, posted_by, profiles!jobs_posted_by_fkey ( full_name )')
       .order('created_at', { ascending: false })
       .limit(50)
     setJobs(data || [])

@@ -24,7 +24,7 @@ export default function Events({ session, profile }) {
     // Fetch a generous window so the calendar view has enough to browse.
     const { data } = await supabase
       .from('events')
-      .select('id, title, description, event_date, location, created_by, profiles ( full_name )')
+      .select('id, title, description, event_date, location, created_by, profiles!events_created_by_fkey ( full_name )')
       .order('event_date', { ascending: true })
       .limit(500)
     setEvents(data || [])

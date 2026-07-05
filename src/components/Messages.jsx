@@ -31,7 +31,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
 
     const { data: others } = await supabase
       .from('conversation_participants')
-      .select('conversation_id, profiles ( id, full_name, grad_year, avatar_url )')
+      .select('conversation_id, profiles!conversation_participants_user_id_fkey ( id, full_name, grad_year, avatar_url )')
       .in('conversation_id', ids)
       .neq('user_id', me)
 

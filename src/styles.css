@@ -647,6 +647,13 @@ input, textarea, select { font: inherit; }
   padding: 20px;
   overflow-y: auto;
 }
+.industry-other-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.industry-other-row input { flex: 1; }
+
 .modal-photo {
   width: 100%;
   max-width: 260px;
@@ -683,12 +690,6 @@ input, textarea, select { font: inherit; }
   white-space: pre-wrap;
 }
 .detail-value.muted { color: var(--ink-soft); font-style: italic; }
-.industry-other-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-.industry-other-row input { flex: 1; }
 .detail-mentorship-yes { color: var(--ok); font-weight: 600; }
 .detail-mentorship-no { color: var(--ink-soft); }
 

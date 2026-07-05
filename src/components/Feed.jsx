@@ -36,7 +36,7 @@ export default function Feed({ session, profile }) {
       .from('posts')
       .select(`
         id, title, content, image_urls, created_at, author_id,
-        profiles ( full_name, grad_year, occupation, avatar_url ),
+        profiles!posts_author_id_fkey ( full_name, grad_year, occupation, avatar_url ),
         likes:post_likes(count),
         comments:post_comments(count)
       `)
@@ -342,7 +342,7 @@ function Comments({ postId, session, profile }) {
   async function load() {
     const { data } = await supabase
       .from('post_comments')
-      .select('id, content, created_at, author_id, profiles ( full_name, avatar_url )')
+      .select('id, content, created_at, author_id, profiles!post_comments_author_id_fkey ( full_name, avatar_url )')
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
     setItems(data || [])
