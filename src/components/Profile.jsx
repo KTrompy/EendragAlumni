@@ -132,6 +132,29 @@ export default function Profile({ session, profile, onSaved }) {
     setBusy(false)
   }
 
+  async function deleteProfile() {
+    if (!window.confirm('Are you sure you want to delete your profile? This cannot be undone.')) {
+      return
+    }
+    
+    setBusy(true)
+    setError(null)
+    
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', session.user.id)
+    
+    if (error) {
+      setError(error.message)
+      setBusy(false)
+    } else {
+      // Sign out user after deleting profile
+      await supabase.auth.signOut()
+    }
+  }
+
+
   return (
     <section className="panel narrow">
       <h2 className="panel-title">My profile</h2>
@@ -259,9 +282,14 @@ export default function Profile({ session, profile, onSaved }) {
       {error && <p className="form-error">{error}</p>}
       {saved && <p className="form-notice">Profile saved.</p>}
 
-      <button className="btn primary" onClick={save} disabled={busy}>
-        {busy ? 'Saving…' : 'Save changes'}
-      </button>
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button className="btn primary" onClick={save} disabled={busy}>
+          {busy ? 'Saving…' : 'Save changes'}
+        </button>
+        <button className="btn ghost" onClick={deleteProfile} disabled={busy} style={{ color: 'var(--error)' }}>
+          Delete profile
+        </button>
+      </div>
 
       {cropFile && (
         <PhotoCropper
