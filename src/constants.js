@@ -44,18 +44,6 @@ export const SA_CITIES = [
   'Rustenburg', 'Potchefstroom', 'Mahikeng',
 ]
 
-export const SA_PROVINCES = [
-  'Western Cape',
-  'Gauteng',
-  'KwaZulu-Natal',
-  'Eastern Cape',
-  'Free State',
-  'Limpopo',
-  'Mpumalanga',
-  'North West',
-  'Northern Cape',
-]
-
 export const COUNTRIES = [
   'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda',
   'Argentina','Armenia','Australia','Austria','Azerbaijan',

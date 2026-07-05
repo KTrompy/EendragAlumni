@@ -78,7 +78,7 @@ export default function Directory({ session, onMessage }) {
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, full_name, grad_year, section, occupation, industry, company, city, country, province, is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, mentorship_description, approved')
+      .select('id, full_name, grad_year, section, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, mentorship_description, approved')
       .order('grad_year', { ascending: false, nullsFirst: false })
       .then(({ data }) => setPeople(data || []))
   }, [])
@@ -271,6 +271,10 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
     ? `${p.occupation} @ ${p.company}`
     : (p.occupation || p.company || '')
 
+  const locationLine = p.city && p.country
+    ? `${p.city}, ${p.country}`
+    : (p.country || p.city || '')
+
   return (
     <li>
       <div
@@ -288,8 +292,9 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
             {isMe && <span className="person-name-you">You</span>}
             {p.is_current_resident && <span className="person-badge-current">In house</span>}
           </h3>
-          {p.industry && <p className="person-industry">{p.industry}</p>}
-          {roleLine && <p className="person-occupation">{roleLine}</p>}
+          <p className="person-industry">{p.industry || ' '}</p>
+          <p className="person-occupation">{roleLine || ' '}</p>
+          <p className="person-location">{locationLine || ' '}</p>
           <p className="person-occupation">
             {p.grad_year && <span className="person-year-badge">Class of {p.grad_year}</span>}
             {p.available_for_mentorship && <span className="mentor-chip">🤝 Mentoring</span>}

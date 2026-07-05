@@ -209,7 +209,7 @@ function JobForm({ session, onCancel, onCreated }) {
         </label>
       </div>
       <label className="field"><span>Description</span></label>
-      <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '8px' }}>
+      <div className="rte-box">
         <RichTextEditor
           value={form.description}
           onChange={(v) => set('description', v)}

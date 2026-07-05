@@ -15,8 +15,6 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
     }
   }, [onClose])
 
-  const isSA = (p.country || '').trim().toLowerCase() === 'south africa'
-
   const rows = [
     ['Status', p.is_current_resident ? 'Current Eendragter (in house)' : 'Alumnus'],
     ['Year left / leaving Eendrag', p.grad_year || dash],
@@ -25,7 +23,6 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
     ['Job title / Position', p.occupation || dash],
     ['Company', p.company || dash],
     ['City', p.city || dash],
-    ...(isSA ? [['Province', p.province || dash]] : []),
     ['Country', p.country || dash],
     ['Open to mentoring', renderMentorship(p)],
     ['Bio', p.bio || dash],

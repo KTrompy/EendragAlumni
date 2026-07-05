@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 // gets saved.
 const OUTPUT_WIDTH = 640
 const ASPECT = 4 / 5 // width / height — matches the card + modal photo shape
+const PREVIEW_CIRCLE = 72 // px — matches how the photo is shown as a round avatar elsewhere
 
 export default function PhotoCropper({ file, onCancel, onSave }) {
   const viewportRef = useRef(null)
@@ -160,11 +161,53 @@ export default function PhotoCropper({ file, onCancel, onSave }) {
             />
           </div>
           <p className="hint">Drag the photo to reposition it, or scroll to zoom.</p>
+
+          {natural && imgUrl && (
+            <div className="cropper-preview-row">
+              <span className="cropper-preview-label">Your avatar</span>
+              <RoundPreview
+                imgUrl={imgUrl}
+                natural={natural}
+                offset={offset}
+                zoomActual={zoomActual}
+                viewportW={viewport.w}
+              />
+            </div>
+          )}
         </div>
         <div className="modal-footer">
           <button className="btn ghost" onClick={onCancel}>Cancel</button>
           <button className="btn primary" onClick={handleSave} disabled={!natural}>Use this photo</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Shows the exact same rectangle crop the way it's actually rendered
+// elsewhere in the app: as a round avatar with object-fit: cover. Mirrors
+// the crop math above at a smaller scale so what the user sees here is
+// truly what they'll get after saving — no separate render path to drift
+// out of sync.
+function RoundPreview({ imgUrl, natural, offset, zoomActual, viewportW }) {
+  const scale = PREVIEW_CIRCLE / viewportW
+  const rectH = PREVIEW_CIRCLE / ASPECT // height of the full 4:5 crop at preview scale
+  const rectTop = -(rectH - PREVIEW_CIRCLE) / 2 // center the square avatar window within the taller rectangle
+
+  return (
+    <div className="cropper-preview-circle">
+      <div style={{ position: 'absolute', left: 0, top: rectTop, width: PREVIEW_CIRCLE, height: rectH, overflow: 'hidden' }}>
+        <img
+          src={imgUrl}
+          alt=""
+          draggable={false}
+          style={{
+            left: offset.x * scale,
+            top: offset.y * scale,
+            width: natural.w * zoomActual * scale,
+            height: natural.h * zoomActual * scale,
+          }}
+        />
       </div>
     </div>
   )
