@@ -133,24 +133,24 @@ export default function Profile({ session, profile, onSaved }) {
   }
 
   async function deleteProfile() {
-    if (!window.confirm('Are you sure you want to delete your profile? This cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete your account? This will permanently remove your profile, posts, messages and photos, and cannot be undone.')) {
       return
     }
-    
+
     setBusy(true)
     setError(null)
-    
-    const { error } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', session.user.id)
-    
+
+    // This removes the underlying auth user (not just the profile row),
+    // which cascades to delete all of the account's data. Once it's gone,
+    // signing in again with the same email requires signing up from scratch.
+    const { error } = await supabase.rpc('delete_own_account')
+
     if (error) {
       setError(error.message)
       setBusy(false)
     } else {
-      // Sign out user after deleting profile
       await supabase.auth.signOut()
+      window.location.reload()
     }
   }
 
