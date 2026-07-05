@@ -123,14 +123,16 @@ export default function Profile({ session, profile, onSaved }) {
       linkedin_url: form.linkedin_url.trim(),
     }
 
-    // Only re-geocode when the city/country actually changed — keeps us
-    // from hitting the (free, rate-limited) geocoder on every unrelated
-    // edit, like tweaking a bio. Powers the Alumni Map "where are we all
-    // now" view; if it fails (offline, no match) we just save without a
-    // pin instead of blocking the save.
+    // Re-geocode when the city/country changed, or when this profile simply
+    // doesn't have coordinates yet (e.g. the city was set before the map
+    // feature existed). Skips the network call on unrelated edits — like
+    // tweaking a bio — once a pin is already in place. Powers the Alumni
+    // Map "where are we all now" view; if it fails (offline, no match) we
+    // just save without a pin instead of blocking the save.
     const cityMoved = form.city.trim() !== (profile?.city || '').trim()
       || form.country.trim() !== (profile?.country || '').trim()
-    if (cityMoved) {
+    const missingCoords = profile?.lat == null || profile?.lng == null
+    if (cityMoved || missingCoords) {
       const coords = await geocodeCity(form.city, form.country)
       payload.lat = coords?.lat ?? null
       payload.lng = coords?.lng ?? null
