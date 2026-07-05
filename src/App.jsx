@@ -146,7 +146,7 @@ export default function App() {
         <div className="footer-text">
           <span>Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.</span>
           <span className="footer-credit">
-            Designed by Kyle Trompeter —{' '}
+            Initiated and built by Kyle Trompeter —{' '}
             <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>.
           </span>
         </div>
