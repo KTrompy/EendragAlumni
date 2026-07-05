@@ -64,9 +64,7 @@ const EMPTY_FILTERS = {
   yearFrom: '',
   yearTo: '',
   country: '',
-  city: '',
   industry: '',
-  occupation: '',
 }
 
 export default function Directory({ session, onMessage }) {
@@ -119,13 +117,8 @@ export default function Directory({ session, onMessage }) {
     if (filters.yearFrom && (!p.grad_year || p.grad_year < Number(filters.yearFrom))) return false
     if (filters.yearTo && (!p.grad_year || p.grad_year > Number(filters.yearTo))) return false
     if (filters.country && p.country !== filters.country) return false
-    if (filters.city && p.city !== filters.city) return false
     if (filters.industry && p.industry !== filters.industry) return false
-    if (filters.occupation) {
-      const occ = (p.occupation || '').toLowerCase()
-      if (!occ.includes(filters.occupation.toLowerCase())) return false
-    }
-    return true
+return true
   })
 
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [q, filters, people.length])
@@ -228,15 +221,6 @@ export default function Directory({ session, onMessage }) {
               </div>
             </FilterSection>
 
-            <FilterSection title="City">
-              <div className="select-wrap">
-                <select value={filters.city} onChange={(e) => set('city', e.target.value)}>
-                  <option value="">All cities</option>
-                  {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            </FilterSection>
-
             <FilterSection title="Country">
               <div className="select-wrap">
                 <select value={filters.country} onChange={(e) => set('country', e.target.value)}>
@@ -253,15 +237,6 @@ export default function Directory({ session, onMessage }) {
                   {INDUSTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-            </FilterSection>
-
-            <FilterSection title="Job title" defaultOpen={false}>
-              <input
-                type="text"
-                placeholder="e.g. engineer, director"
-                value={filters.occupation}
-                onChange={(e) => set('occupation', e.target.value)}
-              />
             </FilterSection>
 
             <div className="filter-panel-footer">

@@ -209,11 +209,13 @@ function JobForm({ session, onCancel, onCreated }) {
         </label>
       </div>
       <label className="field"><span>Description</span></label>
-      <RichTextEditor
-        value={form.description}
-        onChange={(v) => set('description', v)}
-        placeholder="Role, requirements, why you'd want a fellow Eendragter…"
-      />
+      <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '8px' }}>
+        <RichTextEditor
+          value={form.description}
+          onChange={(v) => set('description', v)}
+          placeholder="Role, requirements, why you'd want a fellow Eendragter…"
+        />
+      </div>
       <div className="field-row" style={{ marginTop: 14 }}>
         <label className="field"><span>Apply URL</span>
           <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />

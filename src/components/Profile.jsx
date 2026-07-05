@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { COUNTRIES, INDUSTRIES, SA_PROVINCES, SA_CITIES } from '../constants.js'
+import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 
 const EMPTY = {
   full_name: '', grad_year: '', section: '',
   industry: '', occupation: '',
-  company: '', city: '', province: '', country: 'South Africa',
+  company: '', city: '', country: 'South Africa',
   bio: '',
   linkedin_url: '',
   available_for_mentorship: false,
@@ -29,7 +29,6 @@ export default function Profile({ session, profile, onSaved }) {
   useEffect(() => {
     if (profile) {
       const isKnownIndustry = INDUSTRIES.includes(profile.industry)
-      const isKnownCity = SA_CITIES.includes(profile.city)
       setForm({
         full_name: profile.full_name || '',
         grad_year: profile.grad_year || '',
@@ -37,8 +36,7 @@ export default function Profile({ session, profile, onSaved }) {
         industry: isKnownIndustry ? profile.industry : (profile.industry ? 'Other' : ''),
         occupation: profile.occupation || '',
         company: profile.company || '',
-        city: isKnownCity ? profile.city : (profile.city ? 'Other' : ''),
-        province: profile.province || '',
+        city: profile.city || '',
         country: profile.country || 'South Africa',
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
@@ -47,7 +45,6 @@ export default function Profile({ session, profile, onSaved }) {
         is_current_resident: !!profile.is_current_resident,
       })
       if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
-      if (!isKnownCity && profile.city) setCustomCity(profile.city)
     }
   }, [profile])
 
@@ -55,21 +52,11 @@ export default function Profile({ session, profile, onSaved }) {
 
   const isSA = form.country === 'South Africa'
 
-  // Province and the curated city list only make sense inside South Africa.
-  // Migrate values sensibly in both directions instead of just wiping them,
-  // so nobody's typed text silently disappears when they change country.
+  // Migrate city values when country changes
   useEffect(() => {
-    if (isSA) {
-      if (form.city && form.city !== 'Other' && !SA_CITIES.includes(form.city)) {
+    if (!isSA) {
+      if (form.city && !SA_CITIES.includes(form.city)) {
         setCustomCity(form.city)
-        set('city', 'Other')
-      }
-    } else {
-      if (form.province) set('province', '')
-      if (form.city === 'Other') {
-        set('city', customCity)
-      } else if (SA_CITIES.includes(form.city)) {
-        set('city', '')
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,22 +107,17 @@ export default function Profile({ session, profile, onSaved }) {
   async function save() {
     setError(null)
 
-    if (isSA && form.city === 'Other' && !customCity.trim()) {
-      setError('Please enter your town or suburb.')
+    if (!form.city.trim()) {
+      setError('Please enter your city or town.')
       return
     }
 
     setBusy(true)
     const industry = form.industry === 'Other' ? customIndustry.trim() : form.industry
-    const city = isSA
-      ? (form.city === 'Other' ? customCity.trim() : form.city)
-      : form.city // free text for non-SA countries
 
     const payload = {
       ...form,
       industry,
-      city,
-      province: isSA ? form.province : '',
       grad_year: form.grad_year ? Number(form.grad_year) : null,
       linkedin_url: form.linkedin_url.trim(),
     }
@@ -213,13 +195,13 @@ export default function Profile({ session, profile, onSaved }) {
         </div>
       </label>
       {form.industry === 'Other' && (
-        <div className="industry-other-row">
+        <label className="field"><span>Type your industry</span>
           <input
             value={customIndustry}
             onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false) }}
-            placeholder="Type your industry…"
+            placeholder="e.g. Technology, Healthcare, Finance"
           />
-        </div>
+        </label>
       )}
 
       <label className="field"><span>Job title / Position</span>
@@ -238,40 +220,9 @@ export default function Profile({ session, profile, onSaved }) {
         </div>
       </label>
 
-      {isSA ? (
-        <div className="field-row">
-          <label className="field"><span>City / Town</span>
-            <div className="select-wrap">
-              <select value={form.city} onChange={(e) => set('city', e.target.value)}>
-                <option value="">Select a city or town</option>
-                {SA_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                <option value="Other">Other (type your own)</option>
-              </select>
-            </div>
-          </label>
-          <label className="field"><span>Province</span>
-            <div className="select-wrap">
-              <select value={form.province} onChange={(e) => set('province', e.target.value)}>
-                <option value="">Select a province</option>
-                {SA_PROVINCES.map((p) => <option key={p}>{p}</option>)}
-              </select>
-            </div>
-          </label>
-        </div>
-      ) : (
-        <label className="field"><span>City</span>
-          <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="e.g. London" />
-        </label>
-      )}
-      {isSA && form.city === 'Other' && (
-        <div className="industry-other-row">
-          <input
-            value={customCity}
-            onChange={(e) => { setCustomCity(e.target.value); setSaved(false) }}
-            placeholder="Type your town or suburb…"
-          />
-        </div>
-      )}
+      <label className="field"><span>City / Town</span>
+        <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="e.g. Cape Town, London, New York" />
+      </label>
 
       <label className="field"><span>LinkedIn URL</span>
         <input
