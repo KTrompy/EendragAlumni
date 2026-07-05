@@ -12,7 +12,7 @@ import Donate from './components/Donate.jsx'
 import AlumniMap from './components/AlumniMap.jsx'
 
 const TABS = [
-  { id: 'directory', label: 'Alumni' },
+  { id: 'directory', label: 'Eendragters' },
   { id: 'map', label: 'Map' },
   { id: 'feed', label: 'Feed' },
   { id: 'events', label: 'Events' },
