@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
+
+const EMPTY_FILTERS = {
+  type: '',
+  remoteOnly: false,
+  company: '',
+  location: '',
+  postedWithin: '', // '' | '7' | '30'
+}
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso)) / 1000)
@@ -14,10 +22,14 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
-function hasText(html) {
+function plainText(html) {
   const div = document.createElement('div')
   div.innerHTML = html || ''
-  return div.textContent.trim().length > 0
+  return div.textContent || ''
+}
+
+function hasText(html) {
+  return plainText(html).trim().length > 0
 }
 
 // Opens the mail client without ever putting the raw address in the
@@ -30,7 +42,9 @@ function openMailto(address, subject) {
 export default function Jobs({ session, profile, onMessage }) {
   const [jobs, setJobs] = useState([])
   const [showForm, setShowForm] = useState(false)
-  const [typeFilter, setTypeFilter] = useState('')
+  const [q, setQ] = useState('')
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [filterOpen, setFilterOpen] = useState(false)
 
   async function load() {
     const { data } = await supabase
@@ -50,13 +64,57 @@ export default function Jobs({ session, profile, onMessage }) {
     return () => supabase.removeChannel(channel)
   }, [])
 
+  // Lock body scroll while the filter drawer is open, and let Escape close it.
+  useEffect(() => {
+    if (!filterOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onKey(e) { if (e.key === 'Escape') setFilterOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [filterOpen])
+
   async function removeJob(id) {
     if (!confirm('Remove this listing?')) return
     await supabase.from('jobs').delete().eq('id', id)
   }
 
+  const companyOptions = useMemo(
+    () => [...new Set(jobs.map((j) => (j.company || '').trim()).filter(Boolean))].sort(),
+    [jobs]
+  )
+  const locationOptions = useMemo(
+    () => [...new Set(jobs.map((j) => (j.location || '').trim()).filter(Boolean))].sort(),
+    [jobs]
+  )
+
+  function set(k, v) { setFilters((f) => ({ ...f, [k]: v })) }
+  function clearFilters() { setFilters(EMPTY_FILTERS); setQ('') }
+
   const canPost = profile?.approved
-  const shown = typeFilter ? jobs.filter((j) => j.employment_type === typeFilter) : jobs
+
+  const needle = q.trim().toLowerCase()
+  const shown = jobs.filter((j) => {
+    if (needle) {
+      const hay = [j.title, j.company, j.location, j.profiles?.full_name, plainText(j.description)]
+        .join(' ').toLowerCase()
+      if (!hay.includes(needle)) return false
+    }
+    if (filters.type && j.employment_type !== filters.type) return false
+    if (filters.remoteOnly && !(j.location || '').toLowerCase().includes('remote')) return false
+    if (filters.company && j.company !== filters.company) return false
+    if (filters.location && j.location !== filters.location) return false
+    if (filters.postedWithin) {
+      const cutoff = Date.now() - Number(filters.postedWithin) * 86400000
+      if (new Date(j.created_at).getTime() < cutoff) return false
+    }
+    return true
+  })
+
+  const activeFilterCount = Object.values(filters).filter((v) => v !== '' && v !== false).length
 
   return (
     <section className="panel">
@@ -78,19 +136,98 @@ export default function Jobs({ session, profile, onMessage }) {
         />
       )}
 
-      <div className="filter-radio-row pill-row">
-        <button className={typeFilter === '' ? 'on' : ''} onClick={() => setTypeFilter('')}>All</button>
-        {TYPES.map((t) => (
-          <button key={t} className={typeFilter === t ? 'on' : ''} onClick={() => setTypeFilter(t)}>{t}</button>
-        ))}
+      <div className="directory-toolbar">
+        <div className="search-wrap">
+          <input
+            className="search directory-search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by title, company, location…"
+          />
+          {q && (
+            <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>
+          )}
+        </div>
+        <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
+          <FilterIcon />
+          Filters
+          {activeFilterCount > 0 && <span className="filters-toggle-badge">{activeFilterCount}</span>}
+        </button>
       </div>
+
+      <p className="result-count">
+        Showing {shown.length} of {jobs.length} {jobs.length === 1 ? 'role' : 'roles'}
+      </p>
 
       {shown.length === 0 && (
         <EmptyState
           icon="jobs"
-          message={typeFilter ? `No ${typeFilter.toLowerCase()} listings right now.` : 'No listings yet.'}
-          subMessage={typeFilter ? undefined : 'Be the first to post a role.'}
+          message={jobs.length === 0 ? 'No listings yet.' : 'No matching roles found.'}
+          subMessage={jobs.length === 0 ? 'Be the first to post a role.' : 'Try widening a filter or clearing them all.'}
         />
+      )}
+
+      {filterOpen && (
+        <>
+          <div className="filter-backdrop" onClick={() => setFilterOpen(false)} />
+          <aside className="filter-panel open" aria-label="Filter roles">
+            <div className="filter-panel-header">
+              <h3>Filter · {activeFilterCount || 'none'}</h3>
+              <button className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
+            </div>
+
+            <div className="filter-section filter-section-primary">
+              <div className="filter-section-body">
+                <div className="filter-radio-row">
+                  <button className={filters.type === '' ? 'on' : ''} onClick={() => set('type', '')}>All</button>
+                  {TYPES.map((t) => (
+                    <button key={t} className={filters.type === t ? 'on' : ''} onClick={() => set('type', t)}>{t}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <FilterSection title="Remote">
+              <div className="filter-radio-row">
+                <button className={!filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', false)}>All</button>
+                <button className={filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', true)}>🌍 Remote-friendly</button>
+              </div>
+            </FilterSection>
+
+            <FilterSection title="Posted">
+              <div className="filter-radio-row">
+                <button className={filters.postedWithin === '' ? 'on' : ''} onClick={() => set('postedWithin', '')}>Any time</button>
+                <button className={filters.postedWithin === '7' ? 'on' : ''} onClick={() => set('postedWithin', '7')}>Past week</button>
+                <button className={filters.postedWithin === '30' ? 'on' : ''} onClick={() => set('postedWithin', '30')}>Past month</button>
+              </div>
+            </FilterSection>
+
+            <FilterSection title="Company">
+              <div className="select-wrap">
+                <select value={filters.company} onChange={(e) => set('company', e.target.value)}>
+                  <option value="">All companies</option>
+                  {companyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </FilterSection>
+
+            <FilterSection title="Location">
+              <div className="select-wrap">
+                <select value={filters.location} onChange={(e) => set('location', e.target.value)}>
+                  <option value="">All locations</option>
+                  {locationOptions.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+            </FilterSection>
+
+            <div className="filter-panel-footer">
+              <button className="filter-clear" onClick={clearFilters}>Clear all filters</button>
+              <button className="btn primary wide" onClick={() => setFilterOpen(false)}>
+                Show {shown.length} {shown.length === 1 ? 'result' : 'results'}
+              </button>
+            </div>
+          </aside>
+        </>
       )}
 
       <ul className="job-list">
@@ -148,6 +285,32 @@ export default function Jobs({ session, profile, onMessage }) {
         })}
       </ul>
     </section>
+  )
+}
+
+/* ---------- Filter accordion section (mirrors Directory's) ---------- */
+function FilterSection({ title, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className={open ? 'filter-section open' : 'filter-section'}>
+      <button
+        className="filter-section-header"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        <span>{title}</span>
+        <span className="chev" aria-hidden="true">▸</span>
+      </button>
+      {open && <div className="filter-section-body">{children}</div>}
+    </div>
+  )
+}
+
+function FilterIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16M7 12h10M10 18h4" />
+    </svg>
   )
 }
 
