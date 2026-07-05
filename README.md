@@ -2,7 +2,7 @@
 
 A community platform for Eendrag alumni: accounts, a house feed, an alumni directory, and 1:1 realtime messaging. Built with React (Vite) + Supabase.
 
-Character, Style, Pride, Since 1961.
+Character · Style · Pride · Since 1961.
 
 ## What's inside
 

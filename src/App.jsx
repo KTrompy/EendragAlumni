@@ -75,7 +75,7 @@ export default function App() {
             <img src="/eendrag-logo.png" alt="Eendrag logo" className="brand-logo" />
             <div>
               <span className="brand-name">Eendrag Alumni</span>
-              <span className="brand-motto">Character, Style, Pride, Since 1961</span>
+              <span className="brand-motto">Character · Style · Pride · Since 1961</span>
             </div>
           </div>
           <nav className="tabs" aria-label="Main">
