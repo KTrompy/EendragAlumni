@@ -526,6 +526,17 @@ input, textarea, select { font: inherit; }
   place-items: center;
 }
 
+.onboarding-nudge {
+  background: var(--orange-soft);
+  color: var(--maroon-dark);
+  border: 1px solid var(--orange);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  text-align: center;
+  margin: 14px 0 0;
+}
+
 .onboarding-actions {
   display: flex;
   align-items: center;

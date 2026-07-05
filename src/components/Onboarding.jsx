@@ -40,13 +40,43 @@ export default function Onboarding({ session, profile, onDone }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
+  const [emptyNotice, setEmptyNotice] = useState(false)
   const fileRef = useRef(null)
 
   const currentKey = STEPS[stepIndex]
   const questionIndex = QUESTION_KEYS.indexOf(currentKey)
 
-  function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
-  function onEnter(e) { if (e.key === 'Enter') advance() }
+  function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setEmptyNotice(false) }
+  function onEnter(e) { if (e.key === 'Enter') handleContinue() }
+
+  // Whether the current question has nothing in it — only meaningful for
+  // free-text/select questions. Choice-style questions (status, mentorship)
+  // and country always have a default selected, so there's nothing to nudge.
+  function isCurrentEmpty() {
+    switch (currentKey) {
+      case 'name': return !form.full_name.trim()
+      case 'year': return !form.grad_year
+      case 'degree': return !form.degree.trim()
+      case 'industry': return !form.industry || (form.industry === 'Other' && !customIndustry.trim())
+      case 'occupation': return !form.occupation.trim()
+      case 'company': return !form.company.trim()
+      case 'city': return !form.city.trim()
+      case 'linkedin': return !form.linkedin_url.trim()
+      case 'bio': return !form.bio.trim()
+      case 'photo': return !avatarUrl
+      default: return false
+    }
+  }
+
+  // "Continue" nudges you to fill the field in (or explicitly hit Skip)
+  // instead of silently letting an empty answer slide through.
+  function handleContinue() {
+    if (questionIndex >= 0 && isCurrentEmpty()) {
+      setEmptyNotice(true)
+      return
+    }
+    advance()
+  }
 
   function pickPhoto(e) {
     const file = e.target.files?.[0]
@@ -114,6 +144,7 @@ export default function Onboarding({ session, profile, onDone }) {
 
   async function advance() {
     setError(null)
+    setEmptyNotice(false)
     if (currentKey === 'photo') {
       const ok = await finishSave()
       if (!ok) return
@@ -127,8 +158,8 @@ export default function Onboarding({ session, profile, onDone }) {
     setStepIndex((i) => Math.min(i + 1, STEPS.length - 1))
   }
 
-  function skip() { advance() }
-  function back() { setStepIndex((i) => Math.max(i - 1, 0)) }
+  function skip() { setEmptyNotice(false); advance() }
+  function back() { setEmptyNotice(false); setStepIndex((i) => Math.max(i - 1, 0)) }
 
   function renderStep() {
     switch (currentKey) {
@@ -421,6 +452,9 @@ export default function Onboarding({ session, profile, onDone }) {
           {renderStep()}
         </div>
 
+        {emptyNotice && (
+          <p className="onboarding-nudge">You'll need to fill this in to continue — or tap Skip if you'd rather leave it for later.</p>
+        )}
         {error && <p className="form-error">{error}</p>}
 
         <div className="onboarding-actions">
@@ -429,7 +463,7 @@ export default function Onboarding({ session, profile, onDone }) {
               Skip this question
             </button>
           )}
-          <button className="btn primary onboarding-continue" onClick={advance} disabled={busy} type="button">
+          <button className="btn primary onboarding-continue" onClick={handleContinue} disabled={busy} type="button">
             {continueLabel}
           </button>
         </div>
