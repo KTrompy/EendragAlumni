@@ -1143,6 +1143,9 @@ input, textarea, select { font: inherit; }
   list-style: none; margin: 0; padding: 0;
   display: grid; gap: 16px;
 }
+.job-list {
+  margin-top: 16px;
+}
 .event-card, .job-card {
   background: var(--card);
   border: 1px solid var(--line);
