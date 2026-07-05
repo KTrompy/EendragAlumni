@@ -140,10 +140,12 @@ export default function Profile({ session, profile, onSaved }) {
     setBusy(true)
     setError(null)
 
-    // This removes the underlying auth user (not just the profile row),
-    // which cascades to delete all of the account's data. Once it's gone,
-    // signing in again with the same email requires signing up from scratch.
-    const { error } = await supabase.rpc('delete_own_account')
+    // This calls a server-side Edge Function (using the Admin API) to
+    // actually remove the auth user — not just the profile row. Deleting
+    // the auth user cascades to delete all of the account's data. Once
+    // it's gone, signing in again with the same email requires signing
+    // up from scratch.
+    const { error } = await supabase.functions.invoke('delete-account')
 
     if (error) {
       setError(error.message)

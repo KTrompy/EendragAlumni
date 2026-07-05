@@ -1,4 +1,18 @@
 -- ============================================================
+-- SUPERSEDED — do not rely on this file.
+--
+-- Testing showed hosted Supabase blocks a plain SQL DELETE against
+-- auth.users even from a SECURITY DEFINER function (no error is raised,
+-- the row just never actually goes away). The real fix is the
+-- supabase/functions/delete-account Edge Function, which uses the
+-- Admin API (auth.admin.deleteUser) via the service-role key. Deploy
+-- that function instead — see supabase/functions/delete-account/index.ts.
+--
+-- This function is left in place harmlessly (nothing calls it anymore)
+-- in case it's useful for manual cleanup from the SQL Editor, e.g.:
+--   select public.delete_own_account(); -- run this while impersonating
+-- but it is NOT part of the app's delete flow anymore.
+-- ============================================================
 -- Update 3: real account deletion
 -- Run this in Supabase SQL Editor (safe to re-run)
 --
