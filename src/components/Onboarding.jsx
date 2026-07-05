@@ -4,6 +4,7 @@ import { COUNTRIES, INDUSTRIES } from '../constants.js'
 import { geocodeCity } from '../geocode.js'
 import { Avatar } from './Directory.jsx'
 import PhotoCropper from './PhotoCropper.jsx'
+import CityAutocomplete from './CityAutocomplete.jsx'
 
 // One question per screen, skip-friendly, saved in a single write at the
 // end. Shown full-screen (like Auth) the first time a member logs in with
@@ -41,6 +42,7 @@ export default function Onboarding({ session, profile, onDone }) {
   const [error, setError] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
   const [emptyNotice, setEmptyNotice] = useState(false)
+  const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
   const fileRef = useRef(null)
 
   const currentKey = STEPS[stepIndex]
@@ -123,7 +125,12 @@ export default function Onboarding({ session, profile, onDone }) {
       bio: form.bio,
     }
     if (avatarUrl) payload.avatar_url = avatarUrl
-    if (form.city.trim()) {
+    if (cityCoords) {
+      // Picked straight from the suggestions dropdown — already a
+      // confirmed, geocodable place, no need to look it up again.
+      payload.lat = cityCoords.lat
+      payload.lng = cityCoords.lng
+    } else if (form.city.trim()) {
       const coords = await geocodeCity(form.city, form.country)
       payload.lat = coords?.lat ?? null
       payload.lng = coords?.lng ?? null
@@ -303,12 +310,13 @@ export default function Onboarding({ session, profile, onDone }) {
         return (
           <>
             <h2 className="onboarding-question">Which city or town?</h2>
-            <p className="onboarding-hint">This is what powers the Alumni Map — "where are we all now".</p>
-            <input
-              className="onboarding-input"
+            <p className="onboarding-hint">This is what powers the Alumni Map — "where are we all now". Pick a suggestion as you type so it's guaranteed to show up (free typing works too, but a typo won't find its way onto the map).</p>
+            <CityAutocomplete
               value={form.city}
-              onChange={(e) => set('city', e.target.value)}
-              onKeyDown={onEnter}
+              country={form.country}
+              onChange={(v) => set('city', v)}
+              onSelectCoords={setCityCoords}
+              inputClassName="onboarding-input"
               placeholder="e.g. Cape Town, London, New York"
             />
           </>

@@ -302,6 +302,41 @@ input, textarea, select { font: inherit; }
 .field-row { display: flex; gap: 14px; }
 .form-error { color: var(--danger); font-size: 13.5px; margin: 6px 0; }
 .form-notice { color: var(--ok); font-size: 13.5px; margin: 6px 0; }
+.form-warning { color: var(--orange-dark); font-size: 13.5px; margin: 6px 0; }
+
+/* ---------- City autocomplete ---------- */
+.city-autocomplete { position: relative; }
+.city-suggestions {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  text-align: left;
+}
+.city-suggestions li { display: block; }
+.city-suggestions button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.city-suggestions button:hover { background: var(--paper); }
+.city-suggestion-loading { padding: 8px 10px; font-size: 12.5px; color: var(--ink-soft); }
 .checkbox-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .checkbox-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--orange); }
 .checkbox-row label { font-size: 14px; }

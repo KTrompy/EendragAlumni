@@ -4,6 +4,7 @@ import { Avatar } from './Directory.jsx'
 import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
+import CityAutocomplete from './CityAutocomplete.jsx'
 
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
@@ -25,6 +26,8 @@ export default function Profile({ session, profile, onSaved }) {
   const [cropFile, setCropFile] = useState(null)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [geoWarning, setGeoWarning] = useState(false)
+  const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -46,6 +49,7 @@ export default function Profile({ session, profile, onSaved }) {
         is_current_resident: !!profile.is_current_resident,
       })
       if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
+      setCityCoords(null)
     }
   }, [profile])
 
@@ -107,6 +111,7 @@ export default function Profile({ session, profile, onSaved }) {
 
   async function save() {
     setError(null)
+    setGeoWarning(false)
 
     if (!form.city.trim()) {
       setError('Please enter your city or town.')
@@ -132,10 +137,16 @@ export default function Profile({ session, profile, onSaved }) {
     const cityMoved = form.city.trim() !== (profile?.city || '').trim()
       || form.country.trim() !== (profile?.country || '').trim()
     const missingCoords = profile?.lat == null || profile?.lng == null
-    if (cityMoved || missingCoords) {
+    if (cityCoords) {
+      // Picked straight from the suggestions dropdown — already a
+      // confirmed, geocodable place, no need to look it up again.
+      payload.lat = cityCoords.lat
+      payload.lng = cityCoords.lng
+    } else if (cityMoved || missingCoords) {
       const coords = await geocodeCity(form.city, form.country)
       payload.lat = coords?.lat ?? null
       payload.lng = coords?.lng ?? null
+      if (!coords) setGeoWarning(true)
     }
 
     const { data, error } = await supabase
@@ -263,7 +274,14 @@ export default function Profile({ session, profile, onSaved }) {
       </label>
 
       <label className="field"><span>City / Town</span>
-        <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="e.g. Cape Town, London, New York" />
+        <CityAutocomplete
+          value={form.city}
+          country={form.country}
+          onChange={(v) => set('city', v)}
+          onSelectCoords={setCityCoords}
+          placeholder="e.g. Cape Town, London, New York"
+        />
+        <span className="hint">Pick a suggestion as you type so the Alumni Map can find you — free typing works too, but a typo won't show up on the map.</span>
       </label>
 
       <label className="field"><span>LinkedIn URL</span>
@@ -299,6 +317,11 @@ export default function Profile({ session, profile, onSaved }) {
       </label>
 
       {error && <p className="form-error">{error}</p>}
+      {geoWarning && (
+        <p className="form-warning">
+          Saved — but we couldn't find "{form.city}" to place you on the Alumni Map. Double-check the spelling, or pick a suggestion from the dropdown next time.
+        </p>
+      )}
       {saved && <p className="form-notice">Profile saved.</p>}
 
       <div style={{ display: 'flex', gap: '12px' }}>
