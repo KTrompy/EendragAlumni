@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import Feed from './components/Feed.jsx'
 import Directory from './components/Directory.jsx'
-import Messages from './components/Messages.jsx'
+import FloatingMessages from './components/FloatingMessages.jsx'
 import Profile from './components/Profile.jsx'
 import Events from './components/Events.jsx'
 import Jobs from './components/Jobs.jsx'
@@ -16,7 +16,6 @@ const TABS = [
   { id: 'feed', label: 'Feed' },
   { id: 'events', label: 'Events' },
   { id: 'jobs', label: 'Jobs' },
-  { id: 'messages', label: 'Messages' },
   { id: 'donate', label: 'Support' },
   { id: 'profile', label: 'My profile' },
 ]
@@ -27,6 +26,7 @@ export default function App() {
   const [tab, setTab] = useState('directory')
   const [dmTarget, setDmTarget] = useState(null) // profile to open a DM with
   const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
+  const [messagesOpen, setMessagesOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
 
@@ -61,7 +61,7 @@ export default function App() {
   function openMessage(targetProfile, draftText = '') {
     setDmTarget(targetProfile)
     setDmDraft(draftText)
-    setTab('messages')
+    setMessagesOpen(true)
   }
 
   if (loading) return <div className="center-page">Loading…</div>
@@ -75,7 +75,7 @@ export default function App() {
             <img src="/eendrag-logo.png" alt="Eendrag logo" className="brand-logo" />
             <div>
               <span className="brand-name">Eendrag Alumni</span>
-              <span className="brand-motto">Karakter · Styl · Trots · sedert 1961</span>
+              <span className="brand-motto">Character, Style, Pride, Since 1961</span>
             </div>
           </div>
           <nav className="tabs" aria-label="Main">
@@ -110,15 +110,6 @@ export default function App() {
         {tab === 'map' && <AlumniMap session={session} onMessage={openMessage} />}
         {tab === 'events' && <Events session={session} profile={profile} />}
         {tab === 'jobs' && <Jobs session={session} profile={profile} onMessage={openMessage} />}
-        {tab === 'messages' && (
-          <Messages
-            session={session}
-            profile={profile}
-            initialTarget={dmTarget}
-            initialDraft={dmDraft}
-            onTargetConsumed={() => { setDmTarget(null); setDmDraft('') }}
-          />
-        )}
         {tab === 'donate' && <Donate />}
         {tab === 'profile' && (
           <Profile session={session} profile={profile} onSaved={setProfile} />
@@ -127,12 +118,24 @@ export default function App() {
 
       <footer className="footer">
         <img src="/eendrag-logo.png" alt="Eendrag logo" className="footer-logo" />
-        <span>
-          Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.
-          {' '}Designed by Kyle Trompeter —{' '}
-          <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>.
-        </span>
+        <div className="footer-text">
+          <span>Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.</span>
+          <span className="footer-credit">
+            Designed by Kyle Trompeter —{' '}
+            <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>.
+          </span>
+        </div>
       </footer>
+
+      <FloatingMessages
+        session={session}
+        profile={profile}
+        open={messagesOpen}
+        onOpenChange={setMessagesOpen}
+        initialTarget={dmTarget}
+        initialDraft={dmDraft}
+        onTargetConsumed={() => { setDmTarget(null); setDmDraft('') }}
+      />
     </div>
   )
 }

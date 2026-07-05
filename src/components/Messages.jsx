@@ -13,7 +13,7 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
-export default function Messages({ session, profile, initialTarget, initialDraft, onTargetConsumed }) {
+export default function Messages({ session, profile, initialTarget, initialDraft, onTargetConsumed, onRead, hideTitle }) {
   const [threads, setThreads] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [messages, setMessages] = useState([])
@@ -102,11 +102,23 @@ export default function Messages({ session, profile, initialTarget, initialDraft
         (payload) => {
           setMessages((m) => [...m, payload.new])
           loadThreads()
+          // A message arriving while this thread is the open one counts as
+          // read immediately — re-stamp so it doesn't linger in the badge.
+          markRead(activeId)
         }
       )
       .subscribe()
 
     return () => { cancelled = true; supabase.removeChannel(channel) }
+  }, [activeId])
+
+  // Opening a thread clears its unread count.
+  function markRead(conversationId) {
+    supabase.rpc('mark_conversation_read', { conv_id: conversationId }).then(() => onRead?.())
+  }
+  useEffect(() => {
+    if (activeId) markRead(activeId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId])
 
   useEffect(() => {
@@ -138,7 +150,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
 
   return (
     <section className="panel messages-panel">
-      <h2 className="panel-title">Messages</h2>
+      {!hideTitle && <h2 className="panel-title">Messages</h2>}
       {error && <p className="form-error">{error}</p>}
       <div className="messages-layout">
         <aside className="thread-list">

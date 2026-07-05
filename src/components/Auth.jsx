@@ -37,7 +37,7 @@ export default function Auth() {
       <div className="auth-card">
         <img src="/eendrag-logo.png" alt="Eendrag logo" className="auth-logo" />
         <h1 className="auth-title">Eendrag Alumni</h1>
-        <p className="auth-sub">Karakter · Styl · Trots — sedert 1961</p>
+        <p className="auth-sub">Character, Style, Pride, Since 1961</p>
 
         {mode === 'signup' && (
           <label className="field">

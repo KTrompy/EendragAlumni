@@ -133,8 +133,105 @@ input, textarea, select { font: inherit; }
 }
 .footer img { flex-shrink: 0; }
 .footer-logo { height: 28px; width: 28px; object-fit: contain; }
+.footer-text { display: flex; flex-direction: column; gap: 2px; }
+.footer-credit { color: var(--ink-soft); }
 .footer-link { color: var(--orange); font-weight: 600; text-decoration: none; }
 .footer-link:hover { text-decoration: underline; }
+
+/* ---------- Floating messages widget ---------- */
+.chat-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-lift);
+  cursor: pointer;
+  /* Above Leaflet's own overlays (max ~1000) so the widget floats over the
+     Alumni Map too, but below the profile modal (2000). */
+  z-index: 1100;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.chat-fab:hover { transform: translateY(-2px); background: var(--orange-dark); }
+.chat-fab-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--paper);
+}
+
+.chat-panel {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 640px;
+  max-width: calc(100vw - 32px);
+  height: 520px;
+  max-height: calc(100vh - 48px);
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lift);
+  border-top: 4px solid var(--orange);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1100;
+  animation: rise-in 0.18s ease;
+}
+.chat-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--maroon);
+  color: #fff;
+  font-family: var(--display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.chat-panel-header .modal-close { color: rgba(255, 255, 255, 0.8); }
+.chat-panel-header .modal-close:hover { color: #fff; }
+.chat-panel-body {
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
+  overflow: hidden;
+}
+.chat-panel-body .messages-panel { height: 100%; }
+.chat-panel-body .messages-layout { height: 100%; min-height: 0; grid-template-columns: 180px 1fr; }
+.chat-panel-body .thread-list { overflow-y: auto; }
+.chat-panel-body .chat-scroll { max-height: none; }
+
+@media (max-width: 720px) {
+  .chat-panel {
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+    height: min(72vh, 560px);
+  }
+  .chat-panel-body .messages-layout { grid-template-columns: 1fr; }
+  .chat-panel-body .thread-list { flex-direction: row; overflow-x: auto; max-height: 90px; }
+}
 
 .center-page { display: grid; place-items: center; min-height: 100vh; color: var(--ink-soft); }
 
@@ -617,7 +714,10 @@ input, textarea, select { font: inherit; }
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(26, 15, 29, 0.6);
-  z-index: 50;
+  /* Above Leaflet's internal panes/controls (it uses z-index up to 1000
+     for its own overlays), so profile modals opened from the Alumni Map
+     land on top of the map with their dark backdrop, instead of behind it. */
+  z-index: 2000;
   display: grid;
   place-items: center;
   padding: 20px;

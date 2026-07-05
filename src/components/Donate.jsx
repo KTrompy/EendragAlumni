@@ -37,7 +37,7 @@ export default function Donate() {
       </a>
 
       <p style={{ marginTop: 24, fontSize: 12, color: 'var(--ink-soft)' }}>
-        Karakter · Styl · Trots · sedert 1961
+        Character, Style, Pride, Since 1961
       </p>
     </div>
   )
