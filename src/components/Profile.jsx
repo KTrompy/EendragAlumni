@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
+import { geocodeCity } from '../geocode.js'
 
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
@@ -121,6 +122,20 @@ export default function Profile({ session, profile, onSaved }) {
       grad_year: form.grad_year ? Number(form.grad_year) : null,
       linkedin_url: form.linkedin_url.trim(),
     }
+
+    // Only re-geocode when the city/country actually changed — keeps us
+    // from hitting the (free, rate-limited) geocoder on every unrelated
+    // edit, like tweaking a bio. Powers the Alumni Map "where are we all
+    // now" view; if it fails (offline, no match) we just save without a
+    // pin instead of blocking the save.
+    const cityMoved = form.city.trim() !== (profile?.city || '').trim()
+      || form.country.trim() !== (profile?.country || '').trim()
+    if (cityMoved) {
+      const coords = await geocodeCity(form.city, form.country)
+      payload.lat = coords?.lat ?? null
+      payload.lng = coords?.lng ?? null
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .update(payload)

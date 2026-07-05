@@ -10,8 +10,9 @@ Karakter · Styl · Trots — sedert 1961.
 - **Approval gate** — anyone can sign up, but posting and messaging only unlock after you mark them `approved` (so randoms can't infiltrate the house)
 - **Feed** — text posts, live-updating, authors can delete their own
 - **Directory** — searchable alumni list (name, year, section, city, occupation)
+- **Alumni map** — "where are we all now": a pin per city, grouped by member, powered by free OpenStreetMap geocoding
 - **Messages** — 1:1 DMs with realtime delivery
-- **Profiles** — self-editable directory entries
+- **Profiles** — self-editable directory entries, with photos
 
 ## Setup (once, ~20 minutes)
 
@@ -22,6 +23,7 @@ Karakter · Styl · Trots — sedert 1961.
 ### 2. Run the schema
 1. In the Supabase dashboard, open **SQL Editor**.
 2. Paste the entire contents of `schema.sql` and run it. This creates all tables, security policies, and the realtime setup.
+3. Also run each `schema-update-N.sql` file, in order (they add things like events, jobs, and the `lat`/`lng` columns the alumni map needs).
 
 ### 3. Configure auth
 1. Go to **Authentication → Providers** and make sure **Email** is enabled.
@@ -59,10 +61,9 @@ Approve yourself first. Later, if this gets tedious at scale, we can build a sma
 - Users can't approve themselves (the update policy blocks changing `approved`).
 - Messages are only readable by their two participants; posts are readable by any signed-in member.
 
-## Ideas for v2
+## Ideas for v3
 
 - Admin page for approving members without opening Supabase
-- Event calendar (reunions, golf days)
-- Profile photos (Supabase Storage)
+- Real donations (PayFast) instead of a "get in touch" link
 - Email digests of new posts
 - Year-group channels

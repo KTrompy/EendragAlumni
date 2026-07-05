@@ -8,9 +8,11 @@ import Profile from './components/Profile.jsx'
 import Events from './components/Events.jsx'
 import Jobs from './components/Jobs.jsx'
 import Donate from './components/Donate.jsx'
+import AlumniMap from './components/AlumniMap.jsx'
 
 const TABS = [
   { id: 'directory', label: 'Alumni' },
+  { id: 'map', label: 'Map' },
   { id: 'feed', label: 'Feed' },
   { id: 'events', label: 'Events' },
   { id: 'jobs', label: 'Jobs' },
@@ -105,6 +107,7 @@ export default function App() {
         {tab === 'directory' && (
           <Directory session={session} onMessage={openMessage} />
         )}
+        {tab === 'map' && <AlumniMap session={session} onMessage={openMessage} />}
         {tab === 'events' && <Events session={session} profile={profile} />}
         {tab === 'jobs' && <Jobs session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'messages' && (
