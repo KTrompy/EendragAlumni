@@ -20,6 +20,21 @@ export default function CityAutocomplete({
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef(null)
+  const blurTimeoutRef = useRef(null)
+
+  // Closing on blur has to be delayed — on mobile especially, the input's
+  // blur can land a beat before a tap on a suggestion is registered as a
+  // click, which unmounts the dropdown out from under the tap and makes it
+  // look like nothing happened. Give the tap time to land first.
+  function handleBlur() {
+    blurTimeoutRef.current = setTimeout(() => setOpen(false), 150)
+  }
+  function handleFocus() {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
+    setOpen(true)
+  }
+
+  useEffect(() => () => { if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current) }, [])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -53,6 +68,7 @@ export default function CityAutocomplete({
   }
 
   function pick(row) {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
     onChange(label(row))
     onSelectCoords?.({ lat: parseFloat(row.lat), lng: parseFloat(row.lon) })
     setSuggestions([])
@@ -67,8 +83,8 @@ export default function CityAutocomplete({
         className={inputClassName}
         value={value}
         onChange={(e) => { onChange(e.target.value); onSelectCoords?.(null); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder={placeholder}
         autoComplete="off"
       />
