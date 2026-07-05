@@ -534,6 +534,7 @@ input, textarea, select { font: inherit; }
   justify-content: center;
   margin-top: 20px;
 }
+.decade-row { margin-bottom: 8px; }
 .filter-year-row { display: flex; gap: 6px; align-items: center; }
 .filter-year-row input { width: 100%; }
 .filter-clear {

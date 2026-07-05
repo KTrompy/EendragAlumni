@@ -101,8 +101,31 @@ export default function Directory({ session, onMessage }) {
     return [...new Set([...SA_CITIES, ...fromData])].sort()
   }, [people])
 
+  // Decade chips ("'90s", "2000s"...) built from whatever grad years are
+  // actually in the data, so we're never showing a decade with nobody in it.
+  const decadeOptions = useMemo(() => {
+    const years = people.map((p) => p.grad_year).filter(Boolean)
+    if (years.length === 0) return []
+    const startDecade = Math.floor(Math.min(...years) / 10) * 10
+    const endDecade = Math.floor(Math.max(...years) / 10) * 10
+    const out = []
+    for (let d = startDecade; d <= endDecade; d += 10) out.push(d)
+    return out
+  }, [people])
+
+  function decadeLabel(d) { return d < 2000 ? `’${String(d).slice(2)}s` : `${d}s` }
+
   function set(k, v) { setFilters((f) => ({ ...f, [k]: v })) }
   function clearFilters() { setFilters(EMPTY_FILTERS); setQ('') }
+
+  function toggleDecade(startYear) {
+    const isActive = Number(filters.yearFrom) === startYear && Number(filters.yearTo) === startYear + 9
+    if (isActive) {
+      setFilters((f) => ({ ...f, yearFrom: '', yearTo: '' }))
+    } else {
+      setFilters((f) => ({ ...f, yearFrom: String(startYear), yearTo: String(startYear + 9) }))
+    }
+  }
 
   const needle = q.trim().toLowerCase()
   const filtered = people.filter((p) => {
@@ -219,6 +242,18 @@ return true
             </FilterSection>
 
             <FilterSection title="Year left / leaving Eendrag">
+              {decadeOptions.length > 0 && (
+                <div className="filter-radio-row decade-row">
+                  {decadeOptions.map((d) => {
+                    const active = Number(filters.yearFrom) === d && Number(filters.yearTo) === d + 9
+                    return (
+                      <button key={d} className={active ? 'on' : ''} onClick={() => toggleDecade(d)}>
+                        {decadeLabel(d)}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               <div className="filter-year-row">
                 <input type="number" placeholder="From" value={filters.yearFrom} onChange={(e) => set('yearFrom', e.target.value)} />
                 <span aria-hidden="true">–</span>
