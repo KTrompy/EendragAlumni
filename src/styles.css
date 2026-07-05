@@ -1830,7 +1830,7 @@ input, textarea, select { font: inherit; }
   .thread { min-width: 180px; }
   .thread-preview { max-width: 120px; }
   .field-row { flex-direction: column; gap: 0; }
-  .brand-motto { display: none; }
+  .brand-motto { font-size: 9px; letter-spacing: 0.1em; }
   .nav-toggle { display: inline-flex; align-items: center; justify-content: center; }
   .tabs {
     display: none;
