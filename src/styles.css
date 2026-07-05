@@ -946,6 +946,10 @@ input, textarea, select { font: inherit; }
   display: grid;
   place-items: center;
   padding: 20px;
+  /* Keep the modal clear of notches/home-indicators and mobile browser
+     chrome, on top of the usual breathing room. */
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
   animation: fade-in 0.15s ease;
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -954,7 +958,12 @@ input, textarea, select { font: inherit; }
   border-radius: 14px;
   width: 100%;
   max-width: 620px;
+  /* 100vh is a fallback for older browsers — on mobile Safari/Chrome it's
+     based on the largest viewport (toolbars hidden), so it overshoots the
+     actually-visible area and the modal ends up clipped top and bottom.
+     100dvh tracks the real, current viewport instead. */
   max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -992,6 +1001,11 @@ input, textarea, select { font: inherit; }
 .modal-body {
   padding: 20px;
   overflow-y: auto;
+  /* Makes this the flexible, scrollable region within the fixed-height
+     modal, so the header and footer (with its action buttons) always stay
+     fully on-screen instead of getting pushed past the modal's bounds. */
+  flex: 1;
+  min-height: 0;
 }
 .industry-other-row {
   display: flex;
