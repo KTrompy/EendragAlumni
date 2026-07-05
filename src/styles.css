@@ -713,9 +713,11 @@ input, textarea, select { font: inherit; }
 }
 .filter-radio-row {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
+  row-gap: 8px;
 }
+.filter-radio-row.pill-row { margin: 14px 0 20px; }
 .filter-radio-row button {
   /* Fixed to its own content width rather than flex:1 — a stretched lone
      pill on a wrapped final row was the mobile "Bursary" bug. */
@@ -2020,7 +2022,10 @@ input, textarea, select { font: inherit; }
 }
 
 @media (max-width: 560px) {
-  .content { padding: 20px 14px 44px; }
+  /* Extra bottom clearance so the floating chat bubble doesn't rest right
+     on top of the last card's buttons on short pages (Jobs/Events with
+     just one listing, for example). */
+  .content { padding: 20px 14px 100px; }
   .masthead-inner { padding: 12px 14px; }
   .person-info { padding: 10px 10px 6px; }
   .person-name { font-size: 13.5px; }
@@ -2064,6 +2069,9 @@ input, textarea, select { font: inherit; }
     padding-top: 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.12);
   }
+  /* Reserve the bottom-right corner for the floating chat bubble so it
+     never sits on top of the footer credit line. */
+  .footer { padding-right: 84px; }
   .calendar-month-label { min-width: 120px; font-size: 15px; }
   .calendar-day-num { font-size: 12px; }
   .dtp-popover { width: min(280px, calc(100vw - 48px)); }
