@@ -27,6 +27,7 @@ export default function App() {
   const [dmTarget, setDmTarget] = useState(null) // profile to open a DM with
   const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
   const [messagesOpen, setMessagesOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
 
@@ -78,17 +79,25 @@ export default function App() {
               <span className="brand-motto">Character · Style · Pride · Since 1961</span>
             </div>
           </div>
-          <nav className="tabs" aria-label="Main">
+          <button
+            className="nav-toggle"
+            onClick={() => setNavOpen((o) => !o)}
+            aria-label={navOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={navOpen}
+          >
+            {navOpen ? <CloseIcon /> : <BurgerIcon />}
+          </button>
+          <nav className={navOpen ? 'tabs open' : 'tabs'} aria-label="Main">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 className={tab === t.id ? 'tab active' : 'tab'}
-                onClick={() => setTab(t.id)}
+                onClick={() => { setTab(t.id); setNavOpen(false) }}
               >
                 {t.label}
               </button>
             ))}
-            <button className="tab signout" onClick={() => supabase.auth.signOut()}>
+            <button className="tab signout" onClick={() => { setNavOpen(false); supabase.auth.signOut() }}>
               Sign out
             </button>
           </nav>
@@ -137,5 +146,21 @@ export default function App() {
         onTargetConsumed={() => { setDmTarget(null); setDmDraft('') }}
       />
     </div>
+  )
+}
+
+/* ---------- Mobile nav icons ---------- */
+function BurgerIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  )
+}
+function CloseIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
   )
 }

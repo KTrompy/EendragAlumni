@@ -95,6 +95,20 @@ input, textarea, select { font: inherit; }
 .tab.signout { color: rgba(255, 255, 255, 0.5); margin-left: 8px; }
 .tab:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 
+/* Hamburger toggle — desktop never sees this, it's only switched on inside
+   the mobile media query below, where the full tab strip gets replaced by it. */
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #fff;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.nav-toggle:hover { background: rgba(255, 255, 255, 0.1); }
+.nav-toggle:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
 .pending-banner {
   background: var(--orange-soft);
   border-bottom: 1px solid var(--orange);
@@ -1817,7 +1831,31 @@ input, textarea, select { font: inherit; }
   .thread-preview { max-width: 120px; }
   .field-row { flex-direction: column; gap: 0; }
   .brand-motto { display: none; }
-  .tabs { width: 100%; justify-content: center; }
+  .nav-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  .tabs {
+    display: none;
+    width: 100%;
+    order: 3;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .tabs.open { display: flex; }
+  .tabs .tab {
+    width: 100%;
+    text-align: left;
+    padding: 12px 10px;
+    border-radius: var(--radius-sm);
+  }
+  .tabs .tab.signout {
+    margin-left: 0;
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
   .calendar-month-label { min-width: 120px; font-size: 15px; }
   .calendar-day-num { font-size: 12px; }
   .dtp-popover { width: min(280px, calc(100vw - 48px)); }
