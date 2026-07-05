@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
+import RichTextEditor from './RichTextEditor.jsx'
+import EmptyState from './EmptyState.jsx'
+import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const MAX_IMAGES = 4
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB per image
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+const PAGE_SIZE = 10
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso)) / 1000)
@@ -13,13 +17,21 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
+// Does the HTML contain anything besides whitespace/empty tags? Used so an
+// empty WYSIWYG editor (e.g. "<div><br></div>") doesn't count as content.
+function hasText(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html || ''
+  return div.textContent.trim().length > 0
+}
+
 export default function Feed({ session, profile }) {
   const [posts, setPosts] = useState([])
   const [myLikes, setMyLikes] = useState(new Set())
   const [lightbox, setLightbox] = useState(null)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   async function load() {
-    // Posts + author + counts. Using PostgREST aggregate embed for counts.
     const { data, error } = await supabase
       .from('posts')
       .select(`
@@ -33,7 +45,6 @@ export default function Feed({ session, profile }) {
     if (error) { console.error(error); return }
     setPosts(data || [])
 
-    // My own likes (to render the toggle state)
     const { data: mine } = await supabase
       .from('post_likes')
       .select('post_id')
@@ -58,7 +69,6 @@ export default function Feed({ session, profile }) {
 
   async function toggleLike(postId) {
     const liked = myLikes.has(postId)
-    // Optimistic
     setMyLikes((prev) => {
       const next = new Set(prev)
       if (liked) next.delete(postId); else next.add(postId)
@@ -77,7 +87,6 @@ export default function Feed({ session, profile }) {
       const { error } = await supabase.from('post_likes')
         .insert({ post_id: postId, user_id: session.user.id })
       if (error) {
-        // Roll back on failure (e.g. not approved yet)
         setMyLikes((prev) => { const n = new Set(prev); n.delete(postId); return n })
         setPosts((prev) => prev.map((p) =>
           p.id === postId ? { ...p, likes: [{ count: (p.likes?.[0]?.count ?? 1) - 1 }] } : p
@@ -86,19 +95,22 @@ export default function Feed({ session, profile }) {
     }
   }
 
+  const shown = posts.slice(0, visibleCount)
+  const hasMore = visibleCount < posts.length
+
   return (
     <section className="panel">
       <h2 className="panel-title">House feed</h2>
       <p className="panel-sub">News, wins, and everything in between.</p>
 
-      <Composer session={session} profile={profile} onPosted={load} />
+      <Composer session={session} profile={profile} onPosted={() => { load(); setVisibleCount(PAGE_SIZE) }} />
 
       {posts.length === 0 && (
-        <p className="empty">No posts yet. Be the first Eendragter to break the silence.</p>
+        <EmptyState icon="feed" message="No posts yet." subMessage="Be the first Eendragter to break the silence." />
       )}
 
       <ul className="post-list">
-        {posts.map((p) => (
+        {shown.map((p) => (
           <PostItem
             key={p.id}
             post={p}
@@ -111,6 +123,14 @@ export default function Feed({ session, profile }) {
           />
         ))}
       </ul>
+
+      {hasMore && (
+        <div className="load-more-row">
+          <button className="btn ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+            Load more ({posts.length - shown.length} remaining)
+          </button>
+        </div>
+      )}
 
       {lightbox && (
         <div className="lightbox-backdrop" onClick={() => setLightbox(null)}>
@@ -125,12 +145,13 @@ export default function Feed({ session, profile }) {
 function Composer({ session, profile, onPosted }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [files, setFiles] = useState([]) // File objects, up to 4
+  const [files, setFiles] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const fileRef = useRef(null)
 
   const canPost = profile?.approved
+  const canSubmit = canPost && (hasText(body) || files.length > 0)
 
   function pickFiles(e) {
     const chosen = Array.from(e.target.files || [])
@@ -143,7 +164,7 @@ function Composer({ session, profile, onPosted }) {
     }
     setFiles((prev) => [...prev, ...chosen].slice(0, MAX_IMAGES))
     setError(null)
-    e.target.value = '' // let the same file be reselected later
+    e.target.value = ''
   }
 
   function removeFile(idx) {
@@ -167,7 +188,7 @@ function Composer({ session, profile, onPosted }) {
   }
 
   async function publish() {
-    if (!body.trim() && files.length === 0) return
+    if (!canSubmit) return
     setBusy(true); setError(null)
     try {
       const image_urls = files.length ? await uploadAll() : []
@@ -176,7 +197,7 @@ function Composer({ session, profile, onPosted }) {
         .insert({
           author_id: session.user.id,
           title: title.trim(),
-          content: body.trim() || '(no text)',
+          content: hasText(body) ? sanitizeHtml(body) : '(no text)',
           image_urls,
         })
       if (error) {
@@ -194,6 +215,32 @@ function Composer({ session, profile, onPosted }) {
     }
   }
 
+  const photoButton = (
+    <>
+      <button
+        type="button"
+        className="composer-photo-btn"
+        onClick={() => fileRef.current?.click()}
+        disabled={!canPost || files.length >= MAX_IMAGES}
+      >
+        📷 Photo {files.length > 0 && `(${files.length}/${MAX_IMAGES})`}
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        style={{ display: 'none' }}
+        onChange={pickFiles}
+      />
+      <span className="toolbar-divider" />
+      {error && <span className="form-error">{error}</span>}
+      <button className="btn primary" onClick={publish} disabled={busy || !canSubmit}>
+        {busy ? 'Posting…' : 'Post'}
+      </button>
+    </>
+  )
+
   return (
     <div className="composer">
       <input
@@ -204,13 +251,12 @@ function Composer({ session, profile, onPosted }) {
         disabled={!canPost}
         maxLength={200}
       />
-      <textarea
+      <RichTextEditor
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         placeholder={canPost ? 'Share news with the house…' : 'Posting unlocks after approval'}
-        rows={3}
         disabled={!canPost}
-        maxLength={4000}
+        toolbarExtra={photoButton}
       />
       {files.length > 0 && (
         <div className="composer-previews">
@@ -222,35 +268,6 @@ function Composer({ session, profile, onPosted }) {
           ))}
         </div>
       )}
-      <div className="composer-row">
-        <div>
-          <button
-            className="composer-photo-btn"
-            onClick={() => fileRef.current?.click()}
-            disabled={!canPost || files.length >= MAX_IMAGES}
-          >
-            📷 Add photo {files.length > 0 && `(${files.length}/${MAX_IMAGES})`}
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            style={{ display: 'none' }}
-            onChange={pickFiles}
-          />
-        </div>
-        <div className="composer-row-right">
-          {error && <span className="form-error">{error}</span>}
-          <button
-            className="btn primary"
-            onClick={publish}
-            disabled={busy || !canPost || (!body.trim() && files.length === 0)}
-          >
-            {busy ? 'Posting…' : 'Post'}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }
@@ -279,7 +296,9 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
       </div>
 
       {p.title && <h3 className="post-title">{p.title}</h3>}
-      {p.content && p.content !== '(no text)' && <p className="post-body">{p.content}</p>}
+      {p.content && p.content !== '(no text)' && (
+        <div className="post-body rendered-html" dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.content) }} />
+      )}
 
       {images.length > 0 && (
         <div className={`post-images count-${Math.min(images.length, 4)}`}>

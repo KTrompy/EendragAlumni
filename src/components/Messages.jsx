@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { Avatar } from './Directory.jsx'
 
-export default function Messages({ session, profile, initialTarget, onTargetConsumed }) {
-  const [threads, setThreads] = useState([]) // [{conversation_id, other: profile}]
+const GROUP_GAP_MS = 5 * 60 * 1000 // new avatar/gap if >5 min since the same sender's last message
+
+function timeAgo(iso) {
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (s < 60) return 'now'
+  if (s < 3600) return `${Math.floor(s / 60)}m`
+  if (s < 86400) return `${Math.floor(s / 3600)}h`
+  return new Date(iso).toLocaleDateString()
+}
+
+export default function Messages({ session, profile, initialTarget, initialDraft, onTargetConsumed }) {
+  const [threads, setThreads] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [messages, setMessages] = useState([])
   const [draft, setDraft] = useState('')
@@ -11,7 +22,6 @@ export default function Messages({ session, profile, initialTarget, onTargetCons
   const me = session.user.id
 
   async function loadThreads() {
-    // conversations I'm in
     const { data: mine } = await supabase
       .from('conversation_participants')
       .select('conversation_id')
@@ -19,21 +29,38 @@ export default function Messages({ session, profile, initialTarget, onTargetCons
     const ids = (mine || []).map((r) => r.conversation_id)
     if (ids.length === 0) { setThreads([]); return }
 
-    // other participants in those conversations
     const { data: others } = await supabase
       .from('conversation_participants')
-      .select('conversation_id, profiles ( id, full_name, grad_year )')
+      .select('conversation_id, profiles ( id, full_name, grad_year, avatar_url )')
       .in('conversation_id', ids)
       .neq('user_id', me)
 
-    setThreads(
-      (others || []).map((r) => ({ conversation_id: r.conversation_id, other: r.profiles }))
-    )
+    const { data: recent } = await supabase
+      .from('messages')
+      .select('conversation_id, content, created_at, sender_id')
+      .in('conversation_id', ids)
+      .order('created_at', { ascending: false })
+
+    const lastByConv = {}
+    for (const m of recent || []) {
+      if (!lastByConv[m.conversation_id]) lastByConv[m.conversation_id] = m
+    }
+
+    const built = (others || []).map((r) => ({
+      conversation_id: r.conversation_id,
+      other: r.profiles,
+      lastMessage: lastByConv[r.conversation_id] || null,
+    }))
+    built.sort((a, b) => {
+      const ta = a.lastMessage ? new Date(a.lastMessage.created_at).getTime() : 0
+      const tb = b.lastMessage ? new Date(b.lastMessage.created_at).getTime() : 0
+      return tb - ta
+    })
+    setThreads(built)
   }
 
   useEffect(() => { loadThreads() }, [])
 
-  // If the user clicked "Message" in the directory, open/create that thread
   useEffect(() => {
     if (!initialTarget) return
     supabase
@@ -47,13 +74,13 @@ export default function Messages({ session, profile, initialTarget, onTargetCons
           )
         } else {
           setActiveId(data)
+          if (initialDraft) setDraft(initialDraft)
           loadThreads()
         }
         onTargetConsumed()
       })
   }, [initialTarget])
 
-  // Load + subscribe to messages for the active thread
   useEffect(() => {
     if (!activeId) { setMessages([]); return }
     let cancelled = false
@@ -70,7 +97,10 @@ export default function Messages({ session, profile, initialTarget, onTargetCons
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeId}` },
-        (payload) => setMessages((m) => [...m, payload.new])
+        (payload) => {
+          setMessages((m) => [...m, payload.new])
+          loadThreads()
+        }
       )
       .subscribe()
 
@@ -117,24 +147,64 @@ export default function Messages({ session, profile, initialTarget, onTargetCons
               className={t.conversation_id === activeId ? 'thread active' : 'thread'}
               onClick={() => setActiveId(t.conversation_id)}
             >
-              {t.other?.full_name || 'Alumnus'}
-              {t.other?.grad_year ? ` ’${String(t.other.grad_year).slice(-2)}` : ''}
+              <Avatar url={t.other?.avatar_url} name={t.other?.full_name} size={38} />
+              <div className="thread-text">
+                <div className="thread-name">
+                  {t.other?.full_name || 'Alumnus'}
+                  {t.other?.grad_year && <span className="thread-year"> ’{String(t.other.grad_year).slice(-2)}</span>}
+                </div>
+                <div className="thread-preview">
+                  {t.lastMessage
+                    ? `${t.lastMessage.sender_id === me ? 'You: ' : ''}${t.lastMessage.content}`
+                    : 'Say hello 👋'}
+                </div>
+              </div>
+              {t.lastMessage && <span className="thread-time">{timeAgo(t.lastMessage.created_at)}</span>}
             </button>
           ))}
         </aside>
 
         <div className="chat">
           {!activeId ? (
-            <p className="empty">Select a conversation.</p>
+            <div className="chat-empty-centered">
+              <p>Select a conversation to start chatting.</p>
+            </div>
           ) : (
             <>
-              <div className="chat-header">{active?.other?.full_name || 'Conversation'}</div>
+              <div className="chat-header">
+                <Avatar url={active?.other?.avatar_url} name={active?.other?.full_name} size={28} />
+                <span>{active?.other?.full_name || 'Conversation'}</span>
+              </div>
               <div className="chat-scroll">
-                {messages.map((m) => (
-                  <div key={m.id} className={m.sender_id === me ? 'bubble mine' : 'bubble'}>
-                    {m.content}
-                  </div>
-                ))}
+                {messages.map((m, i) => {
+                  const mine = m.sender_id === me
+                  const prev = messages[i - 1]
+                  const isGroupStart = !prev
+                    || prev.sender_id !== m.sender_id
+                    || (new Date(m.created_at) - new Date(prev.created_at)) > GROUP_GAP_MS
+
+                  return (
+                    <div
+                      key={m.id}
+                      className={[
+                        'message-row',
+                        mine ? 'mine' : '',
+                        isGroupStart ? 'group-start' : '',
+                      ].filter(Boolean).join(' ')}
+                    >
+                      {isGroupStart ? (
+                        <Avatar
+                          url={mine ? profile?.avatar_url : active?.other?.avatar_url}
+                          name={mine ? profile?.full_name : active?.other?.full_name}
+                          size={26}
+                        />
+                      ) : (
+                        <span className="avatar-spacer" style={{ width: 26 }} />
+                      )}
+                      <div className={mine ? 'bubble mine' : 'bubble'}>{m.content}</div>
+                    </div>
+                  )
+                })}
                 <div ref={bottomRef} />
               </div>
               <div className="chat-input">

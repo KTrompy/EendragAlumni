@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import RichTextEditor from './RichTextEditor.jsx'
+import EmptyState from './EmptyState.jsx'
+import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
 
@@ -11,7 +14,20 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
-export default function Jobs({ session, profile }) {
+function hasText(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html || ''
+  return div.textContent.trim().length > 0
+}
+
+// Opens the mail client without ever putting the raw address in the
+// rendered HTML — a static scraper reading the page source won't find it,
+// since it's only ever assembled at the moment of a real click.
+function openMailto(address, subject) {
+  window.location.href = `mailto:${address}?subject=${encodeURIComponent(subject)}`
+}
+
+export default function Jobs({ session, profile, onMessage }) {
   const [jobs, setJobs] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [typeFilter, setTypeFilter] = useState('')
@@ -62,7 +78,7 @@ export default function Jobs({ session, profile }) {
         />
       )}
 
-      <div className="filter-radio-row" style={{ margin: '0 0 16px', maxWidth: 480 }}>
+      <div className="filter-radio-row pill-row">
         <button className={typeFilter === '' ? 'on' : ''} onClick={() => setTypeFilter('')}>All</button>
         {TYPES.map((t) => (
           <button key={t} className={typeFilter === t ? 'on' : ''} onClick={() => setTypeFilter(t)}>{t}</button>
@@ -70,44 +86,66 @@ export default function Jobs({ session, profile }) {
       </div>
 
       {shown.length === 0 && (
-        <p className="empty">
-          {typeFilter ? `No ${typeFilter.toLowerCase()} listings right now.` : 'No listings yet. Be the first to post a role.'}
-        </p>
+        <EmptyState
+          icon="jobs"
+          message={typeFilter ? `No ${typeFilter.toLowerCase()} listings right now.` : 'No listings yet.'}
+          subMessage={typeFilter ? undefined : 'Be the first to post a role.'}
+        />
       )}
 
       <ul className="job-list">
-        {shown.map((j) => (
-          <li className="job-card" key={j.id}>
-            <div>
-              <h3 className="job-title">
-                {j.title}
-                {j.employment_type && <span className="job-badge">{j.employment_type}</span>}
-              </h3>
-              <p className="job-meta">
-                <strong>{j.company}</strong>
-                {j.location && ` · ${j.location}`}
-                {' · '}
-                Posted by {j.profiles?.full_name || 'a member'}, {timeAgo(j.created_at)}
-              </p>
-              <p className="job-desc">{j.description}</p>
-              <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {j.apply_url && (
-                  <a className="btn primary small" href={j.apply_url} target="_blank" rel="noopener noreferrer">
-                    Apply
-                  </a>
-                )}
-                {j.contact_email && (
-                  <a className="btn ghost small" href={`mailto:${j.contact_email}`}>
-                    Email {j.contact_email}
-                  </a>
-                )}
+        {shown.map((j) => {
+          const isMine = j.posted_by === session.user.id
+          return (
+            <li className="job-card" key={j.id}>
+              <div>
+                <h3 className="job-title">
+                  {j.title}
+                  {j.employment_type && <span className="job-badge">{j.employment_type}</span>}
+                </h3>
+                <p className="job-meta">
+                  <strong>{j.company}</strong>
+                  {j.location && ` · ${j.location}`}
+                  {' · '}
+                  Posted by {j.profiles?.full_name || 'a member'}, {timeAgo(j.created_at)}
+                </p>
+                <div
+                  className="job-desc rendered-html"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(j.description) }}
+                />
+                <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {j.apply_url && (
+                    <a className="btn primary small" href={j.apply_url} target="_blank" rel="noopener noreferrer">
+                      Apply now
+                    </a>
+                  )}
+                  {j.contact_email && (
+                    <button
+                      className="btn primary small"
+                      onClick={() => openMailto(j.contact_email, `Application: ${j.title}`)}
+                    >
+                      Apply via email
+                    </button>
+                  )}
+                  {!isMine && (
+                    <button
+                      className="btn ghost small"
+                      onClick={() => onMessage(
+                        { id: j.posted_by, full_name: j.profiles?.full_name },
+                        `Hi! I saw your "${j.title}" post on the job board and wanted to reach out.`
+                      )}
+                    >
+                      Message about this role
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-            {j.posted_by === session.user.id && (
-              <button className="btn ghost small" onClick={() => removeJob(j.id)}>Delete</button>
-            )}
-          </li>
-        ))}
+              {isMine && (
+                <button className="btn ghost small" onClick={() => removeJob(j.id)}>Delete</button>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </section>
   )
@@ -124,7 +162,7 @@ function JobForm({ session, onCancel, onCreated }) {
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
 
   async function submit() {
-    if (!form.title.trim() || !form.company.trim() || !form.description.trim()) {
+    if (!form.title.trim() || !form.company.trim() || !hasText(form.description)) {
       setError('Title, company and description are required.'); return
     }
     setBusy(true); setError(null)
@@ -132,7 +170,7 @@ function JobForm({ session, onCancel, onCreated }) {
       ...form,
       title: form.title.trim(),
       company: form.company.trim(),
-      description: form.description.trim(),
+      description: sanitizeHtml(form.description),
       apply_url: form.apply_url.trim(),
       contact_email: form.contact_email.trim(),
       posted_by: session.user.id,
@@ -163,15 +201,20 @@ function JobForm({ session, onCancel, onCreated }) {
           <input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Cape Town / Remote" />
         </label>
         <label className="field"><span>Type</span>
-          <select value={form.employment_type} onChange={(e) => set('employment_type', e.target.value)}>
-            {TYPES.map((t) => <option key={t}>{t}</option>)}
-          </select>
+          <div className="select-wrap">
+            <select value={form.employment_type} onChange={(e) => set('employment_type', e.target.value)}>
+              {TYPES.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </div>
         </label>
       </div>
-      <label className="field"><span>Description</span>
-        <textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Role, requirements, why you'd want a fellow Eendragter…" />
-      </label>
-      <div className="field-row">
+      <label className="field"><span>Description</span></label>
+      <RichTextEditor
+        value={form.description}
+        onChange={(v) => set('description', v)}
+        placeholder="Role, requirements, why you'd want a fellow Eendragter…"
+      />
+      <div className="field-row" style={{ marginTop: 14 }}>
         <label className="field"><span>Apply URL</span>
           <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
         </label>

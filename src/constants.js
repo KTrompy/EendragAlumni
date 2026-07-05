@@ -26,6 +26,36 @@ export const INDUSTRIES = [
   'Student',
 ]
 
+// Curated list of major South African cities/towns, so the directory filter
+// stays clean instead of accumulating "Cape Town" / "CPT" / "Kaapstad" as
+// separate values. Profiles outside SA still use free text — see Profile.jsx.
+export const SA_CITIES = [
+  'Cape Town', 'Stellenbosch', 'Paarl', 'Somerset West', 'Bellville',
+  'Durbanville', 'Kuils River', 'Brackenfell', 'Parow', 'Goodwood',
+  'Milnerton', 'Table View', 'Constantia', 'Claremont', 'Rondebosch',
+  'Sea Point', 'Camps Bay', 'Hermanus', 'Worcester', 'Wellington',
+  'Franschhoek', 'George', 'Knysna', 'Mossel Bay', 'Oudtshoorn',
+  'Saldanha', 'Vredenburg', 'Malmesbury',
+  'Johannesburg', 'Sandton', 'Randburg', 'Roodepoort', 'Centurion',
+  'Pretoria', 'Midrand', 'Benoni', 'Boksburg', 'Krugersdorp',
+  'Durban', 'Umhlanga', 'Pietermaritzburg', 'Ballito',
+  'Gqeberha (Port Elizabeth)', 'East London',
+  'Bloemfontein', 'Kimberley', 'Polokwane', 'Nelspruit (Mbombela)',
+  'Rustenburg', 'Potchefstroom', 'Mahikeng',
+]
+
+export const SA_PROVINCES = [
+  'Western Cape',
+  'Gauteng',
+  'KwaZulu-Natal',
+  'Eastern Cape',
+  'Free State',
+  'Limpopo',
+  'Mpumalanga',
+  'North West',
+  'Northern Cape',
+]
+
 export const COUNTRIES = [
   'Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda',
   'Argentina','Armenia','Australia','Austria','Azerbaijan',

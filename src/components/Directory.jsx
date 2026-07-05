@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { COUNTRIES, INDUSTRIES } from '../constants.js'
+import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
 import ProfileModal from './ProfileModal.jsx'
+import EmptyState from './EmptyState.jsx'
 
-// Round avatar used elsewhere in the app (Feed, Profile page).
+const PAGE_SIZE = 12
+
+// Round avatar used elsewhere in the app (Feed, Profile page, Messages).
 export function Avatar({ url, name, size = 72 }) {
   const initials = (name || 'A')
     .split(' ')
@@ -53,13 +56,15 @@ function FilterSection({ title, children, defaultOpen = true }) {
 }
 
 const STATUS = { ALL: 'all', CURRENT: 'current', ALUMNI: 'alumni' }
+const MENTOR = { ALL: 'all', YES: 'yes' }
 
 const EMPTY_FILTERS = {
   status: STATUS.ALL,
+  mentor: MENTOR.ALL,
   yearFrom: '',
   yearTo: '',
   country: '',
-  province: '',
+  city: '',
   industry: '',
   occupation: '',
 }
@@ -69,25 +74,29 @@ export default function Directory({ session, onMessage }) {
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [openProfile, setOpenProfile] = useState(null)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, full_name, grad_year, section, occupation, occupation_description, industry, company, city, country, province, is_current_resident, bio, avatar_url, linkedin_url, approved')
+      .select('id, full_name, grad_year, section, occupation, industry, company, city, country, province, is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, mentorship_description, approved')
       .order('grad_year', { ascending: false, nullsFirst: false })
       .then(({ data }) => setPeople(data || []))
   }, [])
 
-  // Distinct provinces from actual data for the filter dropdown.
-  const dataProvinces = useMemo(() =>
-    [...new Set(people.map((p) => (p.province || '').trim()).filter(Boolean))].sort()
-  , [people])
+  // City filter options: the curated SA list plus any other real values
+  // already on file (covers "Other" SA entries and non-SA free text), so
+  // the dropdown always includes every value that could actually match.
+  const cityOptions = useMemo(() => {
+    const fromData = people.map((p) => (p.city || '').trim()).filter(Boolean)
+    return [...new Set([...SA_CITIES, ...fromData])].sort()
+  }, [people])
 
   function set(k, v) { setFilters((f) => ({ ...f, [k]: v })) }
   function clearFilters() { setFilters(EMPTY_FILTERS); setQ('') }
 
   const needle = q.trim().toLowerCase()
-  const shown = people.filter((p) => {
+  const filtered = people.filter((p) => {
     if (needle) {
       const hay = [p.full_name, p.occupation, p.company, p.city, p.section, p.industry, String(p.grad_year || '')]
         .join(' ').toLowerCase()
@@ -95,10 +104,11 @@ export default function Directory({ session, onMessage }) {
     }
     if (filters.status === STATUS.CURRENT && !p.is_current_resident) return false
     if (filters.status === STATUS.ALUMNI && p.is_current_resident) return false
+    if (filters.mentor === MENTOR.YES && !p.available_for_mentorship) return false
     if (filters.yearFrom && (!p.grad_year || p.grad_year < Number(filters.yearFrom))) return false
     if (filters.yearTo && (!p.grad_year || p.grad_year > Number(filters.yearTo))) return false
-    if (filters.country && (p.country || '').toLowerCase() !== filters.country.toLowerCase()) return false
-    if (filters.province && p.province !== filters.province) return false
+    if (filters.country && p.country !== filters.country) return false
+    if (filters.city && p.city !== filters.city) return false
     if (filters.industry && p.industry !== filters.industry) return false
     if (filters.occupation) {
       const occ = (p.occupation || '').toLowerCase()
@@ -107,8 +117,13 @@ export default function Directory({ session, onMessage }) {
     return true
   })
 
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [q, filters, people.length])
+
+  const shown = filtered.slice(0, visibleCount)
+  const hasMore = visibleCount < filtered.length
+
   const activeFilterCount = Object.entries(filters).filter(
-    ([k, v]) => v && !(k === 'status' && v === STATUS.ALL)
+    ([k, v]) => v && !((k === 'status' && v === STATUS.ALL) || (k === 'mentor' && v === MENTOR.ALL))
   ).length
 
   return (
@@ -119,6 +134,21 @@ export default function Directory({ session, onMessage }) {
       <div className="directory-layout">
         <aside className="filter-panel" aria-label="Filter alumni">
           <h3>Filter · {activeFilterCount || 'none'}</h3>
+
+          <div className="filter-section filter-section-primary">
+            <div className="filter-section-body">
+              <div className="filter-radio-row">
+                <button
+                  className={filters.mentor === MENTOR.ALL ? 'on' : ''}
+                  onClick={() => set('mentor', MENTOR.ALL)}
+                >All</button>
+                <button
+                  className={filters.mentor === MENTOR.YES ? 'on' : ''}
+                  onClick={() => set('mentor', MENTOR.YES)}
+                >🤝 Open to mentoring</button>
+              </div>
+            </div>
+          </div>
 
           <FilterSection title="Status">
             <div className="filter-radio-row">
@@ -136,30 +166,31 @@ export default function Directory({ session, onMessage }) {
             </div>
           </FilterSection>
 
-          <FilterSection title="Country">
-            <input
-              list="filter-country-list"
-              placeholder="Start typing a country…"
-              value={filters.country}
-              onChange={(e) => set('country', e.target.value)}
-            />
-            <datalist id="filter-country-list">
-              {COUNTRIES.map((c) => <option key={c} value={c} />)}
-            </datalist>
+          <FilterSection title="City">
+            <div className="select-wrap">
+              <select value={filters.city} onChange={(e) => set('city', e.target.value)}>
+                <option value="">All cities</option>
+                {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </FilterSection>
 
-          <FilterSection title="Province">
-            <select value={filters.province} onChange={(e) => set('province', e.target.value)}>
-              <option value="">All provinces</option>
-              {dataProvinces.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <FilterSection title="Country">
+            <div className="select-wrap">
+              <select value={filters.country} onChange={(e) => set('country', e.target.value)}>
+                <option value="">All countries</option>
+                {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </FilterSection>
 
           <FilterSection title="Industry">
-            <select value={filters.industry} onChange={(e) => set('industry', e.target.value)}>
-              <option value="">All industries</option>
-              {INDUSTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <div className="select-wrap">
+              <select value={filters.industry} onChange={(e) => set('industry', e.target.value)}>
+                <option value="">All industries</option>
+                {INDUSTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </FilterSection>
 
           <FilterSection title="Job title" defaultOpen={false}>
@@ -182,10 +213,16 @@ export default function Directory({ session, onMessage }) {
             placeholder="Search by name, company, city…"
           />
           <p className="result-count">
-            Showing {shown.length} of {people.length} Eendragters
+            Showing {shown.length} of {filtered.length} Eendragters
           </p>
 
-          {shown.length === 0 && <p className="empty">No matching Eendragters found.</p>}
+          {filtered.length === 0 && (
+            <EmptyState
+              icon="search"
+              message="No matching Eendragters found."
+              subMessage="Try widening a filter or clearing them all."
+            />
+          )}
 
           <ul className="card-grid">
             {shown.map((p) => (
@@ -198,6 +235,14 @@ export default function Directory({ session, onMessage }) {
               />
             ))}
           </ul>
+
+          {hasMore && (
+            <div className="load-more-row">
+              <button className="btn ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+                Load more ({filtered.length - shown.length} remaining)
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -242,11 +287,10 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
           </h3>
           {p.industry && <p className="person-industry">{p.industry}</p>}
           {roleLine && <p className="person-occupation">{roleLine}</p>}
-          {p.grad_year && (
-            <p className="person-occupation">
-              <span className="person-year-badge">Class of {p.grad_year}</span>
-            </p>
-          )}
+          <p className="person-occupation">
+            {p.grad_year && <span className="person-year-badge">Class of {p.grad_year}</span>}
+            {p.available_for_mentorship && <span className="mentor-chip">🤝 Mentoring</span>}
+          </p>
         </div>
         <div className="person-actions" onClick={(e) => e.stopPropagation()}>
           <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label="Send a message">

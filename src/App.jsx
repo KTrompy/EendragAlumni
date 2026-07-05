@@ -36,6 +36,7 @@ export default function App() {
   const [profile, setProfile] = useState(null)
   const [tab, setTab] = useState('directory')
   const [dmTarget, setDmTarget] = useState(null) // profile to open a DM with
+  const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -57,8 +58,9 @@ export default function App() {
       .then(({ data }) => setProfile(data))
   }, [session])
 
-  function openMessage(targetProfile) {
+  function openMessage(targetProfile, draftText = '') {
     setDmTarget(targetProfile)
+    setDmDraft(draftText)
     setTab('messages')
   }
 
@@ -106,9 +108,15 @@ export default function App() {
           <Directory session={session} onMessage={openMessage} />
         )}
         {tab === 'events' && <Events session={session} profile={profile} />}
-        {tab === 'jobs' && <Jobs session={session} profile={profile} />}
+        {tab === 'jobs' && <Jobs session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'messages' && (
-          <Messages session={session} profile={profile} initialTarget={dmTarget} onTargetConsumed={() => setDmTarget(null)} />
+          <Messages
+            session={session}
+            profile={profile}
+            initialTarget={dmTarget}
+            initialDraft={dmDraft}
+            onTargetConsumed={() => { setDmTarget(null); setDmDraft('') }}
+          />
         )}
         {tab === 'donate' && <Donate />}
         {tab === 'profile' && (

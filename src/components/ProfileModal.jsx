@@ -15,17 +15,19 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
     }
   }, [onClose])
 
+  const isSA = (p.country || '').trim().toLowerCase() === 'south africa'
+
   const rows = [
     ['Status', p.is_current_resident ? 'Current Eendragter (in house)' : 'Alumnus'],
     ['Year left / leaving Eendrag', p.grad_year || dash],
     ['Section', p.section || dash],
     ['Industry', p.industry || dash],
     ['Job title / Position', p.occupation || dash],
-    ['Seniority / Role level', p.occupation_description || dash],
-    ['Company / Organisation', p.company || dash],
+    ['Company', p.company || dash],
     ['City', p.city || dash],
-    ['Province', p.province || dash],
+    ...(isSA ? [['Province', p.province || dash]] : []),
     ['Country', p.country || dash],
+    ['Open to mentoring', renderMentorship(p)],
     ['Bio', p.bio || dash],
   ]
 
@@ -60,6 +62,16 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function renderMentorship(p) {
+  if (!p.available_for_mentorship) return <span className="detail-mentorship-no">Not currently</span>
+  return (
+    <span>
+      <span className="detail-mentorship-yes">Yes</span>
+      {p.mentorship_description ? ` — ${p.mentorship_description}` : ''}
+    </span>
   )
 }
 

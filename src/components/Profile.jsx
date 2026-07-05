@@ -1,64 +1,100 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { COUNTRIES, INDUSTRIES } from '../constants.js'
+import { COUNTRIES, INDUSTRIES, SA_PROVINCES, SA_CITIES } from '../constants.js'
+import PhotoCropper from './PhotoCropper.jsx'
 
 const EMPTY = {
   full_name: '', grad_year: '', section: '',
-  industry: '', occupation: '', occupation_description: '',
+  industry: '', occupation: '',
   company: '', city: '', province: '', country: 'South Africa',
   bio: '',
   linkedin_url: '',
+  available_for_mentorship: false,
+  mentorship_description: '',
   is_current_resident: false,
 }
 
 export default function Profile({ session, profile, onSaved }) {
   const [form, setForm] = useState(EMPTY)
   const [customIndustry, setCustomIndustry] = useState('')
+  const [customCity, setCustomCity] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [cropFile, setCropFile] = useState(null)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
   const fileRef = useRef(null)
 
   useEffect(() => {
     if (profile) {
-      const isKnown = INDUSTRIES.includes(profile.industry)
+      const isKnownIndustry = INDUSTRIES.includes(profile.industry)
+      const isKnownCity = SA_CITIES.includes(profile.city)
       setForm({
         full_name: profile.full_name || '',
         grad_year: profile.grad_year || '',
         section: profile.section || '',
-        industry: isKnown ? profile.industry : (profile.industry ? 'Other' : ''),
+        industry: isKnownIndustry ? profile.industry : (profile.industry ? 'Other' : ''),
         occupation: profile.occupation || '',
-        occupation_description: profile.occupation_description || '',
         company: profile.company || '',
-        city: profile.city || '',
+        city: isKnownCity ? profile.city : (profile.city ? 'Other' : ''),
         province: profile.province || '',
         country: profile.country || 'South Africa',
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
+        available_for_mentorship: !!profile.available_for_mentorship,
+        mentorship_description: profile.mentorship_description || '',
         is_current_resident: !!profile.is_current_resident,
       })
-      if (!isKnown && profile.industry) setCustomIndustry(profile.industry)
+      if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
+      if (!isKnownCity && profile.city) setCustomCity(profile.city)
     }
   }, [profile])
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false) }
 
-  async function uploadPhoto(e) {
+  const isSA = form.country === 'South Africa'
+
+  // Province and the curated city list only make sense inside South Africa.
+  // Migrate values sensibly in both directions instead of just wiping them,
+  // so nobody's typed text silently disappears when they change country.
+  useEffect(() => {
+    if (isSA) {
+      if (form.city && form.city !== 'Other' && !SA_CITIES.includes(form.city)) {
+        setCustomCity(form.city)
+        set('city', 'Other')
+      }
+    } else {
+      if (form.province) set('province', '')
+      if (form.city === 'Other') {
+        set('city', customCity)
+      } else if (SA_CITIES.includes(form.city)) {
+        set('city', '')
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSA])
+
+  function pickPhoto(e) {
     const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file later (e.g. after cancel)
     if (!file) return
-    if (file.size > 3 * 1024 * 1024) {
-      setError('Photo must be under 3MB.')
+    if (file.size > 8 * 1024 * 1024) {
+      setError('Photo must be under 8MB.')
       return
     }
+    setError(null)
+    setCropFile(file)
+  }
+
+  async function uploadCroppedPhoto(blob) {
+    setCropFile(null)
     setUploading(true); setError(null)
-    const ext = file.name.split('.').pop().toLowerCase()
-    const path = `${session.user.id}/avatar.${ext}`
+    const path = `${session.user.id}/avatar.jpg`
 
     const { error: upErr } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: true })
+      .upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
 
     if (upErr) {
       setError(upErr.message)
@@ -82,11 +118,24 @@ export default function Profile({ session, profile, onSaved }) {
   }
 
   async function save() {
-    setBusy(true); setError(null)
+    setError(null)
+
+    if (isSA && form.city === 'Other' && !customCity.trim()) {
+      setError('Please enter your town or suburb.')
+      return
+    }
+
+    setBusy(true)
     const industry = form.industry === 'Other' ? customIndustry.trim() : form.industry
+    const city = isSA
+      ? (form.city === 'Other' ? customCity.trim() : form.city)
+      : form.city // free text for non-SA countries
+
     const payload = {
       ...form,
       industry,
+      city,
+      province: isSA ? form.province : '',
       grad_year: form.grad_year ? Number(form.grad_year) : null,
       linkedin_url: form.linkedin_url.trim(),
     }
@@ -118,13 +167,13 @@ export default function Profile({ session, profile, onSaved }) {
           >
             {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change photo' : 'Add photo'}
           </button>
-          <p className="hint">JPG or PNG, up to 3MB. Square or portrait crops best.</p>
+          <p className="hint">JPG, PNG or WebP, up to 8MB. You'll be able to reposition it next.</p>
           <input
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             style={{ display: 'none' }}
-            onChange={uploadPhoto}
+            onChange={pickPhoto}
           />
         </div>
       </div>
@@ -155,11 +204,13 @@ export default function Profile({ session, profile, onSaved }) {
       </div>
 
       <label className="field"><span>Industry</span>
-        <select value={form.industry} onChange={(e) => set('industry', e.target.value)}>
-          <option value="">Select your industry</option>
-          {INDUSTRIES.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
-          <option value="Other">Other (type your own)</option>
-        </select>
+        <div className="select-wrap">
+          <select value={form.industry} onChange={(e) => set('industry', e.target.value)}>
+            <option value="">Select your industry</option>
+            {INDUSTRIES.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
+            <option value="Other">Other (type your own)</option>
+          </select>
+        </div>
       </label>
       {form.industry === 'Other' && (
         <div className="industry-other-row">
@@ -171,51 +222,56 @@ export default function Profile({ session, profile, onSaved }) {
         </div>
       )}
 
-      <div className="field-row">
-        <label className="field"><span>Job title / Position</span>
-          <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="e.g. Software Engineer, Director, Student" />
-        </label>
-        <label className="field"><span>Seniority / Role level</span>
-          <input value={form.occupation_description} onChange={(e) => set('occupation_description', e.target.value)} placeholder="e.g. Senior, Executive, Junior" />
-        </label>
-      </div>
+      <label className="field"><span>Job title / Position</span>
+        <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="e.g. Software Engineer, Director, Student" />
+      </label>
 
-      <label className="field"><span>Company / Organisation</span>
+      <label className="field"><span>Company</span>
         <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
       </label>
 
-      <div className="field-row">
-        <label className="field"><span>City</span>
-          <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Cape Town" />
-        </label>
-        <label className="field"><span>Province</span>
-          <select value={form.province} onChange={(e) => set('province', e.target.value)}>
-            <option value="">Select a province</option>
-            <option>Western Cape</option>
-            <option>Gauteng</option>
-            <option>KwaZulu-Natal</option>
-            <option>Eastern Cape</option>
-            <option>Free State</option>
-            <option>Limpopo</option>
-            <option>Mpumalanga</option>
-            <option>North West</option>
-            <option>Northern Cape</option>
-            <option>N/A (outside SA)</option>
-          </select>
-        </label>
-      </div>
-
       <label className="field"><span>Country</span>
-        <input
-          list="country-list"
-          value={form.country}
-          onChange={(e) => set('country', e.target.value)}
-          placeholder="Start typing…"
-        />
-        <datalist id="country-list">
-          {COUNTRIES.map((c) => <option key={c} value={c} />)}
-        </datalist>
+        <div className="select-wrap">
+          <select value={form.country} onChange={(e) => set('country', e.target.value)}>
+            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
       </label>
+
+      {isSA ? (
+        <div className="field-row">
+          <label className="field"><span>City / Town</span>
+            <div className="select-wrap">
+              <select value={form.city} onChange={(e) => set('city', e.target.value)}>
+                <option value="">Select a city or town</option>
+                {SA_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                <option value="Other">Other (type your own)</option>
+              </select>
+            </div>
+          </label>
+          <label className="field"><span>Province</span>
+            <div className="select-wrap">
+              <select value={form.province} onChange={(e) => set('province', e.target.value)}>
+                <option value="">Select a province</option>
+                {SA_PROVINCES.map((p) => <option key={p}>{p}</option>)}
+              </select>
+            </div>
+          </label>
+        </div>
+      ) : (
+        <label className="field"><span>City</span>
+          <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="e.g. London" />
+        </label>
+      )}
+      {isSA && form.city === 'Other' && (
+        <div className="industry-other-row">
+          <input
+            value={customCity}
+            onChange={(e) => { setCustomCity(e.target.value); setSaved(false) }}
+            placeholder="Type your town or suburb…"
+          />
+        </div>
+      )}
 
       <label className="field"><span>LinkedIn URL</span>
         <input
@@ -225,6 +281,25 @@ export default function Profile({ session, profile, onSaved }) {
           placeholder="https://linkedin.com/in/yourname"
         />
       </label>
+
+      <div className="checkbox-row">
+        <input
+          id="mentor-toggle"
+          type="checkbox"
+          checked={form.available_for_mentorship}
+          onChange={(e) => set('available_for_mentorship', e.target.checked)}
+        />
+        <label htmlFor="mentor-toggle">Open to mentoring other Eendragters</label>
+      </div>
+      {form.available_for_mentorship && (
+        <label className="field"><span>What kind of mentorship?</span>
+          <input
+            value={form.mentorship_description}
+            onChange={(e) => set('mentorship_description', e.target.value)}
+            placeholder="e.g. Anybody in the tech space"
+          />
+        </label>
+      )}
 
       <label className="field"><span>Bio</span>
         <textarea rows={3} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="What you've been up to since Eendrag…" />
@@ -236,6 +311,14 @@ export default function Profile({ session, profile, onSaved }) {
       <button className="btn primary" onClick={save} disabled={busy}>
         {busy ? 'Saving…' : 'Save changes'}
       </button>
+
+      {cropFile && (
+        <PhotoCropper
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onSave={uploadCroppedPhoto}
+        />
+      )}
     </section>
   )
 }
