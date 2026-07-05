@@ -5,7 +5,7 @@ import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 
 const EMPTY = {
-  full_name: '', grad_year: '', section: '',
+  full_name: '', grad_year: '', degree: '',
   industry: '', occupation: '',
   company: '', city: '', country: 'South Africa',
   bio: '',
@@ -32,7 +32,7 @@ export default function Profile({ session, profile, onSaved }) {
       setForm({
         full_name: profile.full_name || '',
         grad_year: profile.grad_year || '',
-        section: profile.section || '',
+        degree: profile.degree || '',
         industry: isKnownIndustry ? profile.industry : (profile.industry ? 'Other' : ''),
         occupation: profile.occupation || '',
         company: profile.company || '',
@@ -205,8 +205,8 @@ export default function Profile({ session, profile, onSaved }) {
         <label className="field"><span>Year left / leaving Eendrag</span>
           <input type="number" value={form.grad_year} onChange={(e) => set('grad_year', e.target.value)} placeholder="2024" />
         </label>
-        <label className="field"><span>Section</span>
-          <input value={form.section} onChange={(e) => set('section', e.target.value)} />
+        <label className="field"><span>Degree studied</span>
+          <input value={form.degree} onChange={(e) => set('degree', e.target.value)} placeholder="e.g. BCom Accounting, BEng Mechanical" />
         </label>
       </div>
 

@@ -18,7 +18,7 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
   const rows = [
     ['Status', p.is_current_resident ? 'Current Eendragter (in house)' : 'Alumnus'],
     ['Year left / leaving Eendrag', p.grad_year || dash],
-    ['Section', p.section || dash],
+    ['Degree studied', p.degree || dash],
     ['Industry', p.industry || dash],
     ['Job title / Position', p.occupation || dash],
     ['Company', p.company || dash],

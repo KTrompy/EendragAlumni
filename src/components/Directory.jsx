@@ -78,7 +78,7 @@ export default function Directory({ session, onMessage }) {
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, full_name, grad_year, section, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, mentorship_description, approved')
+      .select('id, full_name, grad_year, degree, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, mentorship_description, approved')
       .order('grad_year', { ascending: false, nullsFirst: false })
       .then(({ data }) => setPeople(data || []))
   }, [])
@@ -107,7 +107,7 @@ export default function Directory({ session, onMessage }) {
   const needle = q.trim().toLowerCase()
   const filtered = people.filter((p) => {
     if (needle) {
-      const hay = [p.full_name, p.occupation, p.company, p.city, p.section, p.industry, String(p.grad_year || '')]
+      const hay = [p.full_name, p.occupation, p.company, p.city, p.industry, String(p.grad_year || '')]
         .join(' ').toLowerCase()
       if (!hay.includes(needle)) return false
     }
@@ -136,12 +136,17 @@ return true
       <p className="panel-sub">The house, out in the world — and still in it.</p>
 
       <div className="directory-toolbar">
-        <input
-          className="search directory-search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by name, company, city…"
-        />
+        <div className="search-wrap">
+          <input
+            className="search directory-search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name, company, city…"
+          />
+          {q && (
+            <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>
+          )}
+        </div>
         <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
           <FilterIcon />
           Filters

@@ -25,7 +25,7 @@ function hasText(html) {
   return div.textContent.trim().length > 0
 }
 
-export default function Feed({ session, profile }) {
+export default function Feed({ session, profile, onMessage }) {
   const [posts, setPosts] = useState([])
   const [myLikes, setMyLikes] = useState(new Set())
   const [lightbox, setLightbox] = useState(null)
@@ -120,6 +120,10 @@ export default function Feed({ session, profile }) {
             onLike={() => toggleLike(p.id)}
             onDelete={() => removePost(p.id)}
             onImageClick={(src) => setLightbox(src)}
+            onMessage={() => onMessage?.(
+              { id: p.author_id, full_name: p.profiles?.full_name },
+              'Hi! I saw your post on the feed and wanted to reach out.'
+            )}
           />
         ))}
       </ul>
@@ -273,7 +277,7 @@ function Composer({ session, profile, onPosted }) {
 }
 
 /* ---------- Post item ---------- */
-function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageClick }) {
+function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageClick, onMessage }) {
   const [showComments, setShowComments] = useState(false)
   const likeCount = p.likes?.[0]?.count ?? 0
   const commentCount = p.comments?.[0]?.count ?? 0
@@ -323,6 +327,16 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
         >
           <CommentIcon /> {commentCount}
         </button>
+        {p.author_id !== session.user.id && (
+          <button
+            className="post-action"
+            onClick={onMessage}
+            disabled={!canInteract}
+            title={canInteract ? 'Message the author' : 'Messaging unlocks after approval'}
+          >
+            <MessageIcon /> Message
+          </button>
+        )}
       </div>
 
       {showComments && (
@@ -418,6 +432,14 @@ function CommentIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  )
+}
+function MessageIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
     </svg>
   )
 }

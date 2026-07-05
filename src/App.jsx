@@ -26,6 +26,7 @@ export default function App() {
   const [dmTarget, setDmTarget] = useState(null) // profile to open a DM with
   const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
   const [loading, setLoading] = useState(true)
+  const [checkedFirstRun, setCheckedFirstRun] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -45,6 +46,15 @@ export default function App() {
       .single()
       .then(({ data }) => setProfile(data))
   }, [session])
+
+  // First time a brand-new profile loads (no name filled in yet), send the
+  // person straight to My Profile so they set themselves up. Only checked
+  // once per session so it doesn't yank people back there on every visit.
+  useEffect(() => {
+    if (!profile || checkedFirstRun) return
+    if (!profile.full_name?.trim()) setTab('profile')
+    setCheckedFirstRun(true)
+  }, [profile, checkedFirstRun])
 
   function openMessage(targetProfile, draftText = '') {
     setDmTarget(targetProfile)
@@ -91,7 +101,7 @@ export default function App() {
       )}
 
       <main className="content">
-        {tab === 'feed' && <Feed session={session} profile={profile} />}
+        {tab === 'feed' && <Feed session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'directory' && (
           <Directory session={session} onMessage={openMessage} />
         )}
@@ -114,7 +124,11 @@ export default function App() {
 
       <footer className="footer">
         <img src="/eendrag-logo.png" alt="Eendrag logo" className="footer-logo" />
-        <span>Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.</span>
+        <span>
+          Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.
+          {' '}Designed by Kyle Trompeter —{' '}
+          <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>.
+        </span>
       </footer>
     </div>
   )

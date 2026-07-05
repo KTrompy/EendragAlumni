@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
+import EmptyState from './EmptyState.jsx'
 
 const GROUP_GAP_MS = 5 * 60 * 1000 // new avatar/gap if >5 min since the same sender's last message
 
@@ -18,6 +19,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   const [messages, setMessages] = useState([])
   const [draft, setDraft] = useState('')
   const [error, setError] = useState(null)
+  const [threadQuery, setThreadQuery] = useState('')
   const bottomRef = useRef(null)
   const me = session.user.id
 
@@ -129,6 +131,10 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   }
 
   const active = threads.find((t) => t.conversation_id === activeId)
+  const needle = threadQuery.trim().toLowerCase()
+  const filteredThreads = needle
+    ? threads.filter((t) => (t.other?.full_name || '').toLowerCase().includes(needle))
+    : threads
 
   return (
     <section className="panel messages-panel">
@@ -136,12 +142,33 @@ export default function Messages({ session, profile, initialTarget, initialDraft
       {error && <p className="form-error">{error}</p>}
       <div className="messages-layout">
         <aside className="thread-list">
-          {threads.length === 0 && (
-            <p className="empty small">
-              No conversations yet. Find someone in the directory and hit Message.
-            </p>
+          {threads.length > 0 && (
+            <div className="search-wrap thread-search-wrap">
+              <input
+                className="search thread-search"
+                value={threadQuery}
+                onChange={(e) => setThreadQuery(e.target.value)}
+                placeholder="Search conversations…"
+              />
+              {threadQuery && (
+                <button className="search-clear" onClick={() => setThreadQuery('')} aria-label="Clear search">×</button>
+              )}
+            </div>
           )}
-          {threads.map((t) => (
+
+          {threads.length === 0 && (
+            <EmptyState
+              icon="feed"
+              message="No conversations yet."
+              subMessage="Find someone in the directory and hit Message."
+            />
+          )}
+
+          {threads.length > 0 && filteredThreads.length === 0 && (
+            <p className="empty small">No conversations match "{threadQuery}".</p>
+          )}
+
+          {filteredThreads.map((t) => (
             <button
               key={t.conversation_id}
               className={t.conversation_id === activeId ? 'thread active' : 'thread'}
@@ -167,13 +194,21 @@ export default function Messages({ session, profile, initialTarget, initialDraft
         <div className="chat">
           {!activeId ? (
             <div className="chat-empty-centered">
-              <p>Select a conversation to start chatting.</p>
+              <EmptyState
+                icon="feed"
+                message="Select a conversation to start chatting."
+              />
             </div>
           ) : (
             <>
               <div className="chat-header">
-                <Avatar url={active?.other?.avatar_url} name={active?.other?.full_name} size={28} />
-                <span>{active?.other?.full_name || 'Conversation'}</span>
+                <Avatar url={active?.other?.avatar_url} name={active?.other?.full_name} size={34} />
+                <div className="chat-header-text">
+                  <span className="chat-header-name">{active?.other?.full_name || 'Conversation'}</span>
+                  {active?.other?.grad_year && (
+                    <span className="chat-header-sub">Class of {active.other.grad_year}</span>
+                  )}
+                </div>
               </div>
               <div className="chat-scroll">
                 {messages.map((m, i) => {
@@ -201,7 +236,10 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                       ) : (
                         <span className="avatar-spacer" style={{ width: 26 }} />
                       )}
-                      <div className={mine ? 'bubble mine' : 'bubble'}>{m.content}</div>
+                      <div className={mine ? 'bubble mine' : 'bubble'}>
+                        {m.content}
+                        <span className="message-time">{timeAgo(m.created_at)}</span>
+                      </div>
                     </div>
                   )
                 })}
