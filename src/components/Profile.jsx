@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
+import { COUNTRIES, INDUSTRIES } from '../constants.js'
 
 const EMPTY = {
   full_name: '', grad_year: '', section: '',
@@ -8,13 +9,12 @@ const EMPTY = {
   company: '', city: '', province: '', country: 'South Africa',
   bio: '',
   linkedin_url: '',
-  available_for_mentorship: false,
-  mentorship_description: '',
   is_current_resident: false,
 }
 
 export default function Profile({ session, profile, onSaved }) {
   const [form, setForm] = useState(EMPTY)
+  const [customIndustry, setCustomIndustry] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -23,11 +23,12 @@ export default function Profile({ session, profile, onSaved }) {
 
   useEffect(() => {
     if (profile) {
+      const isKnown = INDUSTRIES.includes(profile.industry)
       setForm({
         full_name: profile.full_name || '',
         grad_year: profile.grad_year || '',
         section: profile.section || '',
-        industry: profile.industry || '',
+        industry: isKnown ? profile.industry : (profile.industry ? 'Other' : ''),
         occupation: profile.occupation || '',
         occupation_description: profile.occupation_description || '',
         company: profile.company || '',
@@ -36,10 +37,9 @@ export default function Profile({ session, profile, onSaved }) {
         country: profile.country || 'South Africa',
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
-        available_for_mentorship: !!profile.available_for_mentorship,
-        mentorship_description: profile.mentorship_description || '',
         is_current_resident: !!profile.is_current_resident,
       })
+      if (!isKnown && profile.industry) setCustomIndustry(profile.industry)
     }
   }, [profile])
 
@@ -67,7 +67,7 @@ export default function Profile({ session, profile, onSaved }) {
     }
 
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-    const url = `${data.publicUrl}?t=${Date.now()}` // cache-buster
+    const url = `${data.publicUrl}?t=${Date.now()}`
 
     const { data: updated, error: dbErr } = await supabase
       .from('profiles')
@@ -83,10 +83,11 @@ export default function Profile({ session, profile, onSaved }) {
 
   async function save() {
     setBusy(true); setError(null)
+    const industry = form.industry === 'Other' ? customIndustry.trim() : form.industry
     const payload = {
       ...form,
+      industry,
       grad_year: form.grad_year ? Number(form.grad_year) : null,
-      // Trim URL to a canonical form; not a strict validator, just gentle.
       linkedin_url: form.linkedin_url.trim(),
     }
     const { data, error } = await supabase
@@ -117,7 +118,7 @@ export default function Profile({ session, profile, onSaved }) {
           >
             {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change photo' : 'Add photo'}
           </button>
-          <p className="hint">JPG or PNG, up to 3MB. Landscape crops best.</p>
+          <p className="hint">JPG or PNG, up to 3MB. Square or portrait crops best.</p>
           <input
             ref={fileRef}
             type="file"
@@ -145,7 +146,7 @@ export default function Profile({ session, profile, onSaved }) {
       </div>
 
       <div className="field-row">
-        <label className="field"><span>Year left Eendrag</span>
+        <label className="field"><span>Year left / leaving Eendrag</span>
           <input type="number" value={form.grad_year} onChange={(e) => set('grad_year', e.target.value)} placeholder="2024" />
         </label>
         <label className="field"><span>Section</span>
@@ -153,20 +154,33 @@ export default function Profile({ session, profile, onSaved }) {
         </label>
       </div>
 
+      <label className="field"><span>Industry</span>
+        <select value={form.industry} onChange={(e) => set('industry', e.target.value)}>
+          <option value="">Select your industry</option>
+          {INDUSTRIES.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
+          <option value="Other">Other (type your own)</option>
+        </select>
+      </label>
+      {form.industry === 'Other' && (
+        <div className="industry-other-row">
+          <input
+            value={customIndustry}
+            onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false) }}
+            placeholder="Type your industry…"
+          />
+        </div>
+      )}
+
       <div className="field-row">
-        <label className="field"><span>Industry</span>
-          <input value={form.industry} onChange={(e) => set('industry', e.target.value)} placeholder="e.g. Information Technology" />
+        <label className="field"><span>Job title / Position</span>
+          <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="e.g. Software Engineer, Director, Student" />
         </label>
-        <label className="field"><span>Occupation</span>
-          <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="Software engineer" />
+        <label className="field"><span>Seniority / Role level</span>
+          <input value={form.occupation_description} onChange={(e) => set('occupation_description', e.target.value)} placeholder="e.g. Senior, Executive, Junior" />
         </label>
       </div>
 
-      <label className="field"><span>Occupation description</span>
-        <input value={form.occupation_description} onChange={(e) => set('occupation_description', e.target.value)} placeholder="Director, Senior, Consultant…" />
-      </label>
-
-      <label className="field"><span>Company</span>
+      <label className="field"><span>Company / Organisation</span>
         <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
       </label>
 
@@ -192,7 +206,15 @@ export default function Profile({ session, profile, onSaved }) {
       </div>
 
       <label className="field"><span>Country</span>
-        <input value={form.country} onChange={(e) => set('country', e.target.value)} placeholder="South Africa" />
+        <input
+          list="country-list"
+          value={form.country}
+          onChange={(e) => set('country', e.target.value)}
+          placeholder="Start typing…"
+        />
+        <datalist id="country-list">
+          {COUNTRIES.map((c) => <option key={c} value={c} />)}
+        </datalist>
       </label>
 
       <label className="field"><span>LinkedIn URL</span>
@@ -203,25 +225,6 @@ export default function Profile({ session, profile, onSaved }) {
           placeholder="https://linkedin.com/in/yourname"
         />
       </label>
-
-      <div className="checkbox-row">
-        <input
-          id="mentor-toggle"
-          type="checkbox"
-          checked={form.available_for_mentorship}
-          onChange={(e) => set('available_for_mentorship', e.target.checked)}
-        />
-        <label htmlFor="mentor-toggle">Available for mentorship</label>
-      </div>
-      {form.available_for_mentorship && (
-        <label className="field"><span>Mentorship description</span>
-          <input
-            value={form.mentorship_description}
-            onChange={(e) => set('mentorship_description', e.target.value)}
-            placeholder="e.g. Anybody in the tech space"
-          />
-        </label>
-      )}
 
       <label className="field"><span>Bio</span>
         <textarea rows={3} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="What you've been up to since Eendrag…" />

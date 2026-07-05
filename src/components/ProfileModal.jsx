@@ -1,10 +1,9 @@
 import { useEffect } from 'react'
 import { PhotoBlock } from './Directory.jsx'
 
-// Displays every field on record for one person, styled like the SACS
-// alumni-detail popup: label · value rows, big photo up top, action bar at foot.
+const dash = '—'
+
 export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
-  // Escape to close, and lock body scroll while open.
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
@@ -17,17 +16,16 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
   }, [onClose])
 
   const rows = [
-    ['Status', p.is_current_resident ? 'Current Eendragter' : 'Alumnus'],
-    ['Year left Eendrag', p.grad_year || dash],
+    ['Status', p.is_current_resident ? 'Current Eendragter (in house)' : 'Alumnus'],
+    ['Year left / leaving Eendrag', p.grad_year || dash],
     ['Section', p.section || dash],
     ['Industry', p.industry || dash],
-    ['Occupation', p.occupation || dash],
-    ['Occupation description', p.occupation_description || dash],
-    ['Company', p.company || dash],
+    ['Job title / Position', p.occupation || dash],
+    ['Seniority / Role level', p.occupation_description || dash],
+    ['Company / Organisation', p.company || dash],
     ['City', p.city || dash],
     ['Province', p.province || dash],
     ['Country', p.country || dash],
-    ['Available for mentorship', renderMentorship(p)],
     ['Bio', p.bio || dash],
   ]
 
@@ -43,9 +41,7 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
           {rows.map(([label, value]) => (
             <div className="detail-row" key={label}>
               <div className="detail-label">{label}</div>
-              <div className={
-                value === dash ? 'detail-value muted' : 'detail-value'
-              }>{value}</div>
+              <div className={value === dash ? 'detail-value muted' : 'detail-value'}>{value}</div>
             </div>
           ))}
         </div>
@@ -64,18 +60,6 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
         </div>
       </div>
     </div>
-  )
-}
-
-const dash = '—'
-
-function renderMentorship(p) {
-  if (!p.available_for_mentorship) return <span className="detail-mentorship-no">Not currently</span>
-  return (
-    <span>
-      <span className="detail-mentorship-yes">Yes</span>
-      {p.mentorship_description ? ` — ${p.mentorship_description}` : ''}
-    </span>
   )
 }
 

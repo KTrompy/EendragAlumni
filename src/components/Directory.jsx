@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { COUNTRIES, INDUSTRIES } from '../constants.js'
 import ProfileModal from './ProfileModal.jsx'
 
 // Round avatar used elsewhere in the app (Feed, Profile page).
@@ -19,8 +20,7 @@ export function Avatar({ url, name, size = 72 }) {
   )
 }
 
-// Rectangular "wall card" photo, SACS-style. Sits at the top of person cards
-// and inside the profile modal.
+// Rectangular photo block for cards and modal.
 function PhotoBlock({ url, name, className = 'person-photo' }) {
   const initials = (name || 'A')
     .split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -73,44 +73,33 @@ export default function Directory({ session, onMessage }) {
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, full_name, grad_year, section, occupation, occupation_description, industry, company, city, country, province, is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, mentorship_description, approved')
+      .select('id, full_name, grad_year, section, occupation, occupation_description, industry, company, city, country, province, is_current_resident, bio, avatar_url, linkedin_url, approved')
       .order('grad_year', { ascending: false, nullsFirst: false })
       .then(({ data }) => setPeople(data || []))
   }, [])
 
-  // Distinct values for the dropdowns, sorted, no blanks.
-  const options = useMemo(() => {
-    const uniq = (key) =>
-      [...new Set(people.map((p) => (p[key] || '').trim()).filter(Boolean))].sort()
-    return {
-      countries: uniq('country'),
-      provinces: uniq('province'),
-      industries: uniq('industry'),
-    }
-  }, [people])
+  // Distinct provinces from actual data for the filter dropdown.
+  const dataProvinces = useMemo(() =>
+    [...new Set(people.map((p) => (p.province || '').trim()).filter(Boolean))].sort()
+  , [people])
 
   function set(k, v) { setFilters((f) => ({ ...f, [k]: v })) }
   function clearFilters() { setFilters(EMPTY_FILTERS); setQ('') }
 
   const needle = q.trim().toLowerCase()
   const shown = people.filter((p) => {
-    // Free-text search first
     if (needle) {
       const hay = [p.full_name, p.occupation, p.company, p.city, p.section, p.industry, String(p.grad_year || '')]
         .join(' ').toLowerCase()
       if (!hay.includes(needle)) return false
     }
-    // Status
     if (filters.status === STATUS.CURRENT && !p.is_current_resident) return false
     if (filters.status === STATUS.ALUMNI && p.is_current_resident) return false
-    // Year
     if (filters.yearFrom && (!p.grad_year || p.grad_year < Number(filters.yearFrom))) return false
     if (filters.yearTo && (!p.grad_year || p.grad_year > Number(filters.yearTo))) return false
-    // Country / Province / Industry
-    if (filters.country && p.country !== filters.country) return false
+    if (filters.country && (p.country || '').toLowerCase() !== filters.country.toLowerCase()) return false
     if (filters.province && p.province !== filters.province) return false
     if (filters.industry && p.industry !== filters.industry) return false
-    // Occupation (substring, case-insensitive)
     if (filters.occupation) {
       const occ = (p.occupation || '').toLowerCase()
       if (!occ.includes(filters.occupation.toLowerCase())) return false
@@ -133,62 +122,50 @@ export default function Directory({ session, onMessage }) {
 
           <FilterSection title="Status">
             <div className="filter-radio-row">
-              <button
-                className={filters.status === STATUS.ALL ? 'on' : ''}
-                onClick={() => set('status', STATUS.ALL)}
-              >All</button>
-              <button
-                className={filters.status === STATUS.CURRENT ? 'on' : ''}
-                onClick={() => set('status', STATUS.CURRENT)}
-              >In house</button>
-              <button
-                className={filters.status === STATUS.ALUMNI ? 'on' : ''}
-                onClick={() => set('status', STATUS.ALUMNI)}
-              >Alumni</button>
+              <button className={filters.status === STATUS.ALL ? 'on' : ''} onClick={() => set('status', STATUS.ALL)}>All</button>
+              <button className={filters.status === STATUS.CURRENT ? 'on' : ''} onClick={() => set('status', STATUS.CURRENT)}>In house</button>
+              <button className={filters.status === STATUS.ALUMNI ? 'on' : ''} onClick={() => set('status', STATUS.ALUMNI)}>Alumni</button>
             </div>
           </FilterSection>
 
-          <FilterSection title="Year left Eendrag">
+          <FilterSection title="Year left / leaving Eendrag">
             <div className="filter-year-row">
-              <input
-                type="number" placeholder="From"
-                value={filters.yearFrom}
-                onChange={(e) => set('yearFrom', e.target.value)}
-              />
+              <input type="number" placeholder="From" value={filters.yearFrom} onChange={(e) => set('yearFrom', e.target.value)} />
               <span aria-hidden="true">–</span>
-              <input
-                type="number" placeholder="To"
-                value={filters.yearTo}
-                onChange={(e) => set('yearTo', e.target.value)}
-              />
+              <input type="number" placeholder="To" value={filters.yearTo} onChange={(e) => set('yearTo', e.target.value)} />
             </div>
           </FilterSection>
 
           <FilterSection title="Country">
-            <select value={filters.country} onChange={(e) => set('country', e.target.value)}>
-              <option value="">All countries</option>
-              {options.countries.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <input
+              list="filter-country-list"
+              placeholder="Start typing a country…"
+              value={filters.country}
+              onChange={(e) => set('country', e.target.value)}
+            />
+            <datalist id="filter-country-list">
+              {COUNTRIES.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </FilterSection>
 
           <FilterSection title="Province">
             <select value={filters.province} onChange={(e) => set('province', e.target.value)}>
               <option value="">All provinces</option>
-              {options.provinces.map((c) => <option key={c} value={c}>{c}</option>)}
+              {dataProvinces.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </FilterSection>
 
           <FilterSection title="Industry">
             <select value={filters.industry} onChange={(e) => set('industry', e.target.value)}>
               <option value="">All industries</option>
-              {options.industries.map((c) => <option key={c} value={c}>{c}</option>)}
+              {INDUSTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </FilterSection>
 
-          <FilterSection title="Occupation" defaultOpen={false}>
+          <FilterSection title="Job title" defaultOpen={false}>
             <input
               type="text"
-              placeholder="e.g. engineer"
+              placeholder="e.g. engineer, director"
               value={filters.occupation}
               onChange={(e) => set('occupation', e.target.value)}
             />
@@ -236,9 +213,8 @@ export default function Directory({ session, onMessage }) {
   )
 }
 
-/* ---------- Person card (SACS-style: photo up top, icons at foot) ---------- */
+/* ---------- Person card ---------- */
 function PersonCard({ person: p, isMe, onOpen, onMessage }) {
-  // Keyboard: card is a role="button". Enter or space opens the modal.
   function onKey(e) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() }
   }
@@ -273,32 +249,14 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
           )}
         </div>
         <div className="person-actions" onClick={(e) => e.stopPropagation()}>
-          <button
-            className="person-action primary"
-            onClick={onMessage}
-            disabled={isMe}
-            title={isMe ? "That's you" : 'Send a message'}
-            aria-label="Send a message"
-          >
+          <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label="Send a message">
             <EnvelopeIcon />
           </button>
-          <button
-            className="person-action"
-            onClick={onOpen}
-            title="View profile"
-            aria-label="View profile"
-          >
+          <button className="person-action" onClick={onOpen} title="View profile" aria-label="View profile">
             <InfoIcon />
           </button>
           {p.linkedin_url ? (
-            <a
-              className="person-action"
-              href={p.linkedin_url}
-              target="_blank" rel="noopener noreferrer"
-              title="LinkedIn"
-              aria-label="LinkedIn"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <a className="person-action" href={p.linkedin_url} target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label="LinkedIn" onClick={(e) => e.stopPropagation()}>
               <LinkedInIcon />
             </a>
           ) : (
@@ -312,7 +270,7 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
   )
 }
 
-/* ---------- Icons (inline SVG, current colour) ---------- */
+/* ---------- Icons ---------- */
 function EnvelopeIcon() {
   return (
     <svg className="icon-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
