@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -56,7 +56,17 @@ export default function Events({ session, profile }) {
     const channel = supabase
       .channel('events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_rsvps' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_rsvps' }, (payload) => {
+        // Our own RSVP toggles are already reflected optimistically the
+        // instant you click — reloading here too would re-fetch mid-flight
+        // and can momentarily stomp your latest click with stale data
+        // (the classic "only updates after I leave and come back" bug).
+        // Only reload when the change belongs to someone else, so the
+        // "X going" counts stay live without fighting your own clicks.
+        const affectedUser = payload.new?.user_id || payload.old?.user_id
+        if (affectedUser === session.user.id) return
+        load()
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [])
@@ -66,32 +76,69 @@ export default function Events({ session, profile }) {
     await supabase.from('events').delete().eq('id', id)
   }
 
-  async function toggleRsvp(eventId) {
-    const going = myRsvps.has(eventId)
+  // Tracks, per event, whether an insert/delete request is currently in
+  // flight and what the most recently clicked state should end up as.
+  // Without this, mashing the button fast (going → not going → going)
+  // could fire a delete before the insert it's undoing had even committed,
+  // so the delete would silently no-op and the RSVP would come back once
+  // the insert finally landed — exactly the "only fixes itself after I
+  // leave and come back" symptom. Serializing per-event guarantees the
+  // database always ends up matching your last click.
+  const rsvpFlightRef = useRef({}) // eventId -> boolean (request in flight?)
+  const rsvpDesiredRef = useRef({}) // eventId -> boolean (latest known/desired "going" state)
+
+  function applyRsvpUi(eventId, wantGoing, prevGoing) {
     setMyRsvps((prev) => {
       const next = new Set(prev)
-      if (going) next.delete(eventId); else next.add(eventId)
+      if (wantGoing) next.add(eventId); else next.delete(eventId)
       return next
     })
+    if (wantGoing === prevGoing) return
     setEvents((prev) => prev.map((e) => {
       if (e.id !== eventId) return e
       const cur = e.rsvps?.[0]?.count ?? 0
-      return { ...e, rsvps: [{ count: cur + (going ? -1 : 1) }] }
+      return { ...e, rsvps: [{ count: Math.max(0, cur + (wantGoing ? 1 : -1)) }] }
     }))
+  }
 
-    if (going) {
-      await supabase.from('event_rsvps').delete()
-        .match({ event_id: eventId, user_id: session.user.id })
-    } else {
-      const { error } = await supabase.from('event_rsvps')
-        .insert({ event_id: eventId, user_id: session.user.id })
-      if (error) {
-        // Roll back on failure (e.g. not yet approved)
-        setMyRsvps((prev) => { const n = new Set(prev); n.delete(eventId); return n })
-        setEvents((prev) => prev.map((e) =>
-          e.id === eventId ? { ...e, rsvps: [{ count: (e.rsvps?.[0]?.count ?? 1) - 1 }] } : e
-        ))
+  async function toggleRsvp(eventId) {
+    // Once we've started tracking this event's toggle, trust our own ref
+    // over the (possibly not-yet-re-rendered) React state — otherwise two
+    // clicks in the same tick can both read the same stale "am I going"
+    // value and compute the wrong next state.
+    const knownGoing = eventId in rsvpDesiredRef.current ? rsvpDesiredRef.current[eventId] : myRsvps.has(eventId)
+    const desired = !knownGoing
+    applyRsvpUi(eventId, desired, knownGoing) // instant feedback, every single click
+    rsvpDesiredRef.current[eventId] = desired
+
+    if (rsvpFlightRef.current[eventId]) return // a request's already running; it'll pick up this new desired state when it finishes
+    rsvpFlightRef.current[eventId] = true
+
+    try {
+      // Keep sending requests until the database matches whatever the
+      // user's most recent click asked for. Without this loop, mashing the
+      // button fast (going → not going → going) could fire a delete before
+      // the insert it's undoing had even committed — the delete would
+      // silently no-op, and the RSVP would reappear once the insert finally
+      // landed, which looked like "it only updates after I leave and come
+      // back."
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const target = rsvpDesiredRef.current[eventId]
+        const { error } = target
+          ? await supabase.from('event_rsvps').insert({ event_id: eventId, user_id: session.user.id })
+          : await supabase.from('event_rsvps').delete().match({ event_id: eventId, user_id: session.user.id })
+
+        if (error) {
+          // Roll back to whatever the server actually has (e.g. not yet approved)
+          applyRsvpUi(eventId, !target, target)
+          rsvpDesiredRef.current[eventId] = !target
+          break
+        }
+        if (rsvpDesiredRef.current[eventId] === target) break // no new clicks arrived while this was in flight
       }
+    } finally {
+      rsvpFlightRef.current[eventId] = false
     }
   }
 
