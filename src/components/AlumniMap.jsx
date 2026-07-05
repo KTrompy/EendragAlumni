@@ -84,7 +84,7 @@ export default function AlumniMap({ session, onMessage }) {
   return (
     <section className="panel">
       <h2 className="panel-title">Alumni map</h2>
-      <p className="panel-sub">Where are we all now?</p>
+      <p className="panel-sub">Where are we all now? And no, not everyone is just hiding in the ondergrond waiting for Burger Friday.</p>
 
       {pinned.length > 0 && (
         <p className="result-count">
