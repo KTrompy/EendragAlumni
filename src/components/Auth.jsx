@@ -5,7 +5,6 @@ export default function Auth() {
   const [mode, setMode] = useState('signin') // 'signin' | 'signup'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null)
   const [error, setError] = useState(null)
@@ -14,11 +13,7 @@ export default function Auth() {
     setBusy(true); setError(null); setNotice(null)
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName } },
-        })
+        const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
         setNotice('Check your email to confirm your account, then sign in.')
       } else {
@@ -39,17 +34,6 @@ export default function Auth() {
         <h1 className="auth-title">Eendrag Alumni</h1>
         <p className="auth-sub">Character · Style · Pride · Since 1961</p>
 
-        {mode === 'signup' && (
-          <label className="field">
-            <span>Full name</span>
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Jan van der Merwe"
-              autoComplete="name"
-            />
-          </label>
-        )}
         <label className="field">
           <span>Email</span>
           <input
