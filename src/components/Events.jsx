@@ -253,7 +253,9 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete }) {
           </button>
         </div>
 
-        {showAttendees && <AttendeeList eventId={e.id} />}
+        {showAttendees && (
+          <AttendeeList eventId={e.id} session={session} profile={profile} iAmGoing={iAmGoing} />
+        )}
         {showComments && <EventComments eventId={e.id} session={session} profile={profile} />}
       </div>
       {e.created_by === session.user.id && (
@@ -264,7 +266,7 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete }) {
 }
 
 /* ---------- Who's going ---------- */
-function AttendeeList({ eventId }) {
+function AttendeeList({ eventId, session, profile, iAmGoing }) {
   const [attendees, setAttendees] = useState(null) // null = loading
 
   useEffect(() => {
@@ -276,6 +278,26 @@ function AttendeeList({ eventId }) {
       .then(({ data }) => { if (!cancelled) setAttendees(data || []) })
     return () => { cancelled = true }
   }, [eventId])
+
+  // Keep this list in sync with your own "I'm going" toggle the instant you
+  // click it — this list is fetched once when you open it, so without this
+  // it would only catch up the next time you closed and reopened it.
+  useEffect(() => {
+    setAttendees((prev) => {
+      if (prev === null) return prev // initial fetch hasn't landed yet
+      const alreadyListed = prev.some((a) => a.user_id === session.user.id)
+      if (iAmGoing && !alreadyListed) {
+        return [...prev, {
+          user_id: session.user.id,
+          profiles: { full_name: profile?.full_name, avatar_url: profile?.avatar_url },
+        }]
+      }
+      if (!iAmGoing && alreadyListed) {
+        return prev.filter((a) => a.user_id !== session.user.id)
+      }
+      return prev
+    })
+  }, [iAmGoing, session.user.id, profile?.full_name, profile?.avatar_url])
 
   return (
     <div className="attendee-list">
