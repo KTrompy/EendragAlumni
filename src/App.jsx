@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth.jsx'
+import Onboarding from './components/Onboarding.jsx'
 import Feed from './components/Feed.jsx'
 import Directory from './components/Directory.jsx'
 import FloatingMessages from './components/FloatingMessages.jsx'
@@ -30,6 +31,7 @@ export default function App() {
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -50,12 +52,12 @@ export default function App() {
       .then(({ data }) => setProfile(data))
   }, [session])
 
-  // First time a brand-new profile loads (no name filled in yet), send the
-  // person straight to My Profile so they set themselves up. Only checked
-  // once per session so it doesn't yank people back there on every visit.
+  // First time a brand-new profile loads (no name filled in yet), walk them
+  // through the onboarding wizard question-by-question. Only checked once
+  // per session so it doesn't yank people back into it on every visit.
   useEffect(() => {
     if (!profile || checkedFirstRun) return
-    if (!profile.full_name?.trim()) setTab('profile')
+    if (!profile.full_name?.trim()) setShowOnboarding(true)
     setCheckedFirstRun(true)
   }, [profile, checkedFirstRun])
 
@@ -67,6 +69,20 @@ export default function App() {
 
   if (loading) return <div className="center-page">Loading…</div>
   if (!session) return <Auth />
+
+  if (showOnboarding) {
+    return (
+      <Onboarding
+        session={session}
+        profile={profile}
+        onDone={(updatedProfile) => {
+          setProfile(updatedProfile)
+          setShowOnboarding(false)
+          setTab('profile')
+        }}
+      />
+    )
+  }
 
   return (
     <div className="app">
