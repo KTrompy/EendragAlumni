@@ -99,10 +99,7 @@ export default function Feed({ session, profile, onMessage }) {
   const hasMore = visibleCount < posts.length
 
   return (
-    <section className="panel">
-      <h2 className="panel-title">House feed</h2>
-      <p className="panel-sub">News, wins, and everything in between.</p>
-
+    <section className="feed-section">
       <Composer session={session} profile={profile} onPosted={() => { load(); setVisibleCount(PAGE_SIZE) }} />
 
       {posts.length === 0 && (
@@ -147,15 +144,29 @@ export default function Feed({ session, profile, onMessage }) {
 
 /* ---------- Composer ---------- */
 function Composer({ session, profile, onPosted }) {
+  const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [files, setFiles] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const fileRef = useRef(null)
+  const titleRef = useRef(null)
 
   const canPost = profile?.approved
   const canSubmit = canPost && (hasText(body) || files.length > 0)
+
+  function openModal() {
+    if (!canPost) return
+    setOpen(true)
+    setTimeout(() => titleRef.current?.focus(), 50)
+  }
+
+  function closeModal() {
+    if (busy) return
+    setOpen(false)
+    setTitle(''); setBody(''); setFiles([]); setError(null)
+  }
 
   function pickFiles(e) {
     const chosen = Array.from(e.target.files || [])
@@ -210,6 +221,7 @@ function Composer({ session, profile, onPosted }) {
           : error.message)
       } else {
         setTitle(''); setBody(''); setFiles([])
+        setOpen(false)
         onPosted?.()
       }
     } catch (e) {
@@ -219,6 +231,29 @@ function Composer({ session, profile, onPosted }) {
     }
   }
 
+  /* ---- Collapsed prompt (always visible) ---- */
+  const prompt = (
+    <div className="composer-prompt" onClick={openModal}>
+      <Avatar url={profile?.avatar_url} name={profile?.full_name} size={44} />
+      <button className="composer-prompt-input" disabled={!canPost}>
+        {canPost ? 'Start a post' : 'Posting unlocks after approval'}
+      </button>
+    </div>
+  )
+
+  /* ---- Quick-action buttons below the prompt ---- */
+  const quickActions = (
+    <div className="composer-quick-actions">
+      <button className="composer-quick-btn" onClick={openModal} disabled={!canPost}>
+        <PhotoIcon /> Photo
+      </button>
+      <button className="composer-quick-btn" onClick={openModal} disabled={!canPost}>
+        <ArticleIcon /> Write article
+      </button>
+    </div>
+  )
+
+  /* ---- Toolbar inside the modal editor ---- */
   const photoButton = (
     <>
       <button
@@ -226,8 +261,10 @@ function Composer({ session, profile, onPosted }) {
         className="composer-photo-btn"
         onClick={() => fileRef.current?.click()}
         disabled={!canPost || files.length >= MAX_IMAGES}
+        title="Add photo"
       >
-        📷 Photo {files.length > 0 && `(${files.length}/${MAX_IMAGES})`}
+        <PhotoIcon />
+        {files.length > 0 && <span className="composer-photo-count">{files.length}/{MAX_IMAGES}</span>}
       </button>
       <input
         ref={fileRef}
@@ -237,42 +274,75 @@ function Composer({ session, profile, onPosted }) {
         style={{ display: 'none' }}
         onChange={pickFiles}
       />
-      <span className="toolbar-divider" />
-      {error && <span className="form-error">{error}</span>}
-      <button className="btn primary" onClick={publish} disabled={busy || !canSubmit}>
-        {busy ? 'Posting…' : 'Post'}
-      </button>
     </>
   )
 
   return (
-    <div className="composer">
-      <input
-        className="composer-title"
-        placeholder="Post title (optional)"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        disabled={!canPost}
-        maxLength={200}
-      />
-      <RichTextEditor
-        value={body}
-        onChange={setBody}
-        placeholder={canPost ? 'Share news with the house…' : 'Posting unlocks after approval'}
-        disabled={!canPost}
-        toolbarExtra={photoButton}
-      />
-      {files.length > 0 && (
-        <div className="composer-previews">
-          {files.map((f, i) => (
-            <div className="composer-preview" key={i}>
-              <img src={URL.createObjectURL(f)} alt="" />
-              <button onClick={() => removeFile(i)} aria-label="Remove image">×</button>
+    <>
+      <div className="composer-card">
+        {prompt}
+        {quickActions}
+      </div>
+
+      {open && (
+        <div className="composer-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}>
+          <div className="composer-modal">
+            {/* Header */}
+            <div className="composer-modal-header">
+              <div className="composer-modal-user">
+                <Avatar url={profile?.avatar_url} name={profile?.full_name} size={44} />
+                <div>
+                  <span className="composer-modal-name">{profile?.full_name || 'Alumnus'}</span>
+                  <span className="composer-modal-audience">Post to Everyone</span>
+                </div>
+              </div>
+              <button className="composer-modal-close" onClick={closeModal} aria-label="Close">×</button>
             </div>
-          ))}
+
+            {/* Title */}
+            <input
+              ref={titleRef}
+              className="composer-modal-title"
+              placeholder="Post title (optional)"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={200}
+            />
+
+            {/* Body */}
+            <div className="composer-modal-body">
+              <RichTextEditor
+                value={body}
+                onChange={setBody}
+                placeholder="What do you want to talk about?"
+                toolbarExtra={photoButton}
+              />
+            </div>
+
+            {/* Image previews */}
+            {files.length > 0 && (
+              <div className="composer-previews">
+                {files.map((f, i) => (
+                  <div className="composer-preview" key={i}>
+                    <img src={URL.createObjectURL(f)} alt="" />
+                    <button onClick={() => removeFile(i)} aria-label="Remove image">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {error && <p className="form-error" style={{ margin: '8px 20px' }}>{error}</p>}
+
+            {/* Footer */}
+            <div className="composer-modal-footer">
+              <button className="btn primary" onClick={publish} disabled={busy || !canSubmit}>
+                {busy ? 'Posting…' : 'Post'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -287,15 +357,17 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
   return (
     <li className="post">
       <div className="post-head">
-        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={34} />
-        <span className="post-author">{p.profiles?.full_name || 'Alumnus'}</span>
-        <span className="post-meta">
-          {p.profiles?.grad_year ? `’${String(p.profiles.grad_year).slice(-2)}` : ''}
-          {p.profiles?.occupation ? ` · ${p.profiles.occupation}` : ''}
-          {' · '}{timeAgo(p.created_at)}
-        </span>
+        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={40} />
+        <div className="post-head-info">
+          <span className="post-author">{p.profiles?.full_name || ‘Alumnus’}</span>
+          <span className="post-meta">
+            {p.profiles?.grad_year ? `Class of ‘${String(p.profiles.grad_year).slice(-2)}` : ‘’}
+            {p.profiles?.occupation ? ` · ${p.profiles.occupation}` : ‘’}
+          </span>
+          <span className="post-time">{timeAgo(p.created_at)}</span>
+        </div>
         {p.author_id === session.user.id && (
-          <button className="link-btn small" onClick={onDelete}>Delete</button>
+          <button className="link-btn small post-delete-btn" onClick={onDelete}>Delete</button>
         )}
       </div>
 
@@ -440,6 +512,26 @@ function MessageIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7l9 6 9-6" />
+    </svg>
+  )
+}
+function PhotoIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  )
+}
+function ArticleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
     </svg>
   )
 }
