@@ -44,6 +44,9 @@ input, textarea, select { font: inherit; }
   background: var(--maroon);
   color: #fff;
   border-bottom: 4px solid var(--orange);
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 .masthead-inner {
   max-width: 1180px;
