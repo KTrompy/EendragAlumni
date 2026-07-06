@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
+import DeleteButton from './DeleteButton.jsx'
 import DateTimePicker from './DateTimePicker.jsx'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
@@ -75,7 +76,6 @@ export default function Events({ session, profile }) {
   }, [])
 
   async function removeEvent(id) {
-    if (!confirm('Remove this event?')) return
     await supabase.from('events').delete().eq('id', id)
   }
 
@@ -196,7 +196,13 @@ export default function Events({ session, profile }) {
           {loading ? (
             <LoadingState message="Loading events…" />
           ) : listItems.length === 0 && (
-            <EmptyState icon="events" message="No events on the calendar yet." subMessage="Post one above to get the first reunion rolling." />
+            <EmptyState
+              icon="events"
+              message="No events on the calendar yet."
+              subMessage="Post one to get the first reunion rolling."
+              actionLabel={canPost && !showForm ? 'Add event' : undefined}
+              onAction={() => setShowForm(true)}
+            />
           )}
           <ul className="event-list">
             {listItems.map((e) => (
@@ -278,7 +284,11 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete }) {
         {showComments && <EventComments eventId={e.id} session={session} profile={profile} />}
       </div>
       {e.created_by === session.user.id && (
-        <button className="btn ghost small" onClick={onDelete}>Delete</button>
+        <DeleteButton
+          onConfirm={onDelete}
+          label="Delete event"
+          message="This removes the event and everyone's RSVPs. This can't be undone."
+        />
       )}
     </li>
   )
@@ -385,7 +395,12 @@ function EventComments({ eventId, session, profile }) {
               <span className="comment-author">{c.profiles?.full_name || 'Alumnus'}</span>
               <span className="comment-meta">{timeAgo(c.created_at)}</span>
               {c.author_id === session.user.id && (
-                <button className="comment-delete" onClick={() => remove(c.id)}>Delete</button>
+                <DeleteButton
+                  onConfirm={() => remove(c.id)}
+                  label="Delete comment"
+                  message="This can't be undone."
+                  className="icon-btn-delete small"
+                />
               )}
               <p className="comment-text">{c.content}</p>
             </div>

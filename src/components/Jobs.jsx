@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
+import DeleteButton from './DeleteButton.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
@@ -81,7 +82,6 @@ export default function Jobs({ session, profile, onMessage }) {
   }, [filterOpen])
 
   async function removeJob(id) {
-    if (!confirm('Remove this listing?')) return
     await supabase.from('jobs').delete().eq('id', id)
   }
 
@@ -169,6 +169,8 @@ export default function Jobs({ session, profile, onMessage }) {
           icon="jobs"
           message={jobs.length === 0 ? 'No listings yet.' : 'No matching roles found.'}
           subMessage={jobs.length === 0 ? 'Be the first to post a role.' : 'Try widening a filter or clearing them all.'}
+          actionLabel={jobs.length === 0 ? (canPost && !showForm ? 'Post a role' : undefined) : 'Clear filters'}
+          onAction={jobs.length === 0 ? () => setShowForm(true) : clearFilters}
         />
       )}
 
@@ -283,7 +285,11 @@ export default function Jobs({ session, profile, onMessage }) {
                 </div>
               </div>
               {isMine && (
-                <button className="btn ghost small" onClick={() => removeJob(j.id)}>Delete</button>
+                <DeleteButton
+                  onConfirm={() => removeJob(j.id)}
+                  label="Delete listing"
+                  message="This removes the job listing. This can't be undone."
+                />
               )}
             </li>
           )

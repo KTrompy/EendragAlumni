@@ -4,6 +4,7 @@ import { Avatar } from './Directory.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
+import DeleteButton from './DeleteButton.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const MAX_IMAGES = 4
@@ -26,18 +27,43 @@ function hasText(html) {
   return div.textContent.trim().length > 0
 }
 
+// Turns a pasted YouTube/Vimeo link into an embeddable player URL, or null
+// if it isn't one — used both for the composer's live preview and for
+// rendering the video in a published post.
+function videoEmbedUrl(raw) {
+  if (!raw) return null
+  let url
+  try { url = new URL(raw.trim()) } catch { return null }
+
+  if (url.hostname.includes('youtu')) {
+    let id = ''
+    if (url.hostname.includes('youtu.be')) id = url.pathname.slice(1)
+    else if (url.pathname.startsWith('/embed/')) id = url.pathname.split('/embed/')[1]
+    else if (url.pathname.startsWith('/shorts/')) id = url.pathname.split('/shorts/')[1]
+    else id = url.searchParams.get('v') || ''
+    id = id.split('/')[0]
+    return id ? `https://www.youtube.com/embed/${id}` : null
+  }
+  if (url.hostname.includes('vimeo.com')) {
+    const id = url.pathname.split('/').filter(Boolean)[0]
+    return id && /^\d+$/.test(id) ? `https://player.vimeo.com/video/${id}` : null
+  }
+  return null
+}
+
 export default function Feed({ session, profile, onMessage }) {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [myLikes, setMyLikes] = useState(new Set())
   const [lightbox, setLightbox] = useState(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const composerOpenRef = useRef(null)
 
   async function load() {
     const { data, error } = await supabase
       .from('posts')
       .select(`
-        id, title, content, image_urls, created_at, author_id,
+        id, title, content, image_urls, video_url, created_at, author_id,
         profiles!posts_author_id_fkey ( full_name, grad_year, occupation, avatar_url ),
         likes:post_likes(count),
         comments:post_comments(count)
@@ -66,7 +92,6 @@ export default function Feed({ session, profile, onMessage }) {
   }, [])
 
   async function removePost(id) {
-    if (!confirm('Delete this post?')) return
     await supabase.from('posts').delete().eq('id', id)
   }
 
@@ -106,12 +131,18 @@ export default function Feed({ session, profile, onMessage }) {
       <h2 className="panel-title">Feed</h2>
       <p className="panel-sub">Photos, updates, shoutouts — what the house is up to.</p>
 
-      <Composer session={session} profile={profile} onPosted={() => { load(); setVisibleCount(PAGE_SIZE) }} />
+      <Composer session={session} profile={profile} onPosted={() => { load(); setVisibleCount(PAGE_SIZE) }} openRef={composerOpenRef} />
 
       {loading ? (
         <LoadingState message="Loading feed…" />
       ) : posts.length === 0 && (
-        <EmptyState icon="feed" message="No posts yet." subMessage="Be the first Eendragter to break the silence." />
+        <EmptyState
+          icon="feed"
+          message="No posts yet."
+          subMessage="Be the first Eendragter to break the silence."
+          actionLabel={profile?.approved ? 'Write the first post' : undefined}
+          onAction={() => composerOpenRef.current?.()}
+        />
       )}
 
       <ul className="post-list">
@@ -151,30 +182,39 @@ export default function Feed({ session, profile, onMessage }) {
 }
 
 /* ---------- Composer ---------- */
-function Composer({ session, profile, onPosted }) {
+function Composer({ session, profile, onPosted, openRef }) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [files, setFiles] = useState([])
+  const [videoUrl, setVideoUrl] = useState('')
+  const [showVideo, setShowVideo] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const fileRef = useRef(null)
   const titleRef = useRef(null)
+  const videoRef = useRef(null)
 
   const canPost = profile?.approved
-  const canSubmit = canPost && (hasText(body) || files.length > 0)
+  const canSubmit = canPost && (hasText(body) || files.length > 0 || Boolean(videoEmbedUrl(videoUrl)))
 
-  function openModal() {
+  function openModal(focusVideo = false) {
     if (!canPost) return
     setOpen(true)
-    setTimeout(() => titleRef.current?.focus(), 50)
+    if (focusVideo) setShowVideo(true)
+    setTimeout(() => (focusVideo ? videoRef.current : titleRef.current)?.focus(), 50)
   }
 
   function closeModal() {
     if (busy) return
     setOpen(false)
     setTitle(''); setBody(''); setFiles([]); setError(null)
+    setVideoUrl(''); setShowVideo(false)
   }
+
+  // Lets a CTA outside this component (the Feed empty state) trigger the
+  // same "start a post" flow as clicking the prompt.
+  if (openRef) openRef.current = () => openModal(false)
 
   function pickFiles(e) {
     const chosen = Array.from(e.target.files || [])
@@ -215,6 +255,7 @@ function Composer({ session, profile, onPosted }) {
     setBusy(true); setError(null)
     try {
       const image_urls = files.length ? await uploadAll() : []
+      const video_url = videoEmbedUrl(videoUrl) ? videoUrl.trim() : null
       const { error } = await supabase
         .from('posts')
         .insert({
@@ -222,6 +263,7 @@ function Composer({ session, profile, onPosted }) {
           title: title.trim(),
           content: hasText(body) ? sanitizeHtml(body) : '(no text)',
           image_urls,
+          video_url,
         })
       if (error) {
         setError(error.message.includes('policy')
@@ -229,6 +271,7 @@ function Composer({ session, profile, onPosted }) {
           : error.message)
       } else {
         setTitle(''); setBody(''); setFiles([])
+        setVideoUrl(''); setShowVideo(false)
         setOpen(false)
         onPosted?.()
       }
@@ -252,11 +295,11 @@ function Composer({ session, profile, onPosted }) {
   /* ---- Quick-action buttons below the prompt ---- */
   const quickActions = (
     <div className="composer-quick-actions">
-      <button className="composer-quick-btn" onClick={openModal} disabled={!canPost}>
+      <button className="composer-quick-btn" onClick={() => openModal(false)} disabled={!canPost}>
         <PhotoIcon /> Photo
       </button>
-      <button className="composer-quick-btn" onClick={openModal} disabled={!canPost}>
-        <ArticleIcon /> Write article
+      <button className="composer-quick-btn" onClick={() => openModal(true)} disabled={!canPost}>
+        <VideoIcon /> Add video
       </button>
     </div>
   )
@@ -327,6 +370,35 @@ function Composer({ session, profile, onPosted }) {
               />
             </div>
 
+            {/* Video link */}
+            {showVideo && (
+              <div className="composer-video-row">
+                <div className="input-clear-wrap">
+                  <input
+                    ref={videoRef}
+                    className="composer-video-input"
+                    placeholder="Paste a YouTube or Vimeo link…"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="search-clear"
+                    onClick={() => { setVideoUrl(''); setShowVideo(false) }}
+                    aria-label="Remove video"
+                  >×</button>
+                </div>
+                {videoUrl && !videoEmbedUrl(videoUrl) && (
+                  <p className="form-warning">Couldn't recognize that as a YouTube or Vimeo link — it won't be attached.</p>
+                )}
+                {videoEmbedUrl(videoUrl) && (
+                  <div className="composer-video-preview">
+                    <iframe src={videoEmbedUrl(videoUrl)} title="Video preview" allowFullScreen />
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Image previews */}
             {files.length > 0 && (
               <div className="composer-previews">
@@ -375,13 +447,30 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
           <span className="post-time">{timeAgo(p.created_at)}</span>
         </div>
         {p.author_id === session.user.id && (
-          <button className="link-btn small post-delete-btn" onClick={onDelete}>Delete</button>
+          <DeleteButton
+            onConfirm={onDelete}
+            label="Delete post"
+            message="This can't be undone."
+            className="icon-btn-delete post-delete-btn"
+          />
         )}
       </div>
 
       {p.title && <h3 className="post-title">{p.title}</h3>}
       {p.content && p.content !== '(no text)' && (
         <div className="post-body rendered-html" dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.content) }} />
+      )}
+
+      {p.video_url && videoEmbedUrl(p.video_url) && (
+        <div className="post-video">
+          <iframe
+            src={videoEmbedUrl(p.video_url)}
+            title="Post video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            loading="lazy"
+          />
+        </div>
       )}
 
       {images.length > 0 && (
@@ -475,7 +564,12 @@ function Comments({ postId, session, profile }) {
               <span className="comment-author">{c.profiles?.full_name || 'Alumnus'}</span>
               <span className="comment-meta">{timeAgo(c.created_at)}</span>
               {c.author_id === session.user.id && (
-                <button className="comment-delete" onClick={() => remove(c.id)}>Delete</button>
+                <DeleteButton
+                  onConfirm={() => remove(c.id)}
+                  label="Delete comment"
+                  message="This can't be undone."
+                  className="icon-btn-delete small"
+                />
               )}
               <p className="comment-text">{c.content}</p>
             </div>
@@ -526,20 +620,16 @@ function MessageIcon() {
 function PhotoIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="8.5" cy="8.5" r="1.5" />
-      <path d="M21 15l-5-5L5 21" />
+      <path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" />
+      <circle cx="12" cy="13" r="3.5" />
     </svg>
   )
 }
-function ArticleIcon() {
+function VideoIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <polyline points="10 9 9 9 8 9" />
+      <rect x="2.5" y="6" width="14" height="12" rx="2" />
+      <path d="M16.5 10.5l5-3v9l-5-3z" />
     </svg>
   )
 }

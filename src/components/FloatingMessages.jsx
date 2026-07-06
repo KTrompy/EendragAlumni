@@ -15,6 +15,7 @@ export default function FloatingMessages({
   initialTarget,
   initialDraft,
   onTargetConsumed,
+  onBrowseDirectory,
 }) {
   const [unread, setUnread] = useState(0)
   const panelRef = useRef(null)
@@ -79,6 +80,7 @@ export default function FloatingMessages({
               initialDraft={initialDraft}
               onTargetConsumed={onTargetConsumed}
               onRead={refreshUnread}
+              onBrowseDirectory={onBrowseDirectory}
               hideTitle
             />
           </div>

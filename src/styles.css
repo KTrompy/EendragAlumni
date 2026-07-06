@@ -307,6 +307,8 @@ input, textarea, select { font: inherit; }
 .btn.secondary:hover:not(:disabled) { background: var(--maroon-dark); }
 .btn.ghost { background: transparent; border-color: var(--maroon); color: var(--maroon); }
 .btn.ghost:hover:not(:disabled) { background: var(--maroon); color: #fff; }
+.btn.danger { background: var(--danger); color: #fff; }
+.btn.danger:hover:not(:disabled) { background: #7e271d; }
 .btn.ghost.orange { border-color: var(--orange); color: var(--orange); }
 .btn.ghost.orange:hover:not(:disabled) { background: var(--orange); color: #fff; }
 .btn.wide { width: 100%; }
@@ -546,27 +548,32 @@ input, textarea, select { font: inherit; }
   background: var(--card);
 }
 
+/* A connected segmented control, not two standalone buttons — one shared
+   border around the group, a divider between segments, and a filled active
+   segment. Reads as "pick one of these two" rather than two separate
+   primary/secondary actions. */
 .onboarding-choice-row {
   display: flex;
-  gap: 10px;
   justify-content: center;
-  flex-wrap: wrap;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 .onboarding-choice {
   flex: 1 1 180px;
-  max-width: 240px;
+  max-width: 320px;
   padding: 16px 14px;
-  border: 2px solid var(--line-strong);
-  border-radius: var(--radius);
+  border: none;
+  border-right: 2px solid var(--line-strong);
   background: var(--card);
   color: var(--ink);
   font-weight: 600;
   font-size: 14.5px;
-  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease;
 }
-.onboarding-choice:hover { border-color: var(--orange); }
+.onboarding-choice:last-child { border-right: none; }
+.onboarding-choice:hover { background: #EDE8DC; }
 .onboarding-choice.on {
-  border-color: var(--orange);
   background: var(--orange);
   color: #fff;
 }
@@ -635,7 +642,8 @@ input, textarea, select { font: inherit; }
   .onboarding-card { padding: 32px 22px 26px; min-height: 340px; }
   .onboarding-question { font-size: 19px; }
   .onboarding-choice-row { flex-direction: column; }
-  .onboarding-choice { max-width: none; }
+  .onboarding-choice { max-width: none; border-right: none; border-bottom: 2px solid var(--line-strong); }
+  .onboarding-choice:last-child { border-bottom: none; }
   .onboarding-actions { flex-direction: column-reverse; align-items: stretch; }
   .onboarding-continue { margin-left: 0; width: 100%; }
   .onboarding-skip { text-align: center; }
@@ -1096,6 +1104,7 @@ input, textarea, select { font: inherit; }
   animation: rise-in 0.2s ease;
 }
 @keyframes rise-in { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-confirm { max-width: 420px; }
 .modal-header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--line);
@@ -1187,6 +1196,19 @@ input, textarea, select { font: inherit; }
   padding: 2px 7px;
   border-radius: 999px;
   margin-left: 6px;
+  vertical-align: middle;
+}
+
+.industry-chip {
+  display: inline-block;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--maroon);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-right: 6px;
   vertical-align: middle;
 }
 
@@ -1453,6 +1475,23 @@ input, textarea, select { font: inherit; }
 .rendered-html i, .rendered-html em { font-style: italic; }
 .rendered-html > *:last-child { margin-bottom: 0; }
 
+.composer-video-row { padding: 0 20px 12px; }
+.composer-video-input {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--card);
+  color: var(--ink);
+}
+.composer-video-preview {
+  margin-top: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.composer-video-preview iframe { width: 100%; height: 100%; border: none; display: block; }
+
 .composer-previews {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
@@ -1500,6 +1539,25 @@ input, textarea, select { font: inherit; }
 .post-meta { color: var(--ink-soft); font-size: 12.5px; line-height: 1.3; }
 .post-time { color: var(--ink-soft); font-size: 11.5px; margin-top: 1px; }
 .post-delete-btn { margin-left: auto; flex-shrink: 0; }
+
+/* Trashcan delete buttons — replace the old plain-text "Delete" links so an
+   accidental tap doesn't read as a real button and a real click still needs
+   the confirm dialog to land. */
+.icon-btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.icon-btn-delete:hover { background: var(--orange-soft); color: var(--danger); }
+.icon-btn-delete.small { width: 22px; height: 22px; margin-left: 4px; }
 .post-title {
   font-family: var(--display);
   font-weight: 800;
@@ -1509,6 +1567,14 @@ input, textarea, select { font: inherit; }
   line-height: 1.3;
 }
 .post-body { margin: 8px 0 0; white-space: pre-wrap; color: var(--ink); line-height: 1.6; }
+
+.post-video {
+  margin-top: 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.post-video iframe { width: 100%; height: 100%; border: none; display: block; }
 
 .post-images {
   margin-top: 14px;
@@ -2109,6 +2175,12 @@ input, textarea, select { font: inherit; }
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .profile-section:hover { border-color: var(--line-strong); }
+/* Every .profile-section is its own stacking context (the entrance
+   animation touches transform/opacity), so a position:absolute dropdown
+   inside one — the city autocomplete list — can't out-rank a later section
+   just by having a high z-index; the whole section it lives in needs to
+   out-rank its siblings. */
+.profile-section-location { position: relative; z-index: 5; }
 /* Stagger each card's entrance slightly so the page feels like it's
    settling into place rather than popping in all at once. */
 .profile-section:nth-of-type(1) { animation-delay: 0.02s; }
@@ -2135,15 +2207,14 @@ input, textarea, select { font: inherit; }
    instead of the centered, capped-width onboarding layout. */
 .profile-choice-row {
   justify-content: stretch;
-  flex-wrap: nowrap;
-  gap: 10px;
+  border-width: 1px;
 }
 .profile-choice-row .onboarding-choice {
   flex: 1 1 0;
   max-width: none;
   padding: 10px 12px;
   font-size: 13.5px;
-  border-width: 1px;
+  border-right-width: 1px;
 }
 .profile-actions {
   display: flex;
@@ -2219,6 +2290,7 @@ input, textarea, select { font: inherit; }
 .empty-state-icon svg { width: 100%; height: 100%; }
 .empty-state-message { font-weight: 600; color: var(--ink); margin: 0 0 4px; }
 .empty-state-sub { font-size: 13.5px; margin: 0; }
+.empty-state-action { margin-top: 16px; }
 
 .loading-state {
   text-align: center;
@@ -2467,7 +2539,7 @@ input, textarea, select { font: inherit; }
   .detail-row { grid-template-columns: 1fr; gap: 2px; }
   .detail-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; }
   .event-card { grid-template-columns: 74px 1fr; }
-  .event-card > .btn { grid-column: 1 / -1; justify-self: end; }
+  .event-card > .btn, .event-card > .icon-btn-delete { grid-column: 1 / -1; justify-self: end; }
 }
 /* ---------- Alumni map ---------- */
 .map-shell { margin-top: 4px; }
@@ -2514,6 +2586,21 @@ input, textarea, select { font: inherit; }
   font-weight: 800;
   font-size: 13px;
 }
+
+/* Hover preview — a mini photo + name shown before you click a pin. */
+.map-tooltip-wrap {
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  padding: 6px 10px 6px 6px;
+  opacity: 1;
+}
+.map-tooltip-wrap::before { border-top-color: var(--line-strong); }
+.map-tooltip { display: flex; align-items: center; gap: 8px; }
+.map-tooltip-text { display: flex; flex-direction: column; line-height: 1.25; font-size: 12.5px; }
+.map-tooltip-text strong { font-size: 13px; color: var(--ink); }
+.map-tooltip-extra { color: var(--ink-soft); font-size: 11px; }
 
 /* Popup content when a pin is clicked — list of alumni at that spot. */
 .leaflet-popup-content-wrapper {
@@ -2580,7 +2667,8 @@ input, textarea, select { font: inherit; }
   .person-badge-current { font-size: 9px; padding: 1px 5px; }
   .person-action { padding: 6px; }
   .job-card, .event-card { grid-template-columns: 1fr; }
-  .job-card > .btn, .event-card > .btn { justify-self: start; margin-top: 8px; }
+  .job-card > .btn, .event-card > .btn,
+  .job-card > .icon-btn-delete, .event-card > .icon-btn-delete { justify-self: start; margin-top: 8px; }
   .create-panel { padding: 14px; }
 }
 @media (max-width: 720px) {

@@ -296,7 +296,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </label>
       </div>
 
-      <div className="profile-section">
+      <div className="profile-section profile-section-location">
         <h3 className="profile-section-title">Location</h3>
         <label className="field"><span>Country</span>
           <CountryAutocomplete

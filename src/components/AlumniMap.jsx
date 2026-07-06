@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../supabaseClient'
-import { PhotoBlock } from './Directory.jsx'
+import { PhotoBlock, Avatar } from './Directory.jsx'
 import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -13,11 +13,19 @@ const PROFILE_FIELDS =
   'is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, ' +
   'mentorship_description, approved, lat, lng'
 
-// People who geocode to (roughly) the same spot share one pin, so a city
-// with 40 Eendragters doesn't paint 40 overlapping markers on top of
-// each other. ~0.01deg is on the order of a city block.
-function clusterKey(lat, lng) {
-  return `${lat.toFixed(2)},${lng.toFixed(2)}`
+// People sharing a city/country cluster onto one pin, so a city with 40
+// Eendragters doesn't paint 40 overlapping markers on top of each other —
+// grouping by place name (rather than raw lat/lng) means two people
+// geocoded to slightly different addresses within the same city ("Cape
+// Town" vs. a specific Cape Town suburb) still land in the same bubble.
+// Anyone missing a city/country falls back to rounding their coordinates
+// (~0.01deg, on the order of a city block) so they still cluster with
+// close-by pins instead of each getting their own marker.
+function clusterKey(p) {
+  const city = (p.city || '').trim().toLowerCase()
+  const country = (p.country || '').trim().toLowerCase()
+  if (city || country) return `place:${city}|${country}`
+  return `coord:${p.lat.toFixed(2)},${p.lng.toFixed(2)}`
 }
 
 function pinIcon(count) {
@@ -50,7 +58,7 @@ function FitToMarkers({ points }) {
   return null
 }
 
-export default function AlumniMap({ session, onMessage }) {
+export default function AlumniMap({ session, onMessage, onGoToProfile }) {
   const [people, setPeople] = useState([])
   const [loaded, setLoaded] = useState(false)
   const [openProfile, setOpenProfile] = useState(null)
@@ -70,11 +78,21 @@ export default function AlumniMap({ session, onMessage }) {
   const clusters = useMemo(() => {
     const map = new Map()
     for (const p of pinned) {
-      const key = clusterKey(p.lat, p.lng)
-      if (!map.has(key)) map.set(key, { key, lat: p.lat, lng: p.lng, people: [] })
-      map.get(key).people.push(p)
+      const key = clusterKey(p)
+      if (!map.has(key)) map.set(key, { key, latSum: 0, lngSum: 0, people: [] })
+      const c = map.get(key)
+      c.latSum += p.lat
+      c.lngSum += p.lng
+      c.people.push(p)
     }
-    return [...map.values()]
+    // Position each cluster's pin at the centroid of everyone grouped into
+    // it, rather than just the first person's exact coordinates.
+    return [...map.values()].map((c) => ({
+      key: c.key,
+      lat: c.latSum / c.people.length,
+      lng: c.lngSum / c.people.length,
+      people: c.people,
+    }))
   }, [pinned])
 
   const placeCount = useMemo(
@@ -100,6 +118,8 @@ export default function AlumniMap({ session, onMessage }) {
           icon="search"
           message="No one's on the map yet."
           subMessage="A pin appears automatically once an alumnus saves a city on their profile."
+          actionLabel={onGoToProfile ? 'Update your profile location' : undefined}
+          onAction={onGoToProfile}
         />
       )}
 
@@ -113,8 +133,20 @@ export default function AlumniMap({ session, onMessage }) {
             <FitToMarkers points={clusters} />
             {clusters.map((c) => {
               const place = [c.people[0].city, c.people[0].country].filter(Boolean).join(', ')
+              const first = c.people[0]
               return (
                 <Marker key={c.key} position={[c.lat, c.lng]} icon={pinIcon(c.people.length)}>
+                  <Tooltip direction="top" offset={[0, -16]} opacity={1} className="map-tooltip-wrap">
+                    <div className="map-tooltip">
+                      <Avatar url={first.avatar_url} name={first.full_name} size={28} />
+                      <span className="map-tooltip-text">
+                        <strong>{first.full_name || 'Alumnus'}</strong>
+                        {c.people.length > 1 && (
+                          <span className="map-tooltip-extra">+{c.people.length - 1} more here</span>
+                        )}
+                      </span>
+                    </div>
+                  </Tooltip>
                   <Popup maxWidth={280} minWidth={220}>
                     <div className="map-popup">
                       <div className="map-popup-title">{place || 'Unknown location'}</div>

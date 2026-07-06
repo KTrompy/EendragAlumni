@@ -13,7 +13,7 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
-export default function Messages({ session, profile, initialTarget, initialDraft, onTargetConsumed, onRead, hideTitle }) {
+export default function Messages({ session, profile, initialTarget, initialDraft, onTargetConsumed, onRead, onBrowseDirectory, hideTitle }) {
   const [threads, setThreads] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [messages, setMessages] = useState([])
@@ -179,6 +179,8 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                 icon="feed"
                 message="No conversations yet."
                 subMessage="Find someone in the directory and hit Message."
+                actionLabel={onBrowseDirectory ? 'Browse the directory' : undefined}
+                onAction={onBrowseDirectory}
               />
             )}
 
@@ -218,6 +220,9 @@ export default function Messages({ session, profile, initialTarget, initialDraft
               <EmptyState
                 icon="feed"
                 message="Select a conversation to start chatting."
+                subMessage="Or browse the directory to start a new one."
+                actionLabel={onBrowseDirectory ? 'Browse the directory' : undefined}
+                onAction={onBrowseDirectory}
               />
             </div>
           ) : (

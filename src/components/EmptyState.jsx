@@ -1,11 +1,18 @@
 // A friendlier empty state than a single line of muted text. `icon` picks one
-// of a few simple line-art illustrations; `message` and `subMessage` are copy.
-export default function EmptyState({ icon = 'feed', message, subMessage }) {
+// of a few simple line-art illustrations; `message` and `subMessage` are
+// copy. `actionLabel`/`onAction` add an optional CTA button so an empty
+// state is a nudge toward doing something, not a dead end.
+export default function EmptyState({ icon = 'feed', message, subMessage, actionLabel, onAction }) {
   return (
     <div className="empty-state">
       <div className="empty-state-icon">{ICONS[icon] || ICONS.feed}</div>
       <p className="empty-state-message">{message}</p>
       {subMessage && <p className="empty-state-sub">{subMessage}</p>}
+      {actionLabel && onAction && (
+        <button type="button" className="btn primary small empty-state-action" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
     </div>
   )
 }

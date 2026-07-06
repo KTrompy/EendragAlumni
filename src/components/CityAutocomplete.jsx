@@ -61,7 +61,7 @@ export default function CityAutocomplete({
         if (rows.length === 0 && country) {
           rows = await search(q)
         }
-        setSuggestions(rows)
+        setSuggestions(dedupe(rows))
       } catch {
         // offline or blocked — just show no suggestions, free text still works
       } finally {
@@ -72,6 +72,30 @@ export default function CityAutocomplete({
     return () => clearTimeout(debounceRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, country])
+
+  // Nominatim often returns the same suburb multiple times, once per postal
+  // code subdivision it's split into (that's the "two Milnertons" bug) — from
+  // a "pick your general area" city field, those are indistinguishable and
+  // just look like a broken duplicate. Drop the postcode segment and collapse
+  // anything that becomes identical to one entry.
+  function cleanLabel(row) {
+    const postcode = row.address?.postcode
+    const parts = row.display_name.split(',').map((p) => p.trim()).filter(Boolean)
+    return (postcode ? parts.filter((p) => p !== postcode) : parts).join(', ')
+  }
+
+  function dedupe(rows) {
+    const seen = new Set()
+    const out = []
+    for (const row of rows) {
+      const label = cleanLabel(row)
+      const key = label.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({ ...row, display_name: label })
+    }
+    return out
+  }
 
   function pick(row) {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)

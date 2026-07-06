@@ -191,7 +191,13 @@ export default function App() {
         {tab === 'directory' && (
           <Directory session={session} onMessage={openMessage} />
         )}
-        {tab === 'map' && <AlumniMap session={session} onMessage={openMessage} />}
+        {tab === 'map' && (
+          <AlumniMap
+            session={session}
+            onMessage={openMessage}
+            onGoToProfile={() => attemptNavigate(() => setTab('profile'))}
+          />
+        )}
         {tab === 'events' && <Events session={session} profile={profile} />}
         {tab === 'jobs' && <Jobs session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'donate' && <Donate />}
@@ -225,6 +231,10 @@ export default function App() {
         initialTarget={dmTarget}
         initialDraft={dmDraft}
         onTargetConsumed={() => { setDmTarget(null); setDmDraft('') }}
+        onBrowseDirectory={() => {
+          setMessagesOpen(false)
+          attemptNavigate(() => setTab('directory'))
+        }}
       />
 
       {pendingNav && (

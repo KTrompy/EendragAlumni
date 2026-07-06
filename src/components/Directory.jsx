@@ -136,6 +136,11 @@ export default function Directory({ session, onMessage }) {
     setFilterOpen(false)
   }
   function clearDraftFilters() { setDraftFilters(EMPTY_FILTERS) }
+  function clearAllFilters() {
+    setFilters(EMPTY_FILTERS)
+    setDraftFilters(EMPTY_FILTERS)
+    setQ('')
+  }
 
   function toggleDecade(startYear) {
     const isActive = Number(draftFilters.yearFrom) === startYear && Number(draftFilters.yearTo) === startYear + 9
@@ -216,6 +221,8 @@ export default function Directory({ session, onMessage }) {
           icon="search"
           message="No matching Eendragters found."
           subMessage="Try widening a filter or clearing them all."
+          actionLabel="Clear filters"
+          onAction={clearAllFilters}
         />
       )}
 
@@ -250,15 +257,14 @@ export default function Directory({ session, onMessage }) {
 
             <div className="filter-section filter-section-primary">
               <div className="filter-section-body">
-                <div className="filter-radio-row">
-                  <button
-                    className={draftFilters.mentor === MENTOR.ALL ? 'on' : ''}
-                    onClick={() => setDraft('mentor', MENTOR.ALL)}
-                  >All</button>
-                  <button
-                    className={draftFilters.mentor === MENTOR.YES ? 'on' : ''}
-                    onClick={() => setDraft('mentor', MENTOR.YES)}
-                  >🤝 Open to mentoring</button>
+                <div className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    id="mentor-filter"
+                    checked={draftFilters.mentor === MENTOR.YES}
+                    onChange={(e) => setDraft('mentor', e.target.checked ? MENTOR.YES : MENTOR.ALL)}
+                  />
+                  <label htmlFor="mentor-filter">🤝 Open to mentoring</label>
                 </div>
               </div>
             </div>
@@ -374,11 +380,11 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
             {isMe && <span className="person-name-you">You</span>}
             {p.is_current_resident && <span className="person-badge-current">In house</span>}
           </h3>
-          <p className="person-industry">{p.industry || ' '}</p>
           <p className="person-occupation">{roleLine || ' '}</p>
           <p className="person-location">{locationLine || ' '}</p>
           <p className="person-occupation">
             {p.grad_year && <span className="person-year-badge">Class of {p.grad_year}</span>}
+            {p.industry && <span className="industry-chip">{p.industry}</span>}
             {p.available_for_mentorship && <span className="mentor-chip">🤝 Mentoring</span>}
           </p>
         </div>
