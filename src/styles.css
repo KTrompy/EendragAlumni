@@ -1113,6 +1113,8 @@ input, textarea, select { font: inherit; }
   flex-wrap: wrap;
   background: var(--paper);
 }
+.modal.confirm-modal { max-width: 420px; }
+.modal.confirm-modal .modal-body p { margin: 0 0 10px; line-height: 1.5; }
 
 .linkedin-link {
   display: inline-flex;
@@ -1857,6 +1859,7 @@ input, textarea, select { font: inherit; }
   margin-bottom: 22px;
   animation: profile-section-in 0.35s ease both;
 }
+.profile-dirty-notice { margin: 0 0 18px; animation: profile-chip-in 0.2s ease; }
 .hint { font-size: 12px; color: var(--ink-soft); margin: 6px 0 0; }
 
 /* ---------- Profile page (grouped, animated sections) ---------- */

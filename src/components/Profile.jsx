@@ -18,7 +18,7 @@ const EMPTY = {
   is_current_resident: false,
 }
 
-export default function Profile({ session, profile, onSaved }) {
+export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef }) {
   const [form, setForm] = useState(EMPTY)
   const [customIndustry, setCustomIndustry] = useState('')
   const [customCity, setCustomCity] = useState('')
@@ -29,6 +29,7 @@ export default function Profile({ session, profile, onSaved }) {
   const [error, setError] = useState(null)
   const [geoWarning, setGeoWarning] = useState(false)
   const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
+  const [dirty, setDirty] = useState(false)
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -51,10 +52,20 @@ export default function Profile({ session, profile, onSaved }) {
       })
       if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
       setCityCoords(null)
+      setDirty(false)
     }
   }, [profile])
 
-  function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false) }
+  // Let the parent (App) know whenever there are unsaved edits, so it can
+  // warn before letting someone navigate away and lose them.
+  useEffect(() => { onDirtyChange?.(dirty) }, [dirty]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the parent's ref pointing at the latest save() closure, so App can
+  // trigger a save (e.g. from the "leave without saving?" prompt) without
+  // this component needing to know anything about navigation.
+  useEffect(() => { if (saveRef) saveRef.current = save }) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false); setDirty(true) }
 
   const isSA = form.country === 'South Africa'
 
@@ -110,13 +121,15 @@ export default function Profile({ session, profile, onSaved }) {
     setUploading(false)
   }
 
+  // Returns true/false so callers (including App's "leave without saving?"
+  // prompt) can tell whether it's safe to navigate away afterward.
   async function save() {
     setError(null)
     setGeoWarning(false)
 
     if (!form.city.trim()) {
       setError('Please enter your city or town.')
-      return
+      return false
     }
 
     setBusy(true)
@@ -156,9 +169,12 @@ export default function Profile({ session, profile, onSaved }) {
       .eq('id', session.user.id)
       .select()
       .single()
-    if (error) setError(error.message)
-    else { onSaved(data); setSaved(true) }
     setBusy(false)
+    if (error) { setError(error.message); return false }
+    onSaved(data)
+    setSaved(true)
+    setDirty(false)
+    return true
   }
 
   async function deleteProfile() {
@@ -192,6 +208,12 @@ export default function Profile({ session, profile, onSaved }) {
       <p className="panel-sub">
         This is what other Eendragters see on the wall and in the directory.
       </p>
+
+      {dirty && (
+        <p className="onboarding-nudge profile-dirty-notice">
+          You have unsaved changes — don't forget to hit "Save changes" below before you leave this page.
+        </p>
+      )}
 
       <div className="avatar-editor">
         <Avatar url={profile?.avatar_url} name={form.full_name} size={88} />
@@ -265,7 +287,7 @@ export default function Profile({ session, profile, onSaved }) {
           <label className="field"><span>Type your industry</span>
             <input
               value={customIndustry}
-              onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false) }}
+              onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false); setDirty(true) }}
               placeholder="e.g. Technology, Healthcare, Finance"
             />
           </label>

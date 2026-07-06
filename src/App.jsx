@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import Onboarding from './components/Onboarding.jsx'
@@ -32,6 +32,62 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+
+  // Guards against losing unsaved profile edits. `profileDirty` mirrors
+  // whether the profile form currently has unsaved changes; `profileSaveRef`
+  // lets us trigger that form's save() from up here (e.g. from the "leave
+  // without saving?" prompt) without Profile needing to know about
+  // navigation at all. `pendingNav`, when set, means someone tried to
+  // navigate away while dirty and we're waiting on their answer.
+  const [profileDirty, setProfileDirty] = useState(false)
+  const profileSaveRef = useRef(null)
+  const [pendingNav, setPendingNav] = useState(null)
+  const [leaveBusy, setLeaveBusy] = useState(false)
+  const [leaveError, setLeaveError] = useState(null)
+
+  // Warn on an actual browser navigation/refresh/close too, not just
+  // switching tabs inside the app.
+  useEffect(() => {
+    function handler(e) {
+      if (!profileDirty) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [profileDirty])
+
+  // Runs `action` immediately unless the profile page currently has unsaved
+  // changes, in which case it's stashed and the confirm prompt takes over.
+  function attemptNavigate(action) {
+    if (tab === 'profile' && profileDirty) {
+      setLeaveError(null)
+      setPendingNav(() => action)
+    } else {
+      action()
+    }
+  }
+
+  async function confirmSaveAndLeave() {
+    setLeaveBusy(true)
+    setLeaveError(null)
+    const ok = await profileSaveRef.current?.()
+    setLeaveBusy(false)
+    if (!ok) { setLeaveError("Couldn't save — check the profile page for what needs fixing."); return }
+    pendingNav?.()
+    setPendingNav(null)
+  }
+
+  function confirmDiscardAndLeave() {
+    setProfileDirty(false) // Profile is about to unmount — nothing left to warn about
+    pendingNav?.()
+    setPendingNav(null)
+  }
+
+  function keepEditing() {
+    setPendingNav(null)
+    setLeaveError(null)
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -108,12 +164,15 @@ export default function App() {
               <button
                 key={t.id}
                 className={tab === t.id ? 'tab active' : 'tab'}
-                onClick={() => { setTab(t.id); setNavOpen(false) }}
+                onClick={() => attemptNavigate(() => { setTab(t.id); setNavOpen(false) })}
               >
                 {t.label}
               </button>
             ))}
-            <button className="tab signout" onClick={() => { setNavOpen(false); supabase.auth.signOut() }}>
+            <button
+              className="tab signout"
+              onClick={() => attemptNavigate(() => { setNavOpen(false); supabase.auth.signOut() })}
+            >
               Sign out
             </button>
           </nav>
@@ -137,7 +196,13 @@ export default function App() {
         {tab === 'jobs' && <Jobs session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'donate' && <Donate />}
         {tab === 'profile' && (
-          <Profile session={session} profile={profile} onSaved={setProfile} />
+          <Profile
+            session={session}
+            profile={profile}
+            onSaved={setProfile}
+            onDirtyChange={setProfileDirty}
+            saveRef={profileSaveRef}
+          />
         )}
       </main>
 
@@ -161,6 +226,31 @@ export default function App() {
         initialDraft={dmDraft}
         onTargetConsumed={() => { setDmTarget(null); setDmDraft('') }}
       />
+
+      {pendingNav && (
+        <>
+          <div className="modal-backdrop" onClick={keepEditing} />
+          <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-label="Unsaved changes">
+            <div className="modal-header">
+              <h2>Unsaved changes</h2>
+              <button className="modal-close" onClick={keepEditing} aria-label="Keep editing">×</button>
+            </div>
+            <div className="modal-body">
+              <p>You've made changes to your profile that haven't been saved yet. Save them before you go?</p>
+              {leaveError && <p className="form-error">{leaveError}</p>}
+            </div>
+            <div className="modal-footer">
+              <button className="btn ghost" onClick={keepEditing} disabled={leaveBusy}>Keep editing</button>
+              <button className="btn ghost" onClick={confirmDiscardAndLeave} disabled={leaveBusy} style={{ color: 'var(--error)' }}>
+                Discard changes
+              </button>
+              <button className="btn primary" onClick={confirmSaveAndLeave} disabled={leaveBusy}>
+                {leaveBusy ? 'Saving…' : 'Save & leave'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
