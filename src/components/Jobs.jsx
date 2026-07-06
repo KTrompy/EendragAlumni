@@ -4,7 +4,18 @@ import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
+import { Avatar } from './Directory.jsx'
+import ProfileModal from './ProfileModal.jsx'
+import { buildIcebreaker, matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
+
+const NEW_WINDOW_MS = 48 * 60 * 60 * 1000 // how recent counts as "New"
+
+// Fields needed for the poster's profile modal + "in common with you" badge —
+// same shape Directory/Events already pull for the same purpose.
+const POSTER_FIELDS =
+  'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
+  'is_current_resident, available_for_mentorship, mentorship_description, linkedin_url, bio'
 
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
 
@@ -48,11 +59,16 @@ export default function Jobs({ session, profile, onMessage }) {
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [openProfile, setOpenProfile] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
 
   async function load() {
     const { data } = await supabase
       .from('jobs')
-      .select('id, title, company, location, employment_type, description, apply_url, contact_email, created_at, posted_by, profiles!jobs_posted_by_fkey ( full_name )')
+      .select(
+        `id, title, company, location, employment_type, description, apply_url, contact_email, created_at, posted_by,
+         profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`
+      )
       .order('created_at', { ascending: false })
       .limit(50)
     setJobs(data || [])
@@ -83,6 +99,28 @@ export default function Jobs({ session, profile, onMessage }) {
 
   async function removeJob(id) {
     await supabase.from('jobs').delete().eq('id', id)
+  }
+
+  // Copies a plain-text summary so a listing can be forwarded on WhatsApp/
+  // email — sharing outside the app is still a way of engaging with it, and
+  // the person you send it to might apply even before they'd log in.
+  async function shareJob(j) {
+    const applyLine = j.apply_url || j.contact_email
+      ? `Apply: ${j.apply_url || j.contact_email}`
+      : null
+    const lines = [
+      `${j.title} @ ${j.company}`,
+      [j.employment_type, j.location].filter(Boolean).join(' · '),
+      applyLine,
+      '(via the Eendrag Alumni job board)',
+    ].filter(Boolean)
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'))
+      setCopiedId(j.id)
+      setTimeout(() => setCopiedId((id) => (id === j.id ? null : id)), 1500)
+    } catch {
+      // Clipboard API unavailable (e.g. insecure context) — button just won't confirm.
+    }
   }
 
   const companyOptions = useMemo(
@@ -137,6 +175,23 @@ export default function Jobs({ session, profile, onMessage }) {
           onCancel={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); load() }}
         />
+      )}
+
+      {/* Social proof + a standing nudge to post, visible on every visit
+          (not just when the board is empty) — the header button is easy to
+          miss, this repeats the ask with a reason attached. */}
+      {!showForm && jobs.length > 0 && (
+        <div className="jobs-encourage-banner">
+          <span>
+            🎓 {jobs.length} {jobs.length === 1 ? 'role has' : 'roles have'} been shared by fellow Eendragters.{' '}
+            {canPost
+              ? 'Know of an opening? Add yours — it takes about two minutes.'
+              : "Once your account's approved, you'll be able to post one too."}
+          </span>
+          {canPost && (
+            <button className="btn primary small" onClick={() => setShowForm(true)}>Post a role</button>
+          )}
+        </div>
       )}
 
       <div className="directory-toolbar">
@@ -240,19 +295,31 @@ export default function Jobs({ session, profile, onMessage }) {
       <ul className="job-list">
         {shown.map((j) => {
           const isMine = j.posted_by === session.user.id
+          const isNew = Date.now() - new Date(j.created_at).getTime() < NEW_WINDOW_MS
+          const reason = !isMine ? matchReason(profile, j.profiles) : null
           return (
             <li className="job-card" key={j.id}>
               <div>
                 <h3 className="job-title">
                   {j.title}
+                  {isNew && <span className="job-badge job-badge-new">New</span>}
                   {j.employment_type && <span className="job-badge">{j.employment_type}</span>}
                 </h3>
                 <p className="job-meta">
                   <strong>{j.company}</strong>
                   {j.location && ` · ${j.location}`}
-                  {' · '}
-                  Posted by {j.profiles?.full_name || 'a member'}, {timeAgo(j.created_at)}
                 </p>
+                <div className="job-poster-row">
+                  <button className="job-poster" onClick={() => setOpenProfile(j.profiles)}>
+                    <Avatar url={j.profiles?.avatar_url} name={j.profiles?.full_name} size={22} />
+                    <span>Posted by {j.profiles?.full_name || 'a member'} · {timeAgo(j.created_at)}</span>
+                  </button>
+                  {reason && (
+                    <span className="job-match-badge" title="Something you have in common with the poster">
+                      {reason}
+                    </span>
+                  )}
+                </div>
                 <div
                   className="job-desc rendered-html"
                   dangerouslySetInnerHTML={{ __html: trimTrailingHtml(sanitizeHtml(j.description)) }}
@@ -282,6 +349,9 @@ export default function Jobs({ session, profile, onMessage }) {
                       Message about this role
                     </button>
                   )}
+                  <button className="btn ghost small" onClick={() => shareJob(j)}>
+                    {copiedId === j.id ? 'Copied!' : 'Share'}
+                  </button>
                 </div>
               </div>
               {isMine && (
@@ -295,6 +365,31 @@ export default function Jobs({ session, profile, onMessage }) {
           )
         })}
       </ul>
+
+      {/* End-of-list nudge — a second, quieter chance to post once someone's
+          actually scrolled through what's here, rather than the ask only
+          ever living above the fold. */}
+      {shown.length > 0 && (
+        <p className="jobs-end-nudge">
+          That's every open role right now.{' '}
+          {canPost
+            ? <button className="link-btn" onClick={() => setShowForm(true)}>Post one</button>
+            : 'Check back soon for more.'}
+        </p>
+      )}
+
+      {openProfile && (
+        <ProfileModal
+          person={openProfile}
+          isMe={openProfile.id === session.user.id}
+          onClose={() => setOpenProfile(null)}
+          onMessage={() => {
+            const p = openProfile
+            setOpenProfile(null)
+            onMessage({ id: p.id, full_name: p.full_name }, buildIcebreaker(profile, p))
+          }}
+        />
+      )}
     </section>
   )
 }
@@ -362,11 +457,14 @@ function JobForm({ session, onCancel, onCreated }) {
   return (
     <div className="create-panel">
       <h3>Post a role</h3>
+      <p className="form-hint">
+        Takes about two minutes — the more specific the listing, the more likely a fellow Eendragter applies.
+      </p>
       <div className="field-row">
-        <label className="field"><span>Title</span>
+        <label className="field"><span>Title *</span>
           <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Junior software engineer" />
         </label>
-        <label className="field"><span>Company</span>
+        <label className="field"><span>Company *</span>
           <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
         </label>
       </div>
@@ -382,7 +480,7 @@ function JobForm({ session, onCancel, onCreated }) {
           </div>
         </label>
       </div>
-      <label className="field"><span>Description</span></label>
+      <label className="field"><span>Description *</span></label>
       <div className="rte-box">
         <RichTextEditor
           value={form.description}
@@ -398,6 +496,7 @@ function JobForm({ session, onCancel, onCreated }) {
           <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
         </label>
       </div>
+      <p className="form-hint">Add at least one of these so people can actually apply.</p>
       {error && <p className="form-error">{error}</p>}
       <div className="btn-row">
         <button className="btn ghost" onClick={onCancel}>Cancel</button>
