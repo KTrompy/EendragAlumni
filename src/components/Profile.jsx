@@ -414,6 +414,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <button className="btn primary" onClick={save} disabled={busy}>
           {busy ? 'Saving…' : 'Save changes'}
         </button>
+        <button className="btn ghost" onClick={() => supabase.auth.signOut()} disabled={busy}>
+          Sign out
+        </button>
         <button className="btn ghost" onClick={deleteProfile} disabled={busy} style={{ color: 'var(--error)' }}>
           Delete profile
         </button>

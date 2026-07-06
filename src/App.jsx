@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Feed from './components/Feed.jsx'
-import Directory from './components/Directory.jsx'
+import Directory, { Avatar } from './components/Directory.jsx'
 import FloatingMessages from './components/FloatingMessages.jsx'
 import Profile from './components/Profile.jsx'
 import Events from './components/Events.jsx'
@@ -19,6 +19,17 @@ const TABS = [
   { id: 'jobs', label: 'Jobs' },
   { id: 'donate', label: 'Support' },
   { id: 'profile', label: 'My profile' },
+]
+
+// The mobile bottom tab bar — a smaller, reordered subset of TABS (Support,
+// My profile and Sign out move to the mobile header/avatar instead, so the
+// bar itself stays to five core sections).
+const MOBILE_TABS = [
+  { id: 'directory', label: 'Eendragters', icon: PeopleIcon },
+  { id: 'jobs', label: 'Jobs', icon: JobsIcon },
+  { id: 'map', label: 'Map', icon: MapIcon },
+  { id: 'feed', label: 'Feed', icon: FeedIcon },
+  { id: 'events', label: 'Events', icon: EventsIcon },
 ]
 
 export default function App() {
@@ -144,6 +155,14 @@ export default function App() {
     <div className="app">
       <header className="masthead">
         <div className="masthead-inner">
+          <button
+            className="mobile-avatar-btn"
+            onClick={() => attemptNavigate(() => setTab('profile'))}
+            aria-label="My profile"
+          >
+            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
+          </button>
+
           <div className="brand">
             <img src="/eendrag-logo.png" alt="Eendrag logo" className="brand-logo" />
             <div>
@@ -151,6 +170,15 @@ export default function App() {
               <span className="brand-motto">Character · Style · Pride · Since 1961</span>
             </div>
           </div>
+
+          <button
+            className="mobile-support-btn"
+            onClick={() => attemptNavigate(() => setTab('donate'))}
+          >
+            <SupportIcon />
+            Support
+          </button>
+
           <button
             className="nav-toggle"
             onClick={() => setNavOpen((o) => !o)}
@@ -223,6 +251,22 @@ export default function App() {
         </div>
       </footer>
 
+      <nav className="mobile-tabbar" aria-label="Main">
+        {MOBILE_TABS.map((t) => {
+          const Icon = t.icon
+          return (
+            <button
+              key={t.id}
+              className={tab === t.id ? 'mobile-tab active' : 'mobile-tab'}
+              onClick={() => attemptNavigate(() => setTab(t.id))}
+            >
+              <Icon />
+              <span>{t.label}</span>
+            </button>
+          )
+        })}
+      </nav>
+
       <FloatingMessages
         session={session}
         profile={profile}
@@ -282,6 +326,65 @@ function CloseIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  )
+}
+function SupportIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M5.6 5.6l3.1 3.1M18.4 5.6l-3.1 3.1M18.4 18.4l-3.1-3.1M5.6 18.4l3.1-3.1" />
+    </svg>
+  )
+}
+
+/* ---------- Mobile bottom tab bar icons ---------- */
+function PeopleIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8.5" cy="8" r="3.2" />
+      <path d="M2.5 19.5c0-3.3 2.7-5.7 6-5.7s6 2.4 6 5.7" />
+      <circle cx="17" cy="8.5" r="2.6" />
+      <path d="M15.6 13.9c2.6.3 4.4 2.3 4.4 5" />
+    </svg>
+  )
+}
+function JobsIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="7.5" width="18" height="12" rx="2" />
+      <path d="M8.5 7.5V6a2.5 2.5 0 0 1 2.5-2.5h2A2.5 2.5 0 0 1 15 6v1.5" />
+      <path d="M3 12.5h18" />
+    </svg>
+  )
+}
+function MapIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s-7-6.2-7-11.2A7 7 0 0 1 19 9.8C19 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.6" r="2.4" />
+    </svg>
+  )
+}
+function FeedIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 9.5h18" />
+      <path d="M7.5 13.5h4M7.5 16.5h9" />
+    </svg>
+  )
+}
+function EventsIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 3v4M16 3v4" />
+      <circle cx="8.3" cy="14.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15.7" cy="14.5" r="1" fill="currentColor" stroke="none" />
     </svg>
   )
 }

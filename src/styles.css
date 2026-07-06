@@ -2690,37 +2690,88 @@ input, textarea, select { font: inherit; }
   .chat-back { display: inline-flex; }
   .field-row { flex-direction: column; gap: 0; }
   .brand-motto { font-size: 9px; letter-spacing: 0.1em; }
-  .nav-toggle { display: inline-flex; align-items: center; justify-content: center; }
-  .tabs {
-    display: none;
-    width: 100%;
-    order: 3;
+
+  /* Mobile swaps the hamburger + dropdown for an avatar (→ profile) and a
+     Support icon in the header, plus a bottom tab bar for the five core
+     sections — so the old toggle-nav is fully retired here, not just
+     visually hidden behind a button that no longer exists. */
+  .nav-toggle { display: none; }
+  .tabs { display: none !important; }
+  .masthead-inner {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand { justify-content: center; text-align: center; min-width: 0; }
+  .brand-name, .brand-motto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mobile-avatar-btn {
+    display: inline-flex;
+    background: none;
+    border: none;
+    padding: 0;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .mobile-support-btn {
+    display: inline-flex;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: 2px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 2px;
+    flex-shrink: 0;
   }
-  .tabs.open { display: flex; }
-  .tabs .tab {
-    width: 100%;
-    text-align: left;
-    padding: 12px 10px;
-    border-radius: var(--radius-sm);
+  .mobile-support-btn:hover { color: var(--orange); }
+
+  /* Reserve room at the bottom of the page for the fixed tab bar (and the
+     floating chat bubble, moved up to sit just above it), so neither
+     covers the footer credit line or the last bit of scrollable content. */
+  .footer { padding-right: 84px; padding-bottom: 84px; }
+  .chat-fab { bottom: 76px; }
+  .chat-panel { bottom: 76px; }
+
+  .mobile-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -2px 10px rgba(26, 26, 26, 0.08);
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
-  .tabs .tab.signout {
-    margin-left: 0;
-    margin-top: 6px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  .mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 2px 6px;
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 10.5px;
+    font-weight: 600;
   }
-  /* Reserve the bottom-right corner for the floating chat bubble so it
-     never sits on top of the footer credit line. */
-  .footer { padding-right: 84px; }
+  .mobile-tab.active { color: var(--orange); }
+
   .calendar-month-label { min-width: 120px; font-size: 15px; }
   .calendar-day-num { font-size: 12px; }
   .dtp-popover { width: min(280px, calc(100vw - 48px)); }
+}
+@media (min-width: 721px) {
+  /* These only exist for the mobile header/tab bar — keep them fully out
+     of the desktop layout rather than relying on the mobile query alone. */
+  .mobile-avatar-btn, .mobile-support-btn, .mobile-tabbar { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
