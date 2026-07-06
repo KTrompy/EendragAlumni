@@ -214,108 +214,141 @@ export default function Profile({ session, profile, onSaved }) {
         </div>
       </div>
 
-      <label className="field"><span>Full name</span>
-        <input value={form.full_name} onChange={(e) => set('full_name', e.target.value)} />
-      </label>
-
-      <div className="checkbox-row">
-        <input
-          id="current-resident"
-          type="checkbox"
-          checked={form.is_current_resident}
-          onChange={(e) => set('is_current_resident', e.target.checked)}
-        />
-        <label htmlFor="current-resident">
-          I currently live in Eendrag (tick if you're still a resident, not yet an alumnus)
+      <div className="profile-section">
+        <h3 className="profile-section-title">Basic info</h3>
+        <label className="field"><span>Full name</span>
+          <input value={form.full_name} onChange={(e) => set('full_name', e.target.value)} />
         </label>
-      </div>
 
-      <div className="field-row">
-        <label className="field"><span>Year left / leaving Eendrag</span>
-          <input type="number" value={form.grad_year} onChange={(e) => set('grad_year', e.target.value)} placeholder="2024" />
-        </label>
-        <label className="field"><span>Degree studied</span>
-          <input value={form.degree} onChange={(e) => set('degree', e.target.value)} placeholder="e.g. BCom Accounting, BEng Mechanical" />
-        </label>
-      </div>
-
-      <label className="field"><span>Industry</span>
-        <div className="select-wrap">
-          <select value={form.industry} onChange={(e) => set('industry', e.target.value)}>
-            <option value="">Select your industry</option>
-            {INDUSTRIES.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
-            <option value="Other">Other (type your own)</option>
-          </select>
+        <div className="field-row">
+          <label className="field"><span>Year left / leaving Eendrag</span>
+            <input type="number" value={form.grad_year} onChange={(e) => set('grad_year', e.target.value)} placeholder="2024" />
+          </label>
+          <label className="field"><span>Degree studied</span>
+            <input value={form.degree} onChange={(e) => set('degree', e.target.value)} placeholder="e.g. BCom Accounting, BEng Mechanical" />
+          </label>
         </div>
-      </label>
-      {form.industry === 'Other' && (
-        <label className="field"><span>Type your industry</span>
-          <input
-            value={customIndustry}
-            onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false) }}
-            placeholder="e.g. Technology, Healthcare, Finance"
-          />
-        </label>
-      )}
 
-      <label className="field"><span>Job title / Position</span>
-        <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="e.g. Software Engineer, Director, Student" />
-      </label>
-
-      <label className="field"><span>Company</span>
-        <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
-      </label>
-
-      <label className="field"><span>Country</span>
-        <CountryAutocomplete
-          value={form.country}
-          onChange={(v) => set('country', v)}
-          placeholder="Start typing a country…"
-        />
-      </label>
-
-      <label className="field"><span>City / Town</span>
-        <CityAutocomplete
-          value={form.city}
-          country={form.country}
-          onChange={(v) => set('city', v)}
-          onSelectCoords={setCityCoords}
-          placeholder="e.g. Cape Town, London, New York"
-        />
-        <span className="hint">Pick a suggestion as you type so the Alumni Map can find you — free typing works too, but a typo won't show up on the map.</span>
-      </label>
-
-      <label className="field"><span>LinkedIn URL</span>
-        <input
-          type="url"
-          value={form.linkedin_url}
-          onChange={(e) => set('linkedin_url', e.target.value)}
-          placeholder="https://linkedin.com/in/yourname"
-        />
-      </label>
-
-      <div className="checkbox-row">
-        <input
-          id="mentor-toggle"
-          type="checkbox"
-          checked={form.available_for_mentorship}
-          onChange={(e) => set('available_for_mentorship', e.target.checked)}
-        />
-        <label htmlFor="mentor-toggle">Open to mentoring other Eendragters</label>
+        <div className="field">
+          <span>Current status</span>
+          <div className="onboarding-choice-row profile-choice-row">
+            <button
+              type="button"
+              className={!form.is_current_resident ? 'onboarding-choice on' : 'onboarding-choice'}
+              onClick={() => set('is_current_resident', false)}
+            >
+              Alumnus
+            </button>
+            <button
+              type="button"
+              className={form.is_current_resident ? 'onboarding-choice on' : 'onboarding-choice'}
+              onClick={() => set('is_current_resident', true)}
+            >
+              Still living in Eendrag
+            </button>
+          </div>
+        </div>
       </div>
-      {form.available_for_mentorship && (
-        <label className="field"><span>What kind of mentorship?</span>
-          <input
-            value={form.mentorship_description}
-            onChange={(e) => set('mentorship_description', e.target.value)}
-            placeholder="e.g. Anybody in the tech space"
+
+      <div className="profile-section">
+        <h3 className="profile-section-title">Career</h3>
+        <label className="field"><span>Industry</span>
+          <div className="select-wrap">
+            <select value={form.industry} onChange={(e) => set('industry', e.target.value)}>
+              <option value="">Select your industry</option>
+              {INDUSTRIES.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
+              <option value="Other">Other (type your own)</option>
+            </select>
+          </div>
+        </label>
+        {form.industry === 'Other' && (
+          <label className="field"><span>Type your industry</span>
+            <input
+              value={customIndustry}
+              onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false) }}
+              placeholder="e.g. Technology, Healthcare, Finance"
+            />
+          </label>
+        )}
+
+        <label className="field"><span>Job title / Position</span>
+          <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="e.g. Software Engineer, Director, Student" />
+        </label>
+
+        <label className="field"><span>Company</span>
+          <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
+        </label>
+      </div>
+
+      <div className="profile-section">
+        <h3 className="profile-section-title">Location</h3>
+        <label className="field"><span>Country</span>
+          <CountryAutocomplete
+            value={form.country}
+            onChange={(v) => set('country', v)}
+            placeholder="Start typing a country…"
           />
         </label>
-      )}
 
-      <label className="field"><span>Bio</span>
-        <textarea rows={3} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="What you've been up to since Eendrag…" />
-      </label>
+        <label className="field"><span>City / Town</span>
+          <CityAutocomplete
+            value={form.city}
+            country={form.country}
+            onChange={(v) => set('city', v)}
+            onSelectCoords={setCityCoords}
+            placeholder="e.g. Cape Town, London, New York"
+          />
+          <span className="hint">Pick a suggestion as you type so the Alumni Map can find you — free typing works too, but a typo won't show up on the map.</span>
+        </label>
+      </div>
+
+      <div className="profile-section">
+        <h3 className="profile-section-title">Online &amp; mentorship</h3>
+        <label className="field"><span>LinkedIn URL</span>
+          <input
+            type="url"
+            value={form.linkedin_url}
+            onChange={(e) => set('linkedin_url', e.target.value)}
+            placeholder="https://linkedin.com/in/yourname"
+          />
+        </label>
+
+        <div className="field">
+          <span>Open to mentoring other Eendragters?</span>
+          <div className="onboarding-choice-row profile-choice-row">
+            <button
+              type="button"
+              className={!form.available_for_mentorship ? 'onboarding-choice on' : 'onboarding-choice'}
+              onClick={() => set('available_for_mentorship', false)}
+            >
+              Not right now
+            </button>
+            <button
+              type="button"
+              className={form.available_for_mentorship ? 'onboarding-choice on' : 'onboarding-choice'}
+              onClick={() => set('available_for_mentorship', true)}
+            >
+              🤝 Yes, happy to help
+            </button>
+          </div>
+        </div>
+        {form.available_for_mentorship && (
+          <label className="field"><span>What kind of mentorship?</span>
+            <input
+              value={form.mentorship_description}
+              onChange={(e) => set('mentorship_description', e.target.value)}
+              placeholder="e.g. Anybody in the tech space"
+            />
+          </label>
+        )}
+      </div>
+
+      <div className="profile-section">
+        <h3 className="profile-section-title">Bio</h3>
+        <label className="field"><span>Bio</span>
+          <textarea rows={3} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="What you've been up to since Eendrag…" />
+        </label>
+      </div>
 
       {error && <p className="form-error">{error}</p>}
       {geoWarning && (
@@ -323,15 +356,20 @@ export default function Profile({ session, profile, onSaved }) {
           Saved — but we couldn't find "{form.city}" to place you on the Alumni Map. Double-check the spelling, or pick a suggestion from the dropdown next time.
         </p>
       )}
-      {saved && <p className="form-notice">Profile saved.</p>}
 
-      <div style={{ display: 'flex', gap: '12px' }}>
+      <div className="profile-actions">
         <button className="btn primary" onClick={save} disabled={busy}>
           {busy ? 'Saving…' : 'Save changes'}
         </button>
         <button className="btn ghost" onClick={deleteProfile} disabled={busy} style={{ color: 'var(--error)' }}>
           Delete profile
         </button>
+        {saved && (
+          <span className="profile-saved-chip">
+            <span className="check">✓</span>
+            Profile saved
+          </span>
+        )}
       </div>
 
       {cropFile && (

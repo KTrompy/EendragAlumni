@@ -1855,8 +1855,78 @@ input, textarea, select { font: inherit; }
   align-items: center;
   gap: 18px;
   margin-bottom: 22px;
+  animation: profile-section-in 0.35s ease both;
 }
 .hint { font-size: 12px; color: var(--ink-soft); margin: 6px 0 0; }
+
+/* ---------- Profile page (grouped, animated sections) ---------- */
+@keyframes profile-section-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.profile-section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 22px 6px;
+  margin-bottom: 16px;
+  animation: profile-section-in 0.35s ease both;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.profile-section:hover { border-color: var(--line-strong); }
+/* Stagger each card's entrance slightly so the page feels like it's
+   settling into place rather than popping in all at once. */
+.profile-section:nth-of-type(1) { animation-delay: 0.02s; }
+.profile-section:nth-of-type(2) { animation-delay: 0.06s; }
+.profile-section:nth-of-type(3) { animation-delay: 0.1s; }
+.profile-section:nth-of-type(4) { animation-delay: 0.14s; }
+.profile-section:nth-of-type(5) { animation-delay: 0.18s; }
+.profile-section:nth-of-type(6) { animation-delay: 0.22s; }
+.profile-section-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--maroon);
+  margin: 0 0 14px;
+}
+.field input, .field textarea, .field select {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  animation: profile-section-in 0.35s ease both;
+  animation-delay: 0.26s;
+}
+.profile-saved-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ok);
+  font-size: 13.5px;
+  font-weight: 600;
+  animation: profile-chip-in 0.25s ease;
+}
+@keyframes profile-chip-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: none; }
+}
+.profile-saved-chip .check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ok);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
 
 /* ---------- Custom-styled selects ----------
    Keeps a real <select> under the hood (full keyboard nav + screen reader
