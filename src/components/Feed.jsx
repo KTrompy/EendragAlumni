@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
+import LoadingState from './LoadingState.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const MAX_IMAGES = 4
@@ -27,6 +28,7 @@ function hasText(html) {
 
 export default function Feed({ session, profile, onMessage }) {
   const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [myLikes, setMyLikes] = useState(new Set())
   const [lightbox, setLightbox] = useState(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -42,7 +44,7 @@ export default function Feed({ session, profile, onMessage }) {
       `)
       .order('created_at', { ascending: false })
       .limit(50)
-    if (error) { console.error(error); return }
+    if (error) { console.error(error); setLoading(false); return }
     setPosts(data || [])
 
     const { data: mine } = await supabase
@@ -50,6 +52,7 @@ export default function Feed({ session, profile, onMessage }) {
       .select('post_id')
       .eq('user_id', session.user.id)
     setMyLikes(new Set((mine || []).map((r) => r.post_id)))
+    setLoading(false)
   }
 
   useEffect(() => {
@@ -105,7 +108,9 @@ export default function Feed({ session, profile, onMessage }) {
 
       <Composer session={session} profile={profile} onPosted={() => { load(); setVisibleCount(PAGE_SIZE) }} />
 
-      {posts.length === 0 && (
+      {loading ? (
+        <LoadingState message="Loading feed…" />
+      ) : posts.length === 0 && (
         <EmptyState icon="feed" message="No posts yet." subMessage="Be the first Eendragter to break the silence." />
       )}
 

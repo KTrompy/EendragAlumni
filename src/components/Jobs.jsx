@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
+import LoadingState from './LoadingState.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
@@ -41,6 +42,7 @@ function openMailto(address, subject) {
 
 export default function Jobs({ session, profile, onMessage }) {
   const [jobs, setJobs] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
@@ -53,6 +55,7 @@ export default function Jobs({ session, profile, onMessage }) {
       .order('created_at', { ascending: false })
       .limit(50)
     setJobs(data || [])
+    setLoading(false)
   }
 
   useEffect(() => {
@@ -159,7 +162,9 @@ export default function Jobs({ session, profile, onMessage }) {
         Showing {shown.length} of {jobs.length} {jobs.length === 1 ? 'role' : 'roles'}
       </p>
 
-      {shown.length === 0 && (
+      {loading ? (
+        <LoadingState message="Loading roles…" />
+      ) : shown.length === 0 && (
         <EmptyState
           icon="jobs"
           message={jobs.length === 0 ? 'No listings yet.' : 'No matching roles found.'}

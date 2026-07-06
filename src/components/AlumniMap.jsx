@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
 import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
+import LoadingState from './LoadingState.jsx'
 
 const PROFILE_FIELDS =
   'id, full_name, grad_year, degree, occupation, industry, company, city, country, ' +
@@ -91,6 +92,8 @@ export default function AlumniMap({ session, onMessage }) {
           {pinned.length} Eendragters pinned across {placeCount} {placeCount === 1 ? 'place' : 'places'}
         </p>
       )}
+
+      {!loaded && <LoadingState message="Loading alumni map…" />}
 
       {loaded && pinned.length === 0 && (
         <EmptyState

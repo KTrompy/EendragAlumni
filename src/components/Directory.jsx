@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
 import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
+import LoadingState from './LoadingState.jsx'
 import ListAutocomplete from './ListAutocomplete.jsx'
 
 const PAGE_SIZE = 12
@@ -70,6 +71,7 @@ const EMPTY_FILTERS = {
 
 export default function Directory({ session, onMessage }) {
   const [people, setPeople] = useState([])
+  const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   // `filters` is what's actually applied to the list below. `draftFilters`
   // is what the open filter panel is editing — nothing in `filters` changes
@@ -86,7 +88,7 @@ export default function Directory({ session, onMessage }) {
       .from('profiles')
       .select('id, full_name, grad_year, degree, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, mentorship_description, approved')
       .order('grad_year', { ascending: false, nullsFirst: false })
-      .then(({ data }) => setPeople(data || []))
+      .then(({ data }) => { setPeople(data || []); setLoading(false) })
   }, [])
 
   // Lock body scroll while the filter drawer is open, and let Escape close it.
@@ -207,7 +209,9 @@ export default function Directory({ session, onMessage }) {
         Showing {shown.length} of {filtered.length} Eendragters
       </p>
 
-      {filtered.length === 0 && (
+      {loading ? (
+        <LoadingState message="Loading Eendragters…" />
+      ) : filtered.length === 0 && (
         <EmptyState
           icon="search"
           message="No matching Eendragters found."

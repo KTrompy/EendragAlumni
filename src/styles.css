@@ -2207,6 +2207,24 @@ input, textarea, select { font: inherit; }
 .empty-state-message { font-weight: 600; color: var(--ink); margin: 0 0 4px; }
 .empty-state-sub { font-size: 13.5px; margin: 0; }
 
+.loading-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--ink-soft);
+}
+.loading-spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 14px;
+  border: 3px solid var(--line-strong);
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: loading-spin 0.7s linear infinite;
+}
+.loading-state-message { font-weight: 600; color: var(--ink); margin: 0; }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+
 /* ---------- Events calendar view ---------- */
 .calendar-header {
   display: flex;

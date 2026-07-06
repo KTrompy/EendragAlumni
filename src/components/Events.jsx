@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
+import LoadingState from './LoadingState.jsx'
 import DateTimePicker from './DateTimePicker.jsx'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
@@ -22,6 +23,7 @@ function timeAgo(iso) {
 
 export default function Events({ session, profile }) {
   const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
   const [myRsvps, setMyRsvps] = useState(new Set())
   const [showForm, setShowForm] = useState(false)
   const [view, setView] = useState('list') // 'list' | 'calendar'
@@ -43,6 +45,7 @@ export default function Events({ session, profile }) {
       .order('event_date', { ascending: true })
       .limit(500)
     setEvents(data || [])
+    setLoading(false)
 
     const { data: mine } = await supabase
       .from('event_rsvps')
@@ -190,7 +193,9 @@ export default function Events({ session, profile }) {
 
       {view === 'list' ? (
         <>
-          {listItems.length === 0 && (
+          {loading ? (
+            <LoadingState message="Loading events…" />
+          ) : listItems.length === 0 && (
             <EmptyState icon="events" message="No events on the calendar yet." subMessage="Post one above to get the first reunion rolling." />
           )}
           <ul className="event-list">
