@@ -100,6 +100,9 @@ export default function Feed({ session, profile, onMessage }) {
 
   return (
     <section className="feed-section">
+      <h2 className="panel-title">Feed</h2>
+      <p className="panel-sub">Photos, updates, shoutouts — what the house is up to.</p>
+
       <Composer session={session} profile={profile} onPosted={() => { load(); setVisibleCount(PAGE_SIZE) }} />
 
       {posts.length === 0 && (

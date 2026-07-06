@@ -12,6 +12,7 @@ export default function ListAutocomplete({
   placeholder,
   inputClassName,
   limit = 8,
+  clearable = false,
 }) {
   const [open, setOpen] = useState(false)
   const blurTimeoutRef = useRef(null)
@@ -40,7 +41,7 @@ export default function ListAutocomplete({
   const showDropdown = open && suggestions.length > 0
 
   return (
-    <div className="city-autocomplete">
+    <div className={clearable ? 'city-autocomplete has-clear' : 'city-autocomplete'}>
       <input
         className={inputClassName}
         value={value}
@@ -50,6 +51,15 @@ export default function ListAutocomplete({
         placeholder={placeholder}
         autoComplete="off"
       />
+      {clearable && value && (
+        <button
+          type="button"
+          className="search-clear"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onChange('')}
+          aria-label="Clear"
+        >×</button>
+      )}
       {showDropdown && (
         <ul className="city-suggestions">
           {suggestions.map((option) => (

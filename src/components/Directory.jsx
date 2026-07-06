@@ -281,9 +281,19 @@ export default function Directory({ session, onMessage }) {
                 </div>
               )}
               <div className="filter-year-row">
-                <input type="number" placeholder="From" value={draftFilters.yearFrom} onChange={(e) => setDraft('yearFrom', e.target.value)} />
+                <div className="input-clear-wrap">
+                  <input type="number" placeholder="From" value={draftFilters.yearFrom} onChange={(e) => setDraft('yearFrom', e.target.value)} />
+                  {draftFilters.yearFrom && (
+                    <button type="button" className="search-clear" onClick={() => setDraft('yearFrom', '')} aria-label="Clear from year">×</button>
+                  )}
+                </div>
                 <span aria-hidden="true">–</span>
-                <input type="number" placeholder="To" value={draftFilters.yearTo} onChange={(e) => setDraft('yearTo', e.target.value)} />
+                <div className="input-clear-wrap">
+                  <input type="number" placeholder="To" value={draftFilters.yearTo} onChange={(e) => setDraft('yearTo', e.target.value)} />
+                  {draftFilters.yearTo && (
+                    <button type="button" className="search-clear" onClick={() => setDraft('yearTo', '')} aria-label="Clear to year">×</button>
+                  )}
+                </div>
               </div>
             </FilterSection>
 
@@ -293,6 +303,7 @@ export default function Directory({ session, onMessage }) {
                 value={draftFilters.country}
                 onChange={(v) => setDraft('country', v)}
                 placeholder="All countries — start typing to filter"
+                clearable
               />
             </FilterSection>
 
@@ -302,6 +313,7 @@ export default function Directory({ session, onMessage }) {
                 value={draftFilters.industry}
                 onChange={(v) => setDraft('industry', v)}
                 placeholder="All industries — start typing to filter"
+                clearable
               />
             </FilterSection>
 

@@ -795,6 +795,11 @@ input, textarea, select { font: inherit; }
 .decade-row { margin-bottom: 8px; }
 .filter-year-row { display: flex; gap: 6px; align-items: center; }
 .filter-year-row input { width: 100%; }
+.input-clear-wrap { position: relative; flex: 1; }
+.input-clear-wrap input { width: 100%; padding-right: 30px; }
+/* Autocomplete inputs (Country/Industry filters) reserve the same space for
+   an "x" clear button when the field supports one. */
+.city-autocomplete.has-clear input { padding-right: 30px; }
 .filter-clear {
   width: 100%;
   padding: 10px 0;
