@@ -1006,7 +1006,7 @@ input, textarea, select { font: inherit; }
 .person-name-you { color: var(--orange); font-size: 11px; margin-left: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
 .person-industry {
   font-size: 13px;
-  color: var(--ink-soft);
+  color: var(--ink);
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 1;
