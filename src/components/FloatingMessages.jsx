@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import Messages from './Messages.jsx'
 
@@ -17,6 +17,7 @@ export default function FloatingMessages({
   onTargetConsumed,
 }) {
   const [unread, setUnread] = useState(0)
+  const panelRef = useRef(null)
 
   async function refreshUnread() {
     const { data, error } = await supabase.rpc('unread_message_count')
@@ -41,6 +42,18 @@ export default function FloatingMessages({
     if (initialTarget) onOpenChange(true)
   }, [initialTarget, onOpenChange])
 
+  // Close the panel when clicking anywhere outside it.
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(e) {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        onOpenChange(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open, onOpenChange])
+
   return (
     <>
       {!open && (
@@ -53,7 +66,7 @@ export default function FloatingMessages({
       )}
 
       {open && (
-        <div className="chat-panel" role="dialog" aria-label="Messages">
+        <div className="chat-panel" role="dialog" aria-label="Messages" ref={panelRef}>
           <div className="chat-panel-header">
             <span>Messages</span>
             <button className="modal-close" onClick={() => onOpenChange(false)} aria-label="Close messages">×</button>
