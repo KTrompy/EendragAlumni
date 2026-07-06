@@ -994,14 +994,11 @@ input, textarea, select { font: inherit; }
   color: var(--ink);
   margin: 0 0 4px;
   line-height: 1.3;
-  /* Cap at two lines so a long double-barrelled name doesn't blow out the
-     card, but don't reserve the space up front — that left a big empty gap
-     under short one-line names. Overall card height is still equalised by
-     the grid stretch + flex:1 info block below, not by padding out this line. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  /* Truncate to one line instead of wrapping, so a long name can't blow out
+     the card — every card stays the same height regardless of name length. */
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 .person-name-you { color: var(--orange); font-size: 11px; margin-left: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
 .person-industry {
