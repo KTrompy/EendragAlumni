@@ -209,12 +209,6 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         This is what other Eendragters see on the wall and in the directory.
       </p>
 
-      {dirty && (
-        <p className="onboarding-nudge profile-dirty-notice">
-          You have unsaved changes — don't forget to hit "Save changes" below before you leave this page.
-        </p>
-      )}
-
       <div className="avatar-editor">
         <Avatar url={profile?.avatar_url} name={form.full_name} size={88} />
         <div>
