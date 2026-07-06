@@ -148,59 +148,68 @@ export default function Messages({ session, profile, initialTarget, initialDraft
     ? threads.filter((t) => (t.other?.full_name || '').toLowerCase().includes(needle))
     : threads
 
+  // On mobile the panel shows either the list or the conversation, not
+  // both. `activeId` also flips the view; the back button clears it.
+  const view = activeId ? 'chat' : 'list'
+
   return (
-    <section className="panel messages-panel">
+    <section className="panel messages-panel" data-view={view}>
       {!hideTitle && <h2 className="panel-title">Messages</h2>}
       {error && <p className="form-error">{error}</p>}
       <div className="messages-layout">
         <aside className="thread-list">
+          <div className="thread-list-header">Chats</div>
           {threads.length > 0 && (
-            <div className="search-wrap thread-search-wrap">
+            <div className="thread-search-wrap">
+              <span className="thread-search-icon" aria-hidden="true">
+                <SearchIcon />
+              </span>
               <input
-                className="search thread-search"
+                className="thread-search"
                 value={threadQuery}
                 onChange={(e) => setThreadQuery(e.target.value)}
                 placeholder="Search conversations…"
               />
-              {threadQuery && (
-                <button className="search-clear" onClick={() => setThreadQuery('')} aria-label="Clear search">×</button>
-              )}
             </div>
           )}
 
-          {threads.length === 0 && (
-            <EmptyState
-              icon="feed"
-              message="No conversations yet."
-              subMessage="Find someone in the directory and hit Message."
-            />
-          )}
+          <div className="thread-list-scroll">
+            {threads.length === 0 && (
+              <EmptyState
+                icon="feed"
+                message="No conversations yet."
+                subMessage="Find someone in the directory and hit Message."
+              />
+            )}
 
-          {threads.length > 0 && filteredThreads.length === 0 && (
-            <p className="empty small">No conversations match "{threadQuery}".</p>
-          )}
+            {threads.length > 0 && filteredThreads.length === 0 && (
+              <p className="empty small">No conversations match "{threadQuery}".</p>
+            )}
 
-          {filteredThreads.map((t) => (
-            <button
-              key={t.conversation_id}
-              className={t.conversation_id === activeId ? 'thread active' : 'thread'}
-              onClick={() => setActiveId(t.conversation_id)}
-            >
-              <Avatar url={t.other?.avatar_url} name={t.other?.full_name} size={38} />
-              <div className="thread-text">
-                <div className="thread-name">
-                  {t.other?.full_name || 'Alumnus'}
-                  {t.other?.grad_year && <span className="thread-year"> ’{String(t.other.grad_year).slice(-2)}</span>}
+            {filteredThreads.map((t) => (
+              <button
+                key={t.conversation_id}
+                className={t.conversation_id === activeId ? 'thread active' : 'thread'}
+                onClick={() => setActiveId(t.conversation_id)}
+              >
+                <Avatar url={t.other?.avatar_url} name={t.other?.full_name} size={44} />
+                <div className="thread-text">
+                  <div className="thread-row-1">
+                    <span className="thread-name">
+                      {t.other?.full_name || 'Alumnus'}
+                      {t.other?.grad_year && <span className="thread-year"> ’{String(t.other.grad_year).slice(-2)}</span>}
+                    </span>
+                    {t.lastMessage && <span className="thread-time">{timeAgo(t.lastMessage.created_at)}</span>}
+                  </div>
+                  <div className="thread-preview">
+                    {t.lastMessage
+                      ? `${t.lastMessage.sender_id === me ? 'You: ' : ''}${t.lastMessage.content}`
+                      : 'Say hello 👋'}
+                  </div>
                 </div>
-                <div className="thread-preview">
-                  {t.lastMessage
-                    ? `${t.lastMessage.sender_id === me ? 'You: ' : ''}${t.lastMessage.content}`
-                    : 'Say hello 👋'}
-                </div>
-              </div>
-              {t.lastMessage && <span className="thread-time">{timeAgo(t.lastMessage.created_at)}</span>}
-            </button>
-          ))}
+              </button>
+            ))}
+          </div>
         </aside>
 
         <div className="chat">
@@ -214,7 +223,14 @@ export default function Messages({ session, profile, initialTarget, initialDraft
           ) : (
             <>
               <div className="chat-header">
-                <Avatar url={active?.other?.avatar_url} name={active?.other?.full_name} size={34} />
+                <button
+                  className="chat-back"
+                  onClick={() => setActiveId(null)}
+                  aria-label="Back to conversations"
+                >
+                  <BackIcon />
+                </button>
+                <Avatar url={active?.other?.avatar_url} name={active?.other?.full_name} size={38} />
                 <div className="chat-header-text">
                   <span className="chat-header-name">{active?.other?.full_name || 'Conversation'}</span>
                   {active?.other?.grad_year && (
@@ -266,8 +282,13 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                   disabled={!profile?.approved}
                   maxLength={4000}
                 />
-                <button className="btn primary" onClick={send} disabled={!profile?.approved || !draft.trim()}>
-                  Send
+                <button
+                  className="chat-send"
+                  onClick={send}
+                  disabled={!profile?.approved || !draft.trim()}
+                  aria-label="Send message"
+                >
+                  <SendIcon />
                 </button>
               </div>
             </>
@@ -275,5 +296,31 @@ export default function Messages({ session, profile, initialTarget, initialDraft
         </div>
       </div>
     </section>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  )
+}
+
+function BackIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  )
+}
+
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M2.5 21l19-9-19-9v7l13 2-13 2v7z" />
+    </svg>
   )
 }
