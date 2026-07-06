@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
+import { INDUSTRIES, SA_CITIES } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
+import CountryAutocomplete from './CountryAutocomplete.jsx'
 
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
@@ -266,11 +267,11 @@ export default function Profile({ session, profile, onSaved }) {
       </label>
 
       <label className="field"><span>Country</span>
-        <div className="select-wrap">
-          <select value={form.country} onChange={(e) => set('country', e.target.value)}>
-            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
+        <CountryAutocomplete
+          value={form.country}
+          onChange={(v) => set('country', v)}
+          placeholder="Start typing a country…"
+        />
       </label>
 
       <label className="field"><span>City / Town</span>

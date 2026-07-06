@@ -41,16 +41,27 @@ export default function CityAutocomplete({
     const q = value.trim()
     if (q.length < 2) { setSuggestions([]); setLoading(false); return }
 
+    async function search(q2) {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(q2)}`
+      const res = await fetch(url, { headers: { Accept: 'application/json' } })
+      if (!res.ok) return []
+      return (await res.json()) || []
+    }
+
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const query = [q, country].filter(Boolean).join(', ')
-        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`
-        const res = await fetch(url, { headers: { Accept: 'application/json' } })
-        if (res.ok) {
-          const rows = await res.json()
-          setSuggestions(rows || [])
+        // Bias toward the selected country first (helps disambiguate common
+        // names like "Paris" or "Springfield"), but this is a hint, not a
+        // restriction — if narrowing by country turns up nothing (a country
+        // name Nominatim doesn't match cleanly, or someone just hasn't set
+        // country yet), fall back to a plain worldwide search so any
+        // city/town anywhere still resolves.
+        let rows = await search([q, country].filter(Boolean).join(', '))
+        if (rows.length === 0 && country) {
+          rows = await search(q)
         }
+        setSuggestions(rows)
       } catch {
         // offline or blocked — just show no suggestions, free text still works
       } finally {
@@ -62,14 +73,11 @@ export default function CityAutocomplete({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, country])
 
-  function label(row) {
-    const a = row.address || {}
-    return a.city || a.town || a.village || a.municipality || a.county || row.display_name.split(',')[0]
-  }
-
   function pick(row) {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
-    onChange(label(row))
+    // Whatever the suggestion showed in the dropdown is exactly what lands
+    // in the textbox — no silent swap to a shorter/different label.
+    onChange(row.display_name)
     onSelectCoords?.({ lat: parseFloat(row.lat), lng: parseFloat(row.lon) })
     setSuggestions([])
     setOpen(false)

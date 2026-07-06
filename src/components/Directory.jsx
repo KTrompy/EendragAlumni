@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
 import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
+import ListAutocomplete from './ListAutocomplete.jsx'
 
 const PAGE_SIZE = 12
 
@@ -262,21 +263,21 @@ return true
             </FilterSection>
 
             <FilterSection title="Country">
-              <div className="select-wrap">
-                <select value={filters.country} onChange={(e) => set('country', e.target.value)}>
-                  <option value="">All countries</option>
-                  {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+              <ListAutocomplete
+                options={COUNTRIES}
+                value={filters.country}
+                onChange={(v) => set('country', v)}
+                placeholder="All countries — start typing to filter"
+              />
             </FilterSection>
 
             <FilterSection title="Industry">
-              <div className="select-wrap">
-                <select value={filters.industry} onChange={(e) => set('industry', e.target.value)}>
-                  <option value="">All industries</option>
-                  {INDUSTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+              <ListAutocomplete
+                options={INDUSTRIES}
+                value={filters.industry}
+                onChange={(v) => set('industry', v)}
+                placeholder="All industries — start typing to filter"
+              />
             </FilterSection>
 
             <div className="filter-panel-footer">

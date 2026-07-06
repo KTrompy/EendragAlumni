@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { COUNTRIES, INDUSTRIES } from '../constants.js'
+import { INDUSTRIES } from '../constants.js'
 import { geocodeCity } from '../geocode.js'
 import { Avatar } from './Directory.jsx'
 import PhotoCropper from './PhotoCropper.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
+import CountryAutocomplete from './CountryAutocomplete.jsx'
 
 // One question per screen, skip-friendly, saved in a single write at the
 // end. Shown full-screen (like Auth) the first time a member logs in with
@@ -298,11 +299,12 @@ export default function Onboarding({ session, profile, onDone }) {
         return (
           <>
             <h2 className="onboarding-question">Which country are you in?</h2>
-            <div className="select-wrap onboarding-select">
-              <select value={form.country} onChange={(e) => set('country', e.target.value)}>
-                {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+            <CountryAutocomplete
+              value={form.country}
+              onChange={(v) => set('country', v)}
+              inputClassName="onboarding-input"
+              placeholder="Start typing a country…"
+            />
           </>
         )
 
