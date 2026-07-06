@@ -4,7 +4,7 @@ import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
-import { sanitizeHtml } from '../sanitizeHtml.js'
+import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
 
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
 
@@ -255,7 +255,7 @@ export default function Jobs({ session, profile, onMessage }) {
                 </p>
                 <div
                   className="job-desc rendered-html"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(j.description) }}
+                  dangerouslySetInnerHTML={{ __html: trimTrailingHtml(sanitizeHtml(j.description)) }}
                 />
                 <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   {j.apply_url && (
@@ -344,7 +344,7 @@ function JobForm({ session, onCancel, onCreated }) {
       ...form,
       title: form.title.trim(),
       company: form.company.trim(),
-      description: sanitizeHtml(form.description),
+      description: trimTrailingHtml(sanitizeHtml(form.description)),
       apply_url: form.apply_url.trim(),
       contact_email: form.contact_email.trim(),
       posted_by: session.user.id,

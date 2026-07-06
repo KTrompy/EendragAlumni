@@ -14,3 +14,25 @@ export function sanitizeHtml(html) {
   if (!html) return ''
   return DOMPurify.sanitize(html, CONFIG)
 }
+
+// contentEditable (the rich text editor used for job/post descriptions)
+// often leaves a trailing empty <div><br></div> or two behind if someone
+// hits Enter a few extra times while composing. Nothing was stripping
+// that before saving, so it rendered as real, visible blank lines after
+// the actual text — the "big empty gap at the bottom of the card" bug.
+// Removing trailing empty elements/whitespace makes the card end where
+// the content actually does.
+export function trimTrailingHtml(html) {
+  if (!html) return html
+  const container = document.createElement('div')
+  container.innerHTML = html
+  while (container.lastChild) {
+    const node = container.lastChild
+    const isEmpty =
+      (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) ||
+      (node.nodeType === Node.ELEMENT_NODE && !node.textContent.trim())
+    if (!isEmpty) break
+    container.removeChild(node)
+  }
+  return container.innerHTML
+}

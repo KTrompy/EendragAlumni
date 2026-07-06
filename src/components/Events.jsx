@@ -258,7 +258,7 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete }) {
           {isPast && <span className="job-badge" style={{ background: 'var(--ink-soft)' }}>Past</span>}
         </h3>
         {e.location && <p className="event-location">📍 {e.location}</p>}
-        {e.description && <p className="event-desc">{e.description}</p>}
+        {e.description && <p className="event-desc">{e.description.trimEnd()}</p>}
         <p className="event-meta">Posted by {e.profiles?.full_name || 'a member'}</p>
 
         <div className="event-actions">
