@@ -359,10 +359,10 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
       <div className="post-head">
         <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={40} />
         <div className="post-head-info">
-          <span className="post-author">{p.profiles?.full_name || ‘Alumnus’}</span>
+          <span className="post-author">{p.profiles?.full_name || 'Alumnus'}</span>
           <span className="post-meta">
-            {p.profiles?.grad_year ? `Class of ‘${String(p.profiles.grad_year).slice(-2)}` : ‘’}
-            {p.profiles?.occupation ? ` · ${p.profiles.occupation}` : ‘’}
+            {p.profiles?.grad_year ? "Class of '" + String(p.profiles.grad_year).slice(-2) : ''}
+            {p.profiles?.occupation ? ` · ${p.profiles.occupation}` : ''}
           </span>
           <span className="post-time">{timeAgo(p.created_at)}</span>
         </div>
