@@ -383,7 +383,6 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
           <p className="person-occupation">{roleLine || ' '}</p>
           <p className="person-location">{locationLine || ' '}</p>
           <p className="person-occupation">
-            {p.grad_year && <span className="person-year-badge">Class of {p.grad_year}</span>}
             {p.industry && <span className="industry-chip">{p.industry}</span>}
             {p.available_for_mentorship && <span className="mentor-chip">🤝 Mentoring</span>}
           </p>
