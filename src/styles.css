@@ -977,6 +977,12 @@ input, textarea, select { font: inherit; }
   place-items: center;
   overflow: hidden;
   border-bottom: 2px solid var(--orange);
+  /* Rounds its own top corners to match the card, instead of relying only
+     on the card's overflow:hidden to clip it — on some mobile browsers,
+     the card's transform transition promotes it to its own compositing
+     layer and that clip-only approach leaves a hairline gap at the top
+     edge (showing through to the page/webview background behind it). */
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .person-photo img {
   width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;
@@ -2222,6 +2228,22 @@ input, textarea, select { font: inherit; }
   padding: 10px 12px;
   font-size: 13.5px;
   border-right-width: 1px;
+}
+/* Profile's Current status / mentoring toggles stay side by side even on
+   narrow phones — the general onboarding-choice-row stacks to a column at
+   this width (right for the big full-page onboarding cards), but here they
+   should read as one connected row like the rest of the profile form. */
+@media (max-width: 560px) {
+  .profile-choice-row {
+    flex-direction: row;
+  }
+  .profile-choice-row .onboarding-choice {
+    border-bottom: none;
+    border-right: 1px solid var(--line-strong);
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+  .profile-choice-row .onboarding-choice:last-child { border-right: none; }
 }
 .profile-actions {
   display: flex;
