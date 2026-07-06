@@ -161,8 +161,8 @@ export default function AlumniMap({ session, onMessage, onGoToProfile }) {
                                   {p.id === session.user.id && <span className="person-name-you">You</span>}
                                 </strong>
                                 <span className="map-popup-meta">
-                                  {p.grad_year ? `Class of ${p.grad_year}` : ''}
-                                  {p.grad_year && (p.occupation || p.company) ? ' · ' : ''}
+                                  {p.industry ? p.industry : ''}
+                                  {p.industry && (p.occupation || p.company) ? ' · ' : ''}
                                   {[p.occupation, p.company].filter(Boolean).join(' @ ')}
                                 </span>
                               </span>
