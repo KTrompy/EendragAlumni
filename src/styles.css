@@ -273,13 +273,23 @@ input, textarea, select { font: inherit; }
 .chat-panel-body .chat-scroll { max-height: none; }
 
 @media (max-width: 720px) {
+  /* Full-screen on mobile instead of a floating box with a gap above it —
+     that gap left the original page visible (and still scrollable) behind
+     what was supposed to read as a modal. Covering the whole viewport and
+     locking body scroll (see FloatingMessages.jsx) makes it read as an
+     actual full-screen view instead of a widget that's ambiguously "over"
+     the page. */
   .chat-panel {
-    right: 8px;
-    left: 8px;
-    bottom: 8px;
-    width: auto;
-    height: min(88vh, 720px);
-    border-radius: 14px;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
   }
   /* On mobile, WA shows one pane at a time: list OR conversation.
      The .chat data-view attribute (set in Messages.jsx) toggles which. */
@@ -2732,21 +2742,6 @@ input, textarea, select { font: inherit; }
   font-size: 13px;
 }
 
-/* Hover preview — a mini photo + name shown before you click a pin. */
-.map-tooltip-wrap {
-  background: var(--card);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-lift);
-  padding: 6px 10px 6px 6px;
-  opacity: 1;
-}
-.map-tooltip-wrap::before { border-top-color: var(--line-strong); }
-.map-tooltip { display: flex; align-items: center; gap: 8px; }
-.map-tooltip-text { display: flex; flex-direction: column; line-height: 1.25; font-size: 12.5px; }
-.map-tooltip-text strong { font-size: 13px; color: var(--ink); }
-.map-tooltip-extra { color: var(--ink-soft); font-size: 11px; }
-
 /* Popup content when a pin is clicked — list of alumni at that spot. */
 .leaflet-popup-content-wrapper {
   border-radius: var(--radius-sm);
@@ -2866,7 +2861,6 @@ input, textarea, select { font: inherit; }
      covers the footer credit line or the last bit of scrollable content. */
   .footer { padding-right: 84px; padding-bottom: 84px; }
   .chat-fab { bottom: 76px; }
-  .chat-panel { bottom: 76px; }
 
   .mobile-tabbar {
     position: fixed;

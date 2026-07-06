@@ -156,11 +156,11 @@ export default function App() {
       <header className="masthead">
         <div className="masthead-inner">
           <button
-            className="mobile-avatar-btn"
-            onClick={() => attemptNavigate(() => setTab('profile'))}
-            aria-label="My profile"
+            className="mobile-support-btn"
+            onClick={() => attemptNavigate(() => setTab('donate'))}
           >
-            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
+            <SupportIcon />
+            Support
           </button>
 
           <div className="brand">
@@ -172,11 +172,11 @@ export default function App() {
           </div>
 
           <button
-            className="mobile-support-btn"
-            onClick={() => attemptNavigate(() => setTab('donate'))}
+            className="mobile-avatar-btn"
+            onClick={() => attemptNavigate(() => setTab('profile'))}
+            aria-label="My profile"
           >
-            <SupportIcon />
-            Support
+            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
           </button>
 
           <button

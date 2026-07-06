@@ -55,6 +55,20 @@ export default function FloatingMessages({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open, onOpenChange])
 
+  // On mobile the panel goes full-screen (see .chat-panel in styles.css) —
+  // without this, the page underneath stayed scrollable, so it still felt
+  // like a box floating over the page rather than an actual full-screen
+  // view. Desktop's panel is a small floating widget, so the page behind
+  // it is left scrollable there.
+  useEffect(() => {
+    if (!open) return
+    const mq = window.matchMedia('(max-width: 720px)')
+    if (!mq.matches) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+  }, [open])
+
   return (
     <>
       {!open && (

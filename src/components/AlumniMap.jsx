@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../supabaseClient'
-import { PhotoBlock, Avatar } from './Directory.jsx'
+import { PhotoBlock } from './Directory.jsx'
 import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -139,20 +139,8 @@ export default function AlumniMap({ session, onMessage, onGoToProfile }) {
             <FitToMarkers points={clusters} />
             {clusters.map((c) => {
               const place = [c.people[0].city, c.people[0].country].filter(Boolean).join(', ')
-              const first = c.people[0]
               return (
                 <Marker key={c.key} position={[c.lat, c.lng]} icon={pinIcon(c.people.length)}>
-                  <Tooltip direction="top" offset={[0, -16]} opacity={1} className="map-tooltip-wrap">
-                    <div className="map-tooltip">
-                      <Avatar url={first.avatar_url} name={first.full_name} size={28} />
-                      <span className="map-tooltip-text">
-                        <strong>{first.full_name || 'Alumnus'}</strong>
-                        {c.people.length > 1 && (
-                          <span className="map-tooltip-extra">+{c.people.length - 1} more here</span>
-                        )}
-                      </span>
-                    </div>
-                  </Tooltip>
                   <Popup maxWidth={280} minWidth={220}>
                     <div className="map-popup">
                       <div className="map-popup-title">{place || 'Unknown location'}</div>
