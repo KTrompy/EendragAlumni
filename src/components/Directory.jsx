@@ -197,9 +197,11 @@ export default function Directory({ session, onMessage }) {
 
   // "People like you" — browsing today means already knowing who you're
   // looking for. This surfaces a few Eendragters who share something with
-  // your own profile (grad year, city, industry, or mentoring), so there's
-  // something to discover even without a search term. Only shown on the
-  // default, unfiltered view so it doesn't compete with an active search.
+  // your own profile (grad year, city, or industry), so there's something
+  // to discover even without a search term. Deliberately excludes mentoring
+  // status: being open to mentoring isn't a similarity between two people,
+  // so it shouldn't be a reason someone shows up in this row. Only shown on
+  // the default, unfiltered view so it doesn't compete with an active search.
   const similarPeople = useMemo(() => {
     if (!me) return []
     return people
@@ -209,7 +211,6 @@ export default function Directory({ session, onMessage }) {
         if (me.grad_year && p.grad_year && p.grad_year === me.grad_year) score += 2
         if (me.city && p.city && p.city.trim().toLowerCase() === me.city.trim().toLowerCase()) score += 2
         if (me.industry && p.industry && p.industry === me.industry) score += 1
-        if (p.available_for_mentorship) score += 1
         return { p, score }
       })
       .filter((row) => row.score > 0)

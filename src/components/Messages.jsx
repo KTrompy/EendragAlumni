@@ -271,6 +271,12 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                       )}
                       <div className={mine ? 'bubble mine' : 'bubble'}>
                         {m.content}
+                        {/* Invisible twin of the timestamp, inline instead of absolute —
+                            it reserves real layout space so the bubble's auto-width
+                            always fits the timestamp, even on very short messages where
+                            the visible (absolutely-positioned) one would otherwise spill
+                            outside the bubble. */}
+                        <span className="message-time-spacer" aria-hidden="true">{timeAgo(m.created_at)}</span>
                         <span className="message-time">{timeAgo(m.created_at)}</span>
                       </div>
                     </div>

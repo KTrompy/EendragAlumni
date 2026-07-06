@@ -2018,8 +2018,22 @@ input, textarea, select { font: inherit; }
   opacity: 0.85;
   font-weight: 500;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 .bubble.mine .message-time { color: var(--maroon); }
+/* Same size/weight as .message-time but rendered inline (not absolute) and
+   hidden — its only job is to make the bubble's shrink-to-fit width account
+   for the timestamp, since absolutely-positioned children are otherwise
+   ignored when the browser computes that width. */
+.message-time-spacer {
+  visibility: hidden;
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  padding-left: 10px;
+}
 
 .chat-empty-centered {
   flex: 1;

@@ -26,21 +26,24 @@ export function buildIcebreaker(me, them) {
 }
 
 // A short label describing *why* two profiles were matched for the
-// "People like you" row — same info buildIcebreaker uses, just phrased as
-// a badge instead of a full sentence.
+// "People like you" row — same fields the similarity score in Directory.jsx
+// is built from (grad year, city, industry). Mentoring status is
+// deliberately excluded: it isn't a similarity between the two of you, so
+// it's not a valid "why you're alike" reason. Returns every criterion that
+// matched (not just the first) so the badge reflects the full overlap.
 export function matchReason(me, them) {
   if (!me || !them) return null
+  const reasons = []
   if (me.grad_year && them.grad_year && me.grad_year === them.grad_year) {
-    return `Class of ${them.grad_year}`
+    reasons.push(`Class of ${them.grad_year}`)
   }
   if (me.city && them.city && me.city.trim().toLowerCase() === them.city.trim().toLowerCase()) {
-    return them.city
+    reasons.push(them.city)
   }
   if (me.industry && them.industry && me.industry === them.industry) {
-    return them.industry
+    reasons.push(them.industry)
   }
-  if (them.available_for_mentorship) return 'Open to mentoring'
-  return null
+  return reasons.length ? reasons.join(' · ') : null
 }
 
 // Event-specific opener — once you've both RSVP'd "going" to the same
