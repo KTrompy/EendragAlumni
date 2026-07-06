@@ -10,6 +10,7 @@ import Events from './components/Events.jsx'
 import Jobs from './components/Jobs.jsx'
 import Donate from './components/Donate.jsx'
 import AlumniMap from './components/AlumniMap.jsx'
+import Admin from './components/Admin.jsx'
 
 const TABS = [
   { id: 'directory', label: 'Eendragters' },
@@ -20,6 +21,11 @@ const TABS = [
   { id: 'donate', label: 'Support' },
   { id: 'profile', label: 'My profile' },
 ]
+
+// Admin-only, appended to the nav when the signed-in profile has is_admin
+// set — kept out of the base TABS list so it never flashes for regular
+// members before the profile loads.
+const ADMIN_TAB = { id: 'admin', label: 'Admin' }
 
 // The mobile bottom tab bar — a smaller, reordered subset of TABS (Support,
 // My profile and Sign out move to the mobile header/avatar instead, so the
@@ -188,7 +194,7 @@ export default function App() {
             {navOpen ? <CloseIcon /> : <BurgerIcon />}
           </button>
           <nav className={navOpen ? 'tabs open' : 'tabs'} aria-label="Main">
-            {TABS.map((t) => (
+            {(profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS).map((t) => (
               <button
                 key={t.id}
                 className={tab === t.id ? 'tab active' : 'tab'}
@@ -229,6 +235,7 @@ export default function App() {
         {tab === 'events' && <Events session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'jobs' && <Jobs session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'donate' && <Donate />}
+        {tab === 'admin' && profile?.is_admin && <Admin session={session} />}
         {tab === 'profile' && (
           <Profile
             session={session}

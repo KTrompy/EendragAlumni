@@ -13,6 +13,7 @@ Character · Style · Pride · Since 1961.
 - **Alumni map** — "where are we all now": a pin per city, grouped by member, powered by free OpenStreetMap geocoding
 - **Messages** — 1:1 DMs with realtime delivery
 - **Profiles** — self-editable directory entries, with photos
+- **Admin page** — an in-app "Admin" tab (visible only to admins) for approving members, promoting other admins, and moderating posts/jobs/events — no more digging through the Supabase dashboard
 
 ## Setup (once, ~20 minutes)
 
@@ -23,7 +24,7 @@ Character · Style · Pride · Since 1961.
 ### 2. Run the schema
 1. In the Supabase dashboard, open **SQL Editor**.
 2. Paste the entire contents of `schema.sql` and run it. This creates all tables, security policies, and the realtime setup.
-3. Also run each `schema-update-N.sql` file, in order (they add things like events, jobs, and the `lat`/`lng` columns the alumni map needs).
+3. Also run each `schema-update-N.sql` file, in order (they add things like events, jobs, the `lat`/`lng` columns the alumni map needs, and the admin page in update 8).
 
 ### 3. Configure auth
 1. Go to **Authentication → Providers** and make sure **Email** is enabled.
@@ -39,12 +40,20 @@ Character · Style · Pride · Since 1961.
    ```
 4. Open the printed localhost URL. Sign up with your own email, confirm via the email link, and sign in.
 
-### 5. Approve members (this is your admin job)
-New signups can browse but can't post or message until approved:
-1. In Supabase, open **Table Editor → profiles**.
-2. Find the person's row, tick the `approved` checkbox, save.
+### 5. Set yourself up as admin
 
-Approve yourself first. Later, if this gets tedious at scale, we can build a small admin page or an invite-code system instead.
+`schema-update-8.sql` (see above) already makes `kyletrompeter0@gmail.com` an admin the moment it's run — as long as you've signed up with that email first, you're done. Sign in and an **Admin** tab appears in the nav.
+
+From there:
+- **Pending approval** — approve new signups with one click (this is what used to require the Supabase Table Editor).
+- **Members** — search everyone, revoke approval, or promote another Eendragter to admin (handy once it's not just you).
+- **Posts / Jobs / Events** — delete anything inappropriate, regardless of who posted it.
+
+If you ever need to add an admin without the app (e.g. before anyone's signed up), run in the SQL Editor:
+```sql
+update public.profiles set is_admin = true
+where id = (select id from auth.users where email = 'someone@example.com');
+```
 
 ## Deploy to Vercel (free)
 
@@ -63,7 +72,6 @@ Approve yourself first. Later, if this gets tedious at scale, we can build a sma
 
 ## Ideas for v3
 
-- Admin page for approving members without opening Supabase
 - Real donations (PayFast) instead of a "get in touch" link
 - Email digests of new posts
 - Year-group channels
