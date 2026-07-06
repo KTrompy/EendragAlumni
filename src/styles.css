@@ -829,6 +829,37 @@ input, textarea, select { font: inherit; }
   color: #fff;
 }
 
+/* ---------- Events header: List/Calendar switch + Add event ---------- */
+.events-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.view-switch {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.view-switch button {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border: none;
+  border-right: 1px solid var(--line-strong);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.view-switch button:last-child { border-right: none; }
+.view-switch button:hover { background: #EDE8DC; }
+.view-switch button.on {
+  background: var(--orange);
+  color: #fff;
+}
+
 .load-more-row {
   display: flex;
   justify-content: center;

@@ -155,10 +155,24 @@ export default function Events({ session, profile }) {
           <h2 className="panel-title">Events</h2>
           <p className="panel-sub">Reunions, golf days, house drinks. See you there.</p>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <div className="filter-radio-row" style={{ margin: 0 }}>
-            <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>List</button>
-            <button className={view === 'calendar' ? 'on' : ''} onClick={() => setView('calendar')}>Calendar</button>
+        <div className="events-header-actions">
+          <div className="view-switch" role="tablist" aria-label="Events view">
+            <button
+              role="tab"
+              aria-selected={view === 'list'}
+              className={view === 'list' ? 'on' : ''}
+              onClick={() => setView('list')}
+            >
+              List
+            </button>
+            <button
+              role="tab"
+              aria-selected={view === 'calendar'}
+              className={view === 'calendar' ? 'on' : ''}
+              onClick={() => setView('calendar')}
+            >
+              Calendar
+            </button>
           </div>
           {canPost && !showForm && (
             <button className="btn primary" onClick={() => setShowForm(true)}>Add event</button>
