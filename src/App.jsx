@@ -228,9 +228,14 @@ export default function App() {
       />
 
       {pendingNav && (
-        <>
-          <div className="modal-backdrop" onClick={keepEditing} />
-          <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-label="Unsaved changes">
+        <div
+          className="modal-backdrop"
+          onClick={keepEditing}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Unsaved changes"
+        >
+          <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Unsaved changes</h2>
               <button className="modal-close" onClick={keepEditing} aria-label="Keep editing">×</button>
@@ -249,7 +254,7 @@ export default function App() {
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   )
