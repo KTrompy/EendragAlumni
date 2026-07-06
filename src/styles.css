@@ -2085,6 +2085,22 @@ input, textarea, select { font: inherit; }
 .field input, .field textarea, .field select {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+/* Profile page's yes/no-style choice buttons reuse onboarding's big-card
+   look by default. Here they sit inline with regular text inputs, so scale
+   them down to match input height and let them fill the same full width
+   instead of the centered, capped-width onboarding layout. */
+.profile-choice-row {
+  justify-content: stretch;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+.profile-choice-row .onboarding-choice {
+  flex: 1 1 0;
+  max-width: none;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  border-width: 1px;
+}
 .profile-actions {
   display: flex;
   align-items: center;
