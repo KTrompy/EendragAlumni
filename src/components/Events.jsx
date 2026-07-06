@@ -454,38 +454,40 @@ function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSel
 
   return (
     <div>
-      <div className="calendar-header">
-        <button className="btn ghost small" onClick={prevMonth} aria-label="Previous month">‹</button>
-        <span className="calendar-month-label">{MONTH_NAMES[month]} {year}</span>
-        <button className="btn ghost small" onClick={nextMonth} aria-label="Next month">›</button>
-      </div>
+      <div className="calendar-shell">
+        <div className="calendar-header">
+          <button className="btn ghost small" onClick={prevMonth} aria-label="Previous month">‹</button>
+          <span className="calendar-month-label">{MONTH_NAMES[month]} {year}</span>
+          <button className="btn ghost small" onClick={nextMonth} aria-label="Next month">›</button>
+        </div>
 
-      <div className="calendar-weekdays">
-        {WEEKDAYS.map((w) => <div key={w}>{w}</div>)}
-      </div>
+        <div className="calendar-weekdays">
+          {WEEKDAYS.map((w) => <div key={w}>{w}</div>)}
+        </div>
 
-      <div className="calendar-grid">
-        {cells.map((date, i) => {
-          if (!date) return <div className="calendar-cell empty" key={i} />
-          const dayEvents = eventsOn(date)
-          const isToday = sameDay(date, today)
-          const isSelected = selectedDay && sameDay(date, selectedDay)
-          return (
-            <button
-              key={i}
-              className={[
-                'calendar-cell',
-                isToday ? 'today' : '',
-                isSelected ? 'selected' : '',
-                dayEvents.length ? 'has-event' : '',
-              ].filter(Boolean).join(' ')}
-              onClick={() => setSelectedDay(date)}
-            >
-              <span className="calendar-day-num">{date.getDate()}</span>
-              {dayEvents.length > 0 && <span className="calendar-dot" />}
-            </button>
-          )
-        })}
+        <div className="calendar-grid">
+          {cells.map((date, i) => {
+            if (!date) return <div className="calendar-cell empty" key={i} />
+            const dayEvents = eventsOn(date)
+            const isToday = sameDay(date, today)
+            const isSelected = selectedDay && sameDay(date, selectedDay)
+            return (
+              <button
+                key={i}
+                className={[
+                  'calendar-cell',
+                  isToday ? 'today' : '',
+                  isSelected ? 'selected' : '',
+                  dayEvents.length ? 'has-event' : '',
+                ].filter(Boolean).join(' ')}
+                onClick={() => setSelectedDay(date)}
+              >
+                <span className="calendar-day-num">{date.getDate()}</span>
+                {dayEvents.length > 0 && <span className="calendar-dot" />}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div className="calendar-selected-events">

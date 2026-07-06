@@ -2321,6 +2321,13 @@ input, textarea, select { font: inherit; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
 
 /* ---------- Events calendar view ---------- */
+/* Keeps the grid's cells from stretching huge on a wide desktop panel,
+   which pushed the selected day's events too far down to see without
+   scrolling. Capping the whole calendar's width shrinks it proportionally. */
+.calendar-shell {
+  max-width: 420px;
+  margin: 0 auto;
+}
 .calendar-header {
   display: flex;
   align-items: center;
