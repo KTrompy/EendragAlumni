@@ -121,7 +121,7 @@ export default function Jobs({ session, profile, onMessage }) {
 
   return (
     <section className="panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      <div className="panel-header-row">
         <div>
           <h2 className="panel-title">Job board</h2>
           <p className="panel-sub">Roles and internships posted by Eendragters, for Eendragters.</p>

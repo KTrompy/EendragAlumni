@@ -641,6 +641,19 @@ input, textarea, select { font: inherit; }
   .onboarding-skip { text-align: center; }
 }
 
+/* Title/subtitle + primary action row used by Job board and Events. Its own
+   margin-bottom guarantees space before whatever comes next even when it
+   wraps to two lines on mobile (the action button dropping to its own row
+   was sitting flush against the search bar below it otherwise). */
+.panel-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
 /* ---------- Directory (full-width grid, filters in a drawer) ---------- */
 .directory-toolbar {
   display: flex;

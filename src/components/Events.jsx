@@ -153,7 +153,7 @@ export default function Events({ session, profile }) {
 
   return (
     <section className="panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      <div className="panel-header-row">
         <div>
           <h2 className="panel-title">Events</h2>
           <p className="panel-sub">Reunions, golf days, house drinks. See you there.</p>
