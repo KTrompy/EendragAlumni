@@ -373,14 +373,14 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
         onKeyDown={onKey}
         aria-label={`Open profile for ${p.full_name || 'alumnus'}`}
       >
+        {p.available_for_mentorship && (
+          <span className="person-mentor-badge">🤝 Mentoring</span>
+        )}
         <PhotoBlock url={p.avatar_url} name={p.full_name} />
         <div className="person-info">
           <h3 className="person-name">
             {p.full_name || 'Alumnus'}
             {isMe && <span className="person-name-you">You</span>}
-            <span className={p.available_for_mentorship ? 'person-badge-mentor yes' : 'person-badge-mentor no'}>
-              {p.available_for_mentorship ? '🤝 Mentoring' : 'Not mentoring'}
-            </span>
           </h3>
           <p className="person-occupation">{roleLine || ' '}</p>
           <p className="person-location">{locationLine || ' '}</p>

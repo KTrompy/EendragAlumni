@@ -942,6 +942,7 @@ input, textarea, select { font: inherit; }
 /* SACS-style card: dominant photo, info block below, icon row at foot */
 .card-grid > li { display: flex; }
 .person-card {
+  position: relative;
   width: 100%;
   /* Grid items stretch to the tallest card in their row by default; this
      makes the card itself fill that height so every card in a row (and,
@@ -1036,19 +1037,23 @@ input, textarea, select { font: inherit; }
   color: var(--orange);
   font-size: 13px;
 }
-.person-badge-mentor {
-  display: inline-block;
+/* Overlaid on the card's photo, top-left — only rendered when the person
+   is actually open to mentoring (no "not mentoring" clutter otherwise). */
+.person-mentor-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  background: var(--orange);
+  color: #fff;
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 999px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   font-weight: 700;
-  margin-left: 6px;
-  vertical-align: middle;
+  box-shadow: var(--shadow-card);
 }
-.person-badge-mentor.yes { background: var(--orange); color: #fff; }
-.person-badge-mentor.no { background: var(--line); color: var(--ink-soft); }
 
 .person-actions {
   display: flex;
@@ -2669,7 +2674,7 @@ input, textarea, select { font: inherit; }
   .person-name { font-size: 13.5px; }
   .person-industry, .person-occupation, .person-location { font-size: 11.5px; }
   .person-year-badge { font-size: 11.5px; }
-  .person-badge-mentor { font-size: 9px; padding: 1px 5px; }
+  .person-mentor-badge { font-size: 9px; padding: 2px 6px; top: 8px; left: 8px; }
   .person-action { padding: 6px; }
   .job-card, .event-card { grid-template-columns: 1fr; }
   .job-card > .btn, .event-card > .btn,
