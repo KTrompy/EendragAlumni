@@ -226,7 +226,7 @@ export default function App() {
             onGoToProfile={() => attemptNavigate(() => setTab('profile'))}
           />
         )}
-        {tab === 'events' && <Events session={session} profile={profile} />}
+        {tab === 'events' && <Events session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'jobs' && <Jobs session={session} profile={profile} onMessage={openMessage} />}
         {tab === 'donate' && <Donate />}
         {tab === 'profile' && (

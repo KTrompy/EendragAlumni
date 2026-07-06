@@ -920,6 +920,85 @@ input, textarea, select { font: inherit; }
 }
 .directory-search { margin-bottom: 0; }
 
+/* "People like you" — a horizontal-scroll discovery row above the main
+   directory grid, so browsing doesn't require already knowing who you're
+   looking for. */
+.similar-people { margin: 4px 0 22px; }
+.similar-people-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--maroon);
+  margin: 0 0 10px;
+}
+.similar-people-row {
+  list-style: none;
+  margin: 0;
+  padding: 2px 2px 10px;
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+}
+.similar-person-card {
+  flex: 0 0 auto;
+  width: 128px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.similar-person-open {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 14px 10px 10px;
+  text-align: center;
+}
+.similar-person-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.similar-person-reason {
+  font-size: 10.5px;
+  color: var(--maroon);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.similar-person-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--maroon);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 8px 6px;
+}
+.similar-person-message:hover { background: var(--orange-soft); color: var(--orange-dark); }
+.similar-person-message svg { width: 14px; height: 14px; }
+
 .card-grid {
   list-style: none; margin: 0; padding: 0;
   display: grid; gap: 10px;
@@ -2069,6 +2148,22 @@ input, textarea, select { font: inherit; }
   font-size: 12.5px;
   color: var(--ink);
 }
+.attendee-going-note { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 8px; }
+.attendee-message {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--maroon);
+  padding: 0;
+  margin-left: -2px;
+  flex-shrink: 0;
+}
+.attendee-message:hover { color: var(--orange-dark); }
+.attendee-message svg { width: 14px; height: 14px; }
 
 .job-card { grid-template-columns: 1fr auto; }
 .job-badge {

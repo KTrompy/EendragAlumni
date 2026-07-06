@@ -7,6 +7,7 @@ import { PhotoBlock, Avatar } from './Directory.jsx'
 import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
+import { buildIcebreaker } from '../icebreaker.js'
 
 const PROFILE_FIELDS =
   'id, full_name, grad_year, degree, occupation, industry, company, city, country, ' +
@@ -74,6 +75,11 @@ export default function AlumniMap({ session, onMessage, onGoToProfile }) {
     () => people.filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number'),
     [people]
   )
+
+  const me = useMemo(() => people.find((p) => p.id === session.user.id), [people, session.user.id])
+  function messageWithIcebreaker(p) {
+    onMessage(p, buildIcebreaker(me, p))
+  }
 
   const clusters = useMemo(() => {
     const map = new Map()
@@ -185,7 +191,7 @@ export default function AlumniMap({ session, onMessage, onGoToProfile }) {
           person={openProfile}
           isMe={openProfile.id === session.user.id}
           onClose={() => setOpenProfile(null)}
-          onMessage={() => { const p = openProfile; setOpenProfile(null); onMessage(p) }}
+          onMessage={() => { const p = openProfile; setOpenProfile(null); messageWithIcebreaker(p) }}
         />
       )}
     </section>

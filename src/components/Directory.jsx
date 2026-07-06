@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { COUNTRIES, INDUSTRIES, SA_CITIES } from '../constants.js'
 import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
+import { buildIcebreaker, matchReason } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
 import ListAutocomplete from './ListAutocomplete.jsx'
 
@@ -186,6 +187,37 @@ export default function Directory({ session, onMessage }) {
   const activeFilterCount = countActive(filters)
   const draftActiveFilterCount = countActive(draftFilters)
 
+  // Already in `people` (the directory fetches everyone, including you) —
+  // no extra request needed to know who "you" are for icebreakers/matching.
+  const me = useMemo(() => people.find((p) => p.id === session.user.id), [people, session.user.id])
+
+  function messageWithIcebreaker(p) {
+    onMessage(p, buildIcebreaker(me, p))
+  }
+
+  // "People like you" — browsing today means already knowing who you're
+  // looking for. This surfaces a few Eendragters who share something with
+  // your own profile (grad year, city, industry, or mentoring), so there's
+  // something to discover even without a search term. Only shown on the
+  // default, unfiltered view so it doesn't compete with an active search.
+  const similarPeople = useMemo(() => {
+    if (!me) return []
+    return people
+      .filter((p) => p.id !== me.id)
+      .map((p) => {
+        let score = 0
+        if (me.grad_year && p.grad_year && p.grad_year === me.grad_year) score += 2
+        if (me.city && p.city && p.city.trim().toLowerCase() === me.city.trim().toLowerCase()) score += 2
+        if (me.industry && p.industry && p.industry === me.industry) score += 1
+        if (p.available_for_mentorship) score += 1
+        return { p, score }
+      })
+      .filter((row) => row.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map((row) => row.p)
+  }, [people, me])
+
   return (
     <section className="panel">
       <h2 className="panel-title">Eendragters</h2>
@@ -210,6 +242,30 @@ export default function Directory({ session, onMessage }) {
         </button>
       </div>
 
+      {!needle && activeFilterCount === 0 && similarPeople.length > 0 && (
+        <div className="similar-people">
+          <h3 className="similar-people-title">People like you</h3>
+          <ul className="similar-people-row">
+            {similarPeople.map((p) => (
+              <li className="similar-person-card" key={p.id}>
+                <button className="similar-person-open" onClick={() => setOpenProfile(p)}>
+                  <Avatar url={p.avatar_url} name={p.full_name} size={48} />
+                  <span className="similar-person-name">{p.full_name || 'Alumnus'}</span>
+                  {matchReason(me, p) && <span className="similar-person-reason">{matchReason(me, p)}</span>}
+                </button>
+                <button
+                  className="similar-person-message"
+                  onClick={() => messageWithIcebreaker(p)}
+                  aria-label={`Message ${p.full_name || 'this Eendragter'}`}
+                >
+                  <EnvelopeIcon /> Message
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="result-count">
         Showing {shown.length} of {filtered.length} Eendragters
       </p>
@@ -233,7 +289,7 @@ export default function Directory({ session, onMessage }) {
             person={p}
             isMe={p.id === session.user.id}
             onOpen={() => setOpenProfile(p)}
-            onMessage={() => onMessage(p)}
+            onMessage={() => messageWithIcebreaker(p)}
           />
         ))}
       </ul>
@@ -342,7 +398,7 @@ export default function Directory({ session, onMessage }) {
           person={openProfile}
           isMe={openProfile.id === session.user.id}
           onClose={() => setOpenProfile(null)}
-          onMessage={() => { const p = openProfile; setOpenProfile(null); onMessage(p) }}
+          onMessage={() => { const p = openProfile; setOpenProfile(null); messageWithIcebreaker(p) }}
         />
       )}
     </section>

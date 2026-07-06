@@ -5,6 +5,7 @@ import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import DateTimePicker from './DateTimePicker.jsx'
+import { eventIcebreaker } from '../icebreaker.js'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -22,7 +23,7 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
-export default function Events({ session, profile }) {
+export default function Events({ session, profile, onMessage }) {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [myRsvps, setMyRsvps] = useState(new Set())
@@ -214,6 +215,7 @@ export default function Events({ session, profile }) {
                 iAmGoing={myRsvps.has(e.id)}
                 onToggleRsvp={() => toggleRsvp(e.id)}
                 onDelete={() => removeEvent(e.id)}
+                onMessage={onMessage}
               />
             ))}
           </ul>
@@ -230,13 +232,14 @@ export default function Events({ session, profile }) {
           myRsvps={myRsvps}
           onToggleRsvp={toggleRsvp}
           onDelete={removeEvent}
+          onMessage={onMessage}
         />
       )}
     </section>
   )
 }
 
-function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete }) {
+function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onMessage }) {
   const [showAttendees, setShowAttendees] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const d = new Date(e.event_date)
@@ -244,6 +247,15 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete }) {
   const rsvpCount = e.rsvps?.[0]?.count ?? 0
   const commentCount = e.comments?.[0]?.count ?? 0
   const canInteract = profile?.approved
+
+  // The moment you RSVP "I'm going", show who else is — turning a passive
+  // RSVP into an actual connection point instead of something you'd only
+  // see if you happened to tap "N going" afterward.
+  const wasGoingRef = useRef(iAmGoing)
+  useEffect(() => {
+    if (!wasGoingRef.current && iAmGoing) setShowAttendees(true)
+    wasGoingRef.current = iAmGoing
+  }, [iAmGoing])
 
   return (
     <li className="event-card" style={isPast ? { opacity: 0.65 } : undefined}>
@@ -279,7 +291,14 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete }) {
         </div>
 
         {showAttendees && (
-          <AttendeeList eventId={e.id} session={session} profile={profile} iAmGoing={iAmGoing} />
+          <AttendeeList
+            eventId={e.id}
+            eventTitle={e.title}
+            session={session}
+            profile={profile}
+            iAmGoing={iAmGoing}
+            onMessage={onMessage}
+          />
         )}
         {showComments && <EventComments eventId={e.id} session={session} profile={profile} />}
       </div>
@@ -295,7 +314,7 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete }) {
 }
 
 /* ---------- Who's going ---------- */
-function AttendeeList({ eventId, session, profile, iAmGoing }) {
+function AttendeeList({ eventId, eventTitle, session, profile, iAmGoing, onMessage }) {
   const [attendees, setAttendees] = useState(null) // null = loading
 
   useEffect(() => {
@@ -328,18 +347,43 @@ function AttendeeList({ eventId, session, profile, iAmGoing }) {
     })
   }, [iAmGoing, session.user.id, profile?.full_name, profile?.avatar_url])
 
+  const others = (attendees || []).filter((a) => a.user_id !== session.user.id)
+
   return (
     <div className="attendee-list">
       {attendees === null && <p className="empty small">Loading…</p>}
       {attendees && attendees.length === 0 && <p className="empty small">No one's RSVP'd yet — be the first.</p>}
+      {/* Turns the RSVP from a passive checkbox into a reason to say hi —
+          surfaced right where you just saw who else is going. */}
+      {iAmGoing && others.length > 0 && (
+        <p className="attendee-going-note">
+          {others.length} other{others.length === 1 ? '' : 's'} going too — say hi below.
+        </p>
+      )}
       {attendees && attendees.length > 0 && (
         <ul className="attendee-avatars">
-          {attendees.map((a) => (
-            <li key={a.user_id} className="attendee-chip" title={a.profiles?.full_name || 'Alumnus'}>
-              <Avatar url={a.profiles?.avatar_url} name={a.profiles?.full_name} size={26} />
-              <span>{a.profiles?.full_name || 'Alumnus'}</span>
-            </li>
-          ))}
+          {attendees.map((a) => {
+            const isMe = a.user_id === session.user.id
+            return (
+              <li key={a.user_id} className="attendee-chip" title={a.profiles?.full_name || 'Alumnus'}>
+                <Avatar url={a.profiles?.avatar_url} name={a.profiles?.full_name} size={26} />
+                <span>{isMe ? 'You' : (a.profiles?.full_name || 'Alumnus')}</span>
+                {!isMe && onMessage && (
+                  <button
+                    className="attendee-message"
+                    onClick={() => onMessage(
+                      { id: a.user_id, full_name: a.profiles?.full_name },
+                      eventIcebreaker(a.profiles, eventTitle)
+                    )}
+                    aria-label={`Message ${a.profiles?.full_name || 'this Eendragter'}`}
+                    title="See you there!"
+                  >
+                    <EnvelopeIcon />
+                  </button>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
@@ -426,7 +470,7 @@ function EventComments({ eventId, session, profile }) {
 }
 
 /* ---------- Calendar grid view ---------- */
-function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay, session, profile, myRsvps, onToggleRsvp, onDelete }) {
+function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay, session, profile, myRsvps, onToggleRsvp, onDelete, onMessage }) {
   const year = cursorMonth.getFullYear()
   const month = cursorMonth.getMonth()
 
@@ -506,6 +550,7 @@ function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSel
                 iAmGoing={myRsvps.has(e.id)}
                 onToggleRsvp={() => onToggleRsvp(e.id)}
                 onDelete={() => onDelete(e.id)}
+                onMessage={onMessage}
               />
             ))}
           </ul>
@@ -592,6 +637,14 @@ function CommentIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  )
+}
+function EnvelopeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
     </svg>
   )
 }
