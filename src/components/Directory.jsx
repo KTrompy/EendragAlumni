@@ -71,7 +71,12 @@ const EMPTY_FILTERS = {
 export default function Directory({ session, onMessage }) {
   const [people, setPeople] = useState([])
   const [q, setQ] = useState('')
+  // `filters` is what's actually applied to the list below. `draftFilters`
+  // is what the open filter panel is editing — nothing in `filters` changes
+  // until "Show N results" is clicked, so adjusting Country/Industry/Status/
+  // etc. doesn't reshuffle the list out from under someone mid-adjustment.
   const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS)
   const [openProfile, setOpenProfile] = useState(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -116,43 +121,63 @@ export default function Directory({ session, onMessage }) {
 
   function decadeLabel(d) { return d < 2000 ? `’${String(d).slice(2)}s` : `${d}s` }
 
-  function set(k, v) { setFilters((f) => ({ ...f, [k]: v })) }
-  function clearFilters() { setFilters(EMPTY_FILTERS); setQ('') }
+  // Applied filters change the list immediately. Draft filters (used while
+  // the panel is open) don't — see openFilterPanel/applyDraftFilters below.
+  function setDraft(k, v) { setDraftFilters((f) => ({ ...f, [k]: v })) }
+
+  function openFilterPanel() {
+    setDraftFilters(filters) // start editing from whatever's currently applied
+    setFilterOpen(true)
+  }
+  function applyDraftFilters() {
+    setFilters(draftFilters)
+    setFilterOpen(false)
+  }
+  function clearDraftFilters() { setDraftFilters(EMPTY_FILTERS) }
 
   function toggleDecade(startYear) {
-    const isActive = Number(filters.yearFrom) === startYear && Number(filters.yearTo) === startYear + 9
+    const isActive = Number(draftFilters.yearFrom) === startYear && Number(draftFilters.yearTo) === startYear + 9
     if (isActive) {
-      setFilters((f) => ({ ...f, yearFrom: '', yearTo: '' }))
+      setDraftFilters((f) => ({ ...f, yearFrom: '', yearTo: '' }))
     } else {
-      setFilters((f) => ({ ...f, yearFrom: String(startYear), yearTo: String(startYear + 9) }))
+      setDraftFilters((f) => ({ ...f, yearFrom: String(startYear), yearTo: String(startYear + 9) }))
     }
   }
 
-  const needle = q.trim().toLowerCase()
-  const filtered = people.filter((p) => {
+  function matches(p, f) {
     if (needle) {
       const hay = [p.full_name, p.occupation, p.company, p.city, p.industry, String(p.grad_year || '')]
         .join(' ').toLowerCase()
       if (!hay.includes(needle)) return false
     }
-    if (filters.status === STATUS.CURRENT && !p.is_current_resident) return false
-    if (filters.status === STATUS.ALUMNI && p.is_current_resident) return false
-    if (filters.mentor === MENTOR.YES && !p.available_for_mentorship) return false
-    if (filters.yearFrom && (!p.grad_year || p.grad_year < Number(filters.yearFrom))) return false
-    if (filters.yearTo && (!p.grad_year || p.grad_year > Number(filters.yearTo))) return false
-    if (filters.country && p.country !== filters.country) return false
-    if (filters.industry && p.industry !== filters.industry) return false
-return true
-  })
+    if (f.status === STATUS.CURRENT && !p.is_current_resident) return false
+    if (f.status === STATUS.ALUMNI && p.is_current_resident) return false
+    if (f.mentor === MENTOR.YES && !p.available_for_mentorship) return false
+    if (f.yearFrom && (!p.grad_year || p.grad_year < Number(f.yearFrom))) return false
+    if (f.yearTo && (!p.grad_year || p.grad_year > Number(f.yearTo))) return false
+    if (f.country && p.country !== f.country) return false
+    if (f.industry && p.industry !== f.industry) return false
+    return true
+  }
+
+  const needle = q.trim().toLowerCase()
+  const filtered = people.filter((p) => matches(p, filters))
+  // What the panel's "Show N results" button previews — based on the draft,
+  // not yet applied, so it tells you what you'll get if you confirm.
+  const previewCount = people.filter((p) => matches(p, draftFilters)).length
 
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [q, filters, people.length])
 
   const shown = filtered.slice(0, visibleCount)
   const hasMore = visibleCount < filtered.length
 
-  const activeFilterCount = Object.entries(filters).filter(
-    ([k, v]) => v && !((k === 'status' && v === STATUS.ALL) || (k === 'mentor' && v === MENTOR.ALL))
-  ).length
+  function countActive(f) {
+    return Object.entries(f).filter(
+      ([k, v]) => v && !((k === 'status' && v === STATUS.ALL) || (k === 'mentor' && v === MENTOR.ALL))
+    ).length
+  }
+  const activeFilterCount = countActive(filters)
+  const draftActiveFilterCount = countActive(draftFilters)
 
   return (
     <section className="panel">
@@ -171,7 +196,7 @@ return true
             <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>
           )}
         </div>
-        <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
+        <button className="filters-toggle-btn" onClick={openFilterPanel}>
           <FilterIcon />
           Filters
           {activeFilterCount > 0 && <span className="filters-toggle-badge">{activeFilterCount}</span>}
@@ -215,7 +240,7 @@ return true
           <div className="filter-backdrop" onClick={() => setFilterOpen(false)} />
           <aside className="filter-panel open" aria-label="Filter alumni">
             <div className="filter-panel-header">
-              <h3>Filter · {activeFilterCount || 'none'}</h3>
+              <h3>Filter · {draftActiveFilterCount || 'none'}</h3>
               <button className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
             </div>
 
@@ -223,12 +248,12 @@ return true
               <div className="filter-section-body">
                 <div className="filter-radio-row">
                   <button
-                    className={filters.mentor === MENTOR.ALL ? 'on' : ''}
-                    onClick={() => set('mentor', MENTOR.ALL)}
+                    className={draftFilters.mentor === MENTOR.ALL ? 'on' : ''}
+                    onClick={() => setDraft('mentor', MENTOR.ALL)}
                   >All</button>
                   <button
-                    className={filters.mentor === MENTOR.YES ? 'on' : ''}
-                    onClick={() => set('mentor', MENTOR.YES)}
+                    className={draftFilters.mentor === MENTOR.YES ? 'on' : ''}
+                    onClick={() => setDraft('mentor', MENTOR.YES)}
                   >🤝 Open to mentoring</button>
                 </div>
               </div>
@@ -236,9 +261,9 @@ return true
 
             <FilterSection title="Status">
               <div className="filter-radio-row">
-                <button className={filters.status === STATUS.ALL ? 'on' : ''} onClick={() => set('status', STATUS.ALL)}>All</button>
-                <button className={filters.status === STATUS.CURRENT ? 'on' : ''} onClick={() => set('status', STATUS.CURRENT)}>In house</button>
-                <button className={filters.status === STATUS.ALUMNI ? 'on' : ''} onClick={() => set('status', STATUS.ALUMNI)}>Alumni</button>
+                <button className={draftFilters.status === STATUS.ALL ? 'on' : ''} onClick={() => setDraft('status', STATUS.ALL)}>All</button>
+                <button className={draftFilters.status === STATUS.CURRENT ? 'on' : ''} onClick={() => setDraft('status', STATUS.CURRENT)}>In house</button>
+                <button className={draftFilters.status === STATUS.ALUMNI ? 'on' : ''} onClick={() => setDraft('status', STATUS.ALUMNI)}>Alumni</button>
               </div>
             </FilterSection>
 
@@ -246,7 +271,7 @@ return true
               {decadeOptions.length > 0 && (
                 <div className="filter-radio-row decade-row">
                   {decadeOptions.map((d) => {
-                    const active = Number(filters.yearFrom) === d && Number(filters.yearTo) === d + 9
+                    const active = Number(draftFilters.yearFrom) === d && Number(draftFilters.yearTo) === d + 9
                     return (
                       <button key={d} className={active ? 'on' : ''} onClick={() => toggleDecade(d)}>
                         {decadeLabel(d)}
@@ -256,17 +281,17 @@ return true
                 </div>
               )}
               <div className="filter-year-row">
-                <input type="number" placeholder="From" value={filters.yearFrom} onChange={(e) => set('yearFrom', e.target.value)} />
+                <input type="number" placeholder="From" value={draftFilters.yearFrom} onChange={(e) => setDraft('yearFrom', e.target.value)} />
                 <span aria-hidden="true">–</span>
-                <input type="number" placeholder="To" value={filters.yearTo} onChange={(e) => set('yearTo', e.target.value)} />
+                <input type="number" placeholder="To" value={draftFilters.yearTo} onChange={(e) => setDraft('yearTo', e.target.value)} />
               </div>
             </FilterSection>
 
             <FilterSection title="Country">
               <ListAutocomplete
                 options={COUNTRIES}
-                value={filters.country}
-                onChange={(v) => set('country', v)}
+                value={draftFilters.country}
+                onChange={(v) => setDraft('country', v)}
                 placeholder="All countries — start typing to filter"
               />
             </FilterSection>
@@ -274,16 +299,16 @@ return true
             <FilterSection title="Industry">
               <ListAutocomplete
                 options={INDUSTRIES}
-                value={filters.industry}
-                onChange={(v) => set('industry', v)}
+                value={draftFilters.industry}
+                onChange={(v) => setDraft('industry', v)}
                 placeholder="All industries — start typing to filter"
               />
             </FilterSection>
 
             <div className="filter-panel-footer">
-              <button className="filter-clear" onClick={clearFilters}>Clear all filters</button>
-              <button className="btn primary wide" onClick={() => setFilterOpen(false)}>
-                Show {filtered.length} {filtered.length === 1 ? 'result' : 'results'}
+              <button className="filter-clear" onClick={clearDraftFilters}>Clear all filters</button>
+              <button className="btn primary wide" onClick={applyDraftFilters}>
+                Show {previewCount} {previewCount === 1 ? 'result' : 'results'}
               </button>
             </div>
           </aside>
