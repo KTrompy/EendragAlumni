@@ -2,12 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 
 // A city input backed by live suggestions from OpenStreetMap's free
 // Nominatim search — the same service geocode.js uses to place pins on the
-// Alumni Map. Picking a suggestion (instead of free-typing) means the text
-// is guaranteed to be a real, geocodable place, so a typo like "Cape Townx"
-// can't quietly fail to show up on the map later.
-//
-// Free typing still works — if someone ignores the dropdown, geocode.js's
-// best-effort lookup at save time is the fallback, same as before.
+// Alumni Map. Only picking a suggestion commits a value — free-typed text
+// is held locally while you type and reverted the moment you click away
+// without picking, so what's saved is always a real, geocodable place and
+// always shows up correctly on the Alumni Map (no more silent typos).
 export default function CityAutocomplete({
   value,
   country,
@@ -16,18 +14,33 @@ export default function CityAutocomplete({
   placeholder,
   inputClassName,
 }) {
+  const [text, setText] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [needsPick, setNeedsPick] = useState(false)
   const debounceRef = useRef(null)
   const blurTimeoutRef = useRef(null)
+
+  // Stay in sync with the confirmed value from outside (profile loading,
+  // form reset) — but not while the person is actively typing/picking.
+  useEffect(() => { setText(value || '') }, [value])
 
   // Closing on blur has to be delayed — on mobile especially, the input's
   // blur can land a beat before a tap on a suggestion is registered as a
   // click, which unmounts the dropdown out from under the tap and makes it
   // look like nothing happened. Give the tap time to land first.
   function handleBlur() {
-    blurTimeoutRef.current = setTimeout(() => setOpen(false), 150)
+    blurTimeoutRef.current = setTimeout(() => {
+      setOpen(false)
+      // Only a picked suggestion is allowed to become the real value. If
+      // someone typed something and clicked/tabbed away without picking,
+      // discard it and fall back to whatever was last confirmed.
+      if (text.trim() !== (value || '').trim()) {
+        setNeedsPick(Boolean(text.trim()))
+        setText(value || '')
+      }
+    }, 150)
   }
   function handleFocus() {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
@@ -38,7 +51,7 @@ export default function CityAutocomplete({
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    const q = value.trim()
+    const q = text.trim()
     if (q.length < 2) { setSuggestions([]); setLoading(false); return }
 
     async function search(q2) {
@@ -63,7 +76,8 @@ export default function CityAutocomplete({
         }
         setSuggestions(dedupe(rows))
       } catch {
-        // offline or blocked — just show no suggestions, free text still works
+        // offline or blocked — no suggestions to pick from; the field will
+        // revert on blur same as any other unconfirmed text.
       } finally {
         setLoading(false)
       }
@@ -71,7 +85,7 @@ export default function CityAutocomplete({
 
     return () => clearTimeout(debounceRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, country])
+  }, [text, country])
 
   // Nominatim often returns the same suburb multiple times, once per postal
   // code subdivision it's split into (that's the "two Milnertons" bug) — from
@@ -101,25 +115,37 @@ export default function CityAutocomplete({
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
     // Whatever the suggestion showed in the dropdown is exactly what lands
     // in the textbox — no silent swap to a shorter/different label.
+    setText(row.display_name)
+    setNeedsPick(false)
     onChange(row.display_name)
     onSelectCoords?.({ lat: parseFloat(row.lat), lng: parseFloat(row.lon) })
     setSuggestions([])
     setOpen(false)
   }
 
-  const showDropdown = open && value.trim().length >= 2 && (loading || suggestions.length > 0)
+  const showDropdown = open && text.trim().length >= 2 && (loading || suggestions.length > 0)
+
+  function clear() {
+    setText('')
+    setNeedsPick(false)
+    onChange('')
+    onSelectCoords?.(null)
+  }
 
   return (
-    <div className="city-autocomplete">
+    <div className="city-autocomplete has-clear">
       <input
         className={inputClassName}
-        value={value}
-        onChange={(e) => { onChange(e.target.value); onSelectCoords?.(null); setOpen(true) }}
+        value={text}
+        onChange={(e) => { setText(e.target.value); setNeedsPick(false); setOpen(true) }}
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
         autoComplete="off"
       />
+      {text && (
+        <button type="button" className="search-clear" onMouseDown={(e) => e.preventDefault()} onClick={clear} aria-label="Clear">×</button>
+      )}
       {showDropdown && (
         <ul className="city-suggestions">
           {loading && <li className="city-suggestion-loading">Searching…</li>}
@@ -131,6 +157,9 @@ export default function CityAutocomplete({
             </li>
           ))}
         </ul>
+      )}
+      {needsPick && !showDropdown && (
+        <p className="form-warning">Please choose a suggestion from the list — that typed text wasn't saved.</p>
       )}
     </div>
   )

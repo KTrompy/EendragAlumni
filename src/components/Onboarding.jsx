@@ -312,7 +312,7 @@ export default function Onboarding({ session, profile, onDone }) {
         return (
           <>
             <h2 className="onboarding-question">Which city or town?</h2>
-            <p className="onboarding-hint">This is what powers the Alumni Map — "where are we all now". Pick a suggestion as you type so it's guaranteed to show up (free typing works too, but a typo won't find its way onto the map).</p>
+            <p className="onboarding-hint">This is what powers the Alumni Map — "where are we all now". Start typing and choose a suggestion from the list — only real places from the list are accepted, so you're guaranteed to show up.</p>
             <CityAutocomplete
               value={form.city}
               country={form.country}

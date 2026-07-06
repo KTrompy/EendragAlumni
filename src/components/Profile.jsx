@@ -6,6 +6,7 @@ import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
+import ClearableInput from './ClearableInput.jsx'
 
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
@@ -233,15 +234,30 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       <div className="profile-section">
         <h3 className="profile-section-title">Basic info</h3>
         <label className="field"><span>Full name</span>
-          <input value={form.full_name} onChange={(e) => set('full_name', e.target.value)} />
+          <ClearableInput
+            value={form.full_name}
+            onChange={(e) => set('full_name', e.target.value)}
+            onClear={() => set('full_name', '')}
+          />
         </label>
 
         <div className="field-row">
           <label className="field"><span>Year left / leaving Eendrag</span>
-            <input type="number" value={form.grad_year} onChange={(e) => set('grad_year', e.target.value)} placeholder="2024" />
+            <ClearableInput
+              type="number"
+              value={form.grad_year}
+              onChange={(e) => set('grad_year', e.target.value)}
+              onClear={() => set('grad_year', '')}
+              placeholder="2024"
+            />
           </label>
           <label className="field"><span>Degree studied</span>
-            <input value={form.degree} onChange={(e) => set('degree', e.target.value)} placeholder="e.g. BCom Accounting, BEng Mechanical" />
+            <ClearableInput
+              value={form.degree}
+              onChange={(e) => set('degree', e.target.value)}
+              onClear={() => set('degree', '')}
+              placeholder="e.g. BCom Accounting, BEng Mechanical"
+            />
           </label>
         </div>
 
@@ -279,20 +295,31 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </label>
         {form.industry === 'Other' && (
           <label className="field"><span>Type your industry</span>
-            <input
+            <ClearableInput
               value={customIndustry}
               onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false); setDirty(true) }}
+              onClear={() => { setCustomIndustry(''); setSaved(false); setDirty(true) }}
               placeholder="e.g. Technology, Healthcare, Finance"
             />
           </label>
         )}
 
         <label className="field"><span>Job title / Position</span>
-          <input value={form.occupation} onChange={(e) => set('occupation', e.target.value)} placeholder="e.g. Software Engineer, Director, Student" />
+          <ClearableInput
+            value={form.occupation}
+            onChange={(e) => set('occupation', e.target.value)}
+            onClear={() => set('occupation', '')}
+            placeholder="e.g. Software Engineer, Director, Student"
+          />
         </label>
 
         <label className="field"><span>Company</span>
-          <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
+          <ClearableInput
+            value={form.company}
+            onChange={(e) => set('company', e.target.value)}
+            onClear={() => set('company', '')}
+            placeholder="Naspers"
+          />
         </label>
       </div>
 
@@ -303,6 +330,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             value={form.country}
             onChange={(v) => set('country', v)}
             placeholder="Start typing a country…"
+            clearable
           />
         </label>
 
@@ -314,17 +342,18 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             onSelectCoords={setCityCoords}
             placeholder="e.g. Cape Town, London, New York"
           />
-          <span className="hint">Pick a suggestion as you type so the Alumni Map can find you — free typing works too, but a typo won't show up on the map.</span>
+          <span className="hint">Start typing and choose a suggestion from the list — this field only accepts real places, so you'll always show up correctly on the Alumni Map.</span>
         </label>
       </div>
 
       <div className="profile-section">
         <h3 className="profile-section-title">Online &amp; mentorship</h3>
         <label className="field"><span>LinkedIn URL</span>
-          <input
+          <ClearableInput
             type="url"
             value={form.linkedin_url}
             onChange={(e) => set('linkedin_url', e.target.value)}
+            onClear={() => set('linkedin_url', '')}
             placeholder="https://linkedin.com/in/yourname"
           />
         </label>
@@ -350,9 +379,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </div>
         {form.available_for_mentorship && (
           <label className="field"><span>What kind of mentorship?</span>
-            <input
+            <ClearableInput
               value={form.mentorship_description}
               onChange={(e) => set('mentorship_description', e.target.value)}
+              onClear={() => set('mentorship_description', '')}
               placeholder="e.g. Anybody in the tech space"
             />
           </label>
@@ -362,7 +392,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       <div className="profile-section">
         <h3 className="profile-section-title">Bio</h3>
         <label className="field"><span>Bio</span>
-          <textarea rows={3} value={form.bio} onChange={(e) => set('bio', e.target.value)} placeholder="What you've been up to since Eendrag…" />
+          <ClearableInput
+            as="textarea"
+            rows={3}
+            value={form.bio}
+            onChange={(e) => set('bio', e.target.value)}
+            onClear={() => set('bio', '')}
+            placeholder="What you've been up to since Eendrag…"
+          />
         </label>
       </div>
 

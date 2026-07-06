@@ -378,16 +378,13 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
           <h3 className="person-name">
             {p.full_name || 'Alumnus'}
             {isMe && <span className="person-name-you">You</span>}
-            {p.is_current_resident && <span className="person-badge-current">In house</span>}
+            <span className={p.available_for_mentorship ? 'person-badge-mentor yes' : 'person-badge-mentor no'}>
+              {p.available_for_mentorship ? '🤝 Mentoring' : 'Not mentoring'}
+            </span>
           </h3>
           <p className="person-occupation">{roleLine || ' '}</p>
           <p className="person-location">{locationLine || ' '}</p>
           <p className="person-industry">{p.industry || ' '}</p>
-          {p.available_for_mentorship && (
-            <p className="person-occupation">
-              <span className="mentor-chip">🤝 Mentoring</span>
-            </p>
-          )}
         </div>
         <div className="person-actions" onClick={(e) => e.stopPropagation()}>
           <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label="Send a message">

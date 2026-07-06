@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import ClearableInput from './ClearableInput.jsx'
 
 export default function Auth() {
   const [mode, setMode] = useState('signin') // 'signin' | 'signup'
@@ -36,20 +37,22 @@ export default function Auth() {
 
         <label className="field">
           <span>Email</span>
-          <input
+          <ClearableInput
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onClear={() => setEmail('')}
             placeholder="you@example.com"
             autoComplete="email"
           />
         </label>
         <label className="field">
           <span>Password</span>
-          <input
+          <ClearableInput
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onClear={() => setPassword('')}
             placeholder="At least 6 characters"
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
           />
