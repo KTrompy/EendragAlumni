@@ -99,7 +99,7 @@ export default function Feed({ session, profile, onMessage }) {
   const hasMore = visibleCount < posts.length
 
   return (
-    <section className="feed-section">
+    <section className="panel">
       <h2 className="panel-title">Feed</h2>
       <p className="panel-sub">Photos, updates, shoutouts — what the house is up to.</p>
 

@@ -1130,11 +1130,9 @@ input, textarea, select { font: inherit; }
 .linkedin-link:hover { background: #084E96; }
 
 /* ---------- Feed ---------- */
-/* ---------- Feed section ---------- */
-.feed-section {
-  max-width: 620px;
-  margin: 0 auto;
-}
+/* Feed uses the same full-width .panel as Events/Directory — no extra
+   width cap here, so the composer and post cards stretch edge-to-edge
+   like everywhere else instead of sitting in a narrow centered column. */
 
 /* ---------- Composer: collapsed prompt card ---------- */
 .composer-card {
