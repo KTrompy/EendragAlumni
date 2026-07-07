@@ -6,10 +6,12 @@ import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { Avatar } from './Directory.jsx'
 import ProfileModal from './ProfileModal.jsx'
+import { useToast } from './Toast.jsx'
 import { buildIcebreaker, matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
 
 const NEW_WINDOW_MS = 48 * 60 * 60 * 1000 // how recent counts as "New"
+const PAGE_SIZE = 20
 
 // Fields needed for the poster's profile modal + "in common with you" badge —
 // same shape Directory/Events already pull for the same purpose.
@@ -63,27 +65,100 @@ export default function Jobs({ session, profile, onMessage }) {
   const [openProfile, setOpenProfile] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
   const [editingId, setEditingId] = useState(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [savedIds, setSavedIds] = useState(new Set())
+  const [savedOnly, setSavedOnly] = useState(false)
+  const [savedJobs, setSavedJobs] = useState([])
+  const [savedLoading, setSavedLoading] = useState(false)
+  const showToast = useToast()
 
-  async function load() {
-    const { data } = await supabase
+  async function loadSavedIds() {
+    const { data } = await supabase.from('saved_jobs').select('job_id').eq('user_id', session.user.id)
+    setSavedIds(new Set((data || []).map((r) => r.job_id)))
+  }
+
+  // "Saved" is its own query against whatever's bookmarked, not a filter
+  // over the current page — otherwise a job you saved weeks ago could
+  // silently disappear from "Saved" the moment it scrolls past whatever's
+  // currently paginated in.
+  useEffect(() => {
+    if (!savedOnly) return
+    if (savedIds.size === 0) { setSavedJobs([]); return }
+    let cancelled = false
+    setSavedLoading(true)
+    supabase
+      .from('jobs')
+      .select(
+        `id, title, company, location, employment_type, description, apply_url, contact_email, logo_url, updated_at, created_at, posted_by,
+         profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`
+      )
+      .in('id', [...savedIds])
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { if (!cancelled) { setSavedJobs(data || []); setSavedLoading(false) } })
+    return () => { cancelled = true }
+  }, [savedOnly, savedIds])
+
+  async function toggleSave(jobId) {
+    const isSaved = savedIds.has(jobId)
+    setSavedIds((prev) => {
+      const next = new Set(prev)
+      if (isSaved) next.delete(jobId); else next.add(jobId)
+      return next
+    })
+    const { error } = isSaved
+      ? await supabase.from('saved_jobs').delete().match({ job_id: jobId, user_id: session.user.id })
+      : await supabase.from('saved_jobs').insert({ job_id: jobId, user_id: session.user.id })
+    if (error) {
+      setSavedIds((prev) => {
+        const next = new Set(prev)
+        if (isSaved) next.add(jobId); else next.delete(jobId)
+        return next
+      })
+      showToast('Could not update saved jobs.', { type: 'error' })
+    } else {
+      showToast(isSaved ? 'Removed from saved' : 'Job saved')
+    }
+  }
+
+  // Server-side paging (see the matching comment in Feed.jsx) — jobs used
+  // to be capped at a flat 50 with no way to reach anything older.
+  async function loadPage({ replace = false } = {}) {
+    const offset = replace ? 0 : jobs.length
+    const { data, error } = await supabase
       .from('jobs')
       .select(
         `id, title, company, location, employment_type, description, apply_url, contact_email, logo_url, updated_at, created_at, posted_by,
          profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`
       )
       .order('created_at', { ascending: false })
-      .limit(50)
-    setJobs(data || [])
+      .range(offset, offset + PAGE_SIZE - 1)
+    if (error) { console.error(error); return }
+    setJobs((prev) => (replace ? (data || []) : [...prev, ...(data || [])]))
+    setHasMore((data || []).length === PAGE_SIZE)
+  }
+
+  async function loadFirstPage() {
+    setLoading(true)
+    await loadPage({ replace: true })
     setLoading(false)
   }
 
+  async function loadMore() {
+    setLoadingMore(true)
+    await loadPage()
+    setLoadingMore(false)
+  }
+
   useEffect(() => {
-    load()
+    loadFirstPage()
+    loadSavedIds()
     const channel = supabase
       .channel('jobs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => loadPage({ replace: true }))
       .subscribe()
     return () => supabase.removeChannel(channel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Lock body scroll while the filter drawer is open, and let Escape close it.
@@ -100,7 +175,13 @@ export default function Jobs({ session, profile, onMessage }) {
   }, [filterOpen])
 
   async function removeJob(id) {
-    await supabase.from('jobs').delete().eq('id', id)
+    const { error } = await supabase.from('jobs').delete().eq('id', id)
+    if (error) {
+      showToast('Could not delete listing.', { type: 'error' })
+      return
+    }
+    setJobs((prev) => prev.filter((j) => j.id !== id))
+    showToast('Listing deleted')
   }
 
   // Copies a plain-text summary so a listing can be forwarded on WhatsApp/
@@ -140,7 +221,8 @@ export default function Jobs({ session, profile, onMessage }) {
   const canPost = profile?.approved
 
   const needle = q.trim().toLowerCase()
-  const shown = jobs.filter((j) => {
+  const baseList = savedOnly ? savedJobs : jobs
+  const shown = baseList.filter((j) => {
     if (needle) {
       const hay = [j.title, j.company, j.location, j.profiles?.full_name, plainText(j.description)]
         .join(' ').toLowerCase()
@@ -172,7 +254,7 @@ export default function Jobs({ session, profile, onMessage }) {
         <JobForm
           session={session}
           onCancel={() => setShowForm(false)}
-          onCreated={() => { setShowForm(false); load() }}
+          onCreated={() => { setShowForm(false); loadFirstPage(); showToast('Job posted') }}
         />
       ) || null}
 
@@ -205,6 +287,15 @@ export default function Jobs({ session, profile, onMessage }) {
             <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>
           )}
         </div>
+        <button
+          className={savedOnly ? 'filters-toggle-btn on' : 'filters-toggle-btn'}
+          onClick={() => setSavedOnly((s) => !s)}
+          aria-pressed={savedOnly}
+        >
+          <BookmarkIcon filled={savedOnly} />
+          Saved
+          {savedIds.size > 0 && <span className="filters-toggle-badge">{savedIds.size}</span>}
+        </button>
         <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
           <FilterIcon />
           Filters
@@ -212,20 +303,26 @@ export default function Jobs({ session, profile, onMessage }) {
         </button>
       </div>
 
-      <p className="result-count">
-        Showing {shown.length} of {jobs.length} {jobs.length === 1 ? 'role' : 'roles'}
-      </p>
+      {!savedOnly && (
+        <p className="result-count">
+          Showing {shown.length} of {jobs.length}{hasMore ? '+' : ''} {jobs.length === 1 ? 'role' : 'roles'}
+        </p>
+      )}
 
-      {loading ? (
+      {(loading || (savedOnly && savedLoading)) ? (
         <LoadingState message="Loading roles…" />
       ) : shown.length === 0 && (
-        <EmptyState
-          icon="jobs"
-          message={jobs.length === 0 ? 'No listings yet.' : 'No matching roles found.'}
-          subMessage={jobs.length === 0 ? 'Be the first to post a role.' : 'Try widening a filter or clearing them all.'}
-          actionLabel={jobs.length === 0 ? (canPost && !showForm ? 'Post a role' : undefined) : 'Clear filters'}
-          onAction={jobs.length === 0 ? () => setShowForm(true) : clearFilters}
-        />
+        savedOnly ? (
+          <p className="empty small">You haven't saved any roles yet — tap the bookmark on a listing to keep it handy.</p>
+        ) : (
+          <EmptyState
+            icon="jobs"
+            message={jobs.length === 0 ? 'No listings yet.' : 'No matching roles found.'}
+            subMessage={jobs.length === 0 ? 'Be the first to post a role.' : 'Try widening a filter or clearing them all.'}
+            actionLabel={jobs.length === 0 ? (canPost && !showForm ? 'Post a role' : undefined) : 'Clear filters'}
+            onAction={jobs.length === 0 ? () => setShowForm(true) : clearFilters}
+          />
+        )
       )}
 
       {filterOpen && (
@@ -304,7 +401,7 @@ export default function Jobs({ session, profile, onMessage }) {
                   session={session}
                   initial={j}
                   onCancel={() => setEditingId(null)}
-                  onCreated={() => { setEditingId(null); load() }}
+                  onCreated={() => { setEditingId(null); loadFirstPage(); showToast('Listing updated') }}
                 />
               </li>
             )
@@ -312,6 +409,16 @@ export default function Jobs({ session, profile, onMessage }) {
 
           return (
             <li className="job-card" key={j.id}>
+              <button
+                type="button"
+                className={savedIds.has(j.id) ? 'job-save-btn saved' : 'job-save-btn'}
+                onClick={() => toggleSave(j.id)}
+                aria-pressed={savedIds.has(j.id)}
+                aria-label={savedIds.has(j.id) ? 'Remove from saved' : 'Save this listing'}
+                title={savedIds.has(j.id) ? 'Remove from saved' : 'Save this listing'}
+              >
+                <BookmarkIcon filled={savedIds.has(j.id)} />
+              </button>
               <div className="job-card-main">
                 <JobLogo url={j.logo_url} company={j.company} />
                 <div className="job-card-content">
@@ -391,10 +498,22 @@ export default function Jobs({ session, profile, onMessage }) {
         })}
       </ul>
 
+      {/* Search/filters only narrow what's already loaded, so — like
+          Feed — hide the pager while either is active rather than imply
+          "load more" would surface additional matches. */}
+      {!needle && activeFilterCount === 0 && hasMore && (
+        <div className="load-more-row">
+          <button className="btn ghost" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      )}
+
       {/* End-of-list nudge — a second, quieter chance to post once someone's
           actually scrolled through what's here, rather than the ask only
-          ever living above the fold. */}
-      {shown.length > 0 && (
+          ever living above the fold. Only once every listing is truly
+          loaded, so it doesn't contradict a "Load more" button above it. */}
+      {shown.length > 0 && !hasMore && (
         <p className="jobs-end-nudge">
           That's every open role right now.{' '}
           {canPost
@@ -455,8 +574,23 @@ function FilterIcon() {
   )
 }
 
+function BookmarkIcon({ filled = false }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
+// Fields worth persisting as a draft — the logo file itself can't survive
+// a localStorage round-trip, so it's left out on purpose.
+const JOB_DRAFT_FIELDS = ['title', 'company', 'location', 'employment_type', 'description', 'apply_url', 'contact_email']
+
 function JobForm({ session, onCancel, onCreated, initial = null }) {
   const isEdit = !!initial
+  const draftKey = `eendrag-job-draft-${session.user.id}`
+  const draftRestoredRef = useRef(false)
+  const showToast = useToast()
   const [form, setForm] = useState({
     title: initial?.title || '',
     company: initial?.company || '',
@@ -474,6 +608,41 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
   const logoRef = useRef(null)
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
+
+  // Draft autosave — new-listing flow only. An edit-in-progress isn't
+  // persisted here, so it can't later bleed into (or get overwritten by) an
+  // unrelated new-post draft.
+  useEffect(() => {
+    if (isEdit || draftRestoredRef.current) return
+    draftRestoredRef.current = true
+    try {
+      const raw = localStorage.getItem(draftKey)
+      if (!raw) return
+      const saved = JSON.parse(raw)
+      const meaningful = JOB_DRAFT_FIELDS.some((k) => hasText(saved[k] || ''))
+      if (!meaningful) return
+      setForm((f) => ({ ...f, ...saved }))
+      showToast('Draft restored')
+    } catch {
+      // corrupt/unavailable storage — nothing to restore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (isEdit) return
+    const t = setTimeout(() => {
+      try {
+        const meaningful = JOB_DRAFT_FIELDS.some((k) => hasText(form[k] || ''))
+        if (!meaningful) localStorage.removeItem(draftKey)
+        else localStorage.setItem(draftKey, JSON.stringify(form))
+      } catch {
+        // storage full/unavailable — draft just won't persist this time
+      }
+    }, 500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, isEdit])
 
   function handleCancel() {
     if (isEdit) { onCancel(); return }
@@ -538,6 +707,7 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
           : error.message)
         setBusy(false)
       } else {
+        if (!isEdit) { try { localStorage.removeItem(draftKey) } catch { /* ignore */ } }
         onCreated()
       }
     } catch (e) {

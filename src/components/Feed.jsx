@@ -5,6 +5,7 @@ import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
+import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const MAX_IMAGES = 4
@@ -26,6 +27,22 @@ function hasText(html) {
   const div = document.createElement('div')
   div.innerHTML = html || ''
   return div.textContent.trim().length > 0
+}
+
+// Strips tags for search matching — post content is stored as sanitized
+// HTML, so a plain substring match needs the text content, not the markup.
+function plainText(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html || ''
+  return div.textContent || ''
+}
+
+function postMatches(p, needle) {
+  return (
+    (p.title || '').toLowerCase().includes(needle)
+    || plainText(p.content).toLowerCase().includes(needle)
+    || (p.profiles?.full_name || '').toLowerCase().includes(needle)
+  )
 }
 
 // Turns a pasted YouTube/Vimeo link into an embeddable player URL, or null
@@ -52,28 +69,44 @@ function videoEmbedUrl(raw) {
   return null
 }
 
+const POSTS_SELECT = `
+  id, title, content, image_urls, video_url, created_at, author_id,
+  profiles!posts_author_id_fkey ( full_name, grad_year, occupation, avatar_url ),
+  likes:post_likes(count),
+  comments:post_comments(count)
+`
+
 export default function Feed({ session, profile, onMessage }) {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const [myLikes, setMyLikes] = useState(new Set())
   const [lightbox, setLightbox] = useState(null)
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [query, setQuery] = useState('')
   const composerOpenRef = useRef(null)
+  const showToast = useToast()
 
-  async function load() {
+  // Fetches one PAGE_SIZE page of posts, replacing the list (first load, or
+  // a realtime insert/delete elsewhere resetting to the top) or appending to
+  // it ("Load more"). Real server-side paging — not just revealing more of
+  // an already-capped batch — so the feed no longer has a hard ceiling on
+  // how far back you can scroll.
+  async function loadPage({ replace = false } = {}) {
+    const offset = replace ? 0 : posts.length
     const { data, error } = await supabase
       .from('posts')
-      .select(`
-        id, title, content, image_urls, video_url, created_at, author_id,
-        profiles!posts_author_id_fkey ( full_name, grad_year, occupation, avatar_url ),
-        likes:post_likes(count),
-        comments:post_comments(count)
-      `)
+      .select(POSTS_SELECT)
       .order('created_at', { ascending: false })
-      .limit(50)
-    if (error) { console.error(error); setLoading(false); return }
-    setPosts(data || [])
+      .range(offset, offset + PAGE_SIZE - 1)
+    if (error) { console.error(error); return }
+    setPosts((prev) => (replace ? (data || []) : [...prev, ...(data || [])]))
+    setHasMore((data || []).length === PAGE_SIZE)
+  }
 
+  async function loadFirstPage() {
+    setLoading(true)
+    await loadPage({ replace: true })
     const { data: mine } = await supabase
       .from('post_likes')
       .select('post_id')
@@ -83,25 +116,45 @@ export default function Feed({ session, profile, onMessage }) {
   }
 
   useEffect(() => {
-    load()
+    loadFirstPage()
+    // A realtime insert/delete from elsewhere resets back to the freshest
+    // page rather than trying to splice into whatever page you'd scrolled
+    // to — simplest way to stay consistent without refetching every page.
     const channel = supabase
       .channel('feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, load)
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, load)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => loadPage({ replace: true }))
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, () => loadPage({ replace: true }))
       .subscribe()
     return () => supabase.removeChannel(channel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  async function loadMore() {
+    setLoadingMore(true)
+    await loadPage()
+    setLoadingMore(false)
+  }
+
   async function removePost(id) {
-    await supabase.from('posts').delete().eq('id', id)
+    const { error } = await supabase.from('posts').delete().eq('id', id)
+    if (error) {
+      showToast('Could not delete post.', { type: 'error' })
+      return
+    }
+    setPosts((prev) => prev.filter((p) => p.id !== id))
+    showToast('Post deleted')
   }
 
   async function editPost(id, { title, content }) {
+    const updated_at = new Date().toISOString()
     const { error } = await supabase
       .from('posts')
-      .update({ title, content, updated_at: new Date().toISOString() })
+      .update({ title, content, updated_at })
       .eq('id', id)
-    if (!error) load()
+    if (!error) {
+      setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, title, content, updated_at } : p)))
+      showToast('Post updated')
+    }
     return error
   }
 
@@ -133,15 +186,31 @@ export default function Feed({ session, profile, onMessage }) {
     }
   }
 
-  const shown = posts.slice(0, visibleCount)
-  const hasMore = visibleCount < posts.length
+  const needle = query.trim().toLowerCase()
+  const shown = needle
+    ? posts.filter((p) => postMatches(p, needle))
+    : posts
 
   return (
     <section className="panel">
       <h2 className="panel-title">Feed</h2>
       <p className="panel-sub">Photos, updates, shoutouts — what the house is up to.</p>
 
-      <Composer session={session} profile={profile} onPosted={() => { load(); setVisibleCount(PAGE_SIZE) }} openRef={composerOpenRef} />
+      <Composer session={session} profile={profile} onPosted={() => { loadFirstPage(); showToast('Post created') }} openRef={composerOpenRef} />
+
+      {posts.length > 0 && (
+        <div className="search-wrap feed-search-wrap">
+          <input
+            className="search directory-search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search posts…"
+          />
+          {query && (
+            <button className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <LoadingState message="Loading feed…" />
@@ -153,6 +222,10 @@ export default function Feed({ session, profile, onMessage }) {
           actionLabel={profile?.approved ? 'Write the first post' : undefined}
           onAction={() => composerOpenRef.current?.()}
         />
+      )}
+
+      {!loading && posts.length > 0 && shown.length === 0 && (
+        <p className="empty small">No posts match "{query}".</p>
       )}
 
       <ul className="post-list">
@@ -175,10 +248,13 @@ export default function Feed({ session, profile, onMessage }) {
         ))}
       </ul>
 
-      {hasMore && (
+      {/* Search only filters what's already loaded — hide the pager while
+          searching rather than implying "load more" would surface more
+          matches (it fetches by date, not by relevance to the query). */}
+      {!needle && hasMore && (
         <div className="load-more-row">
-          <button className="btn ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
-            Load more ({posts.length - shown.length} remaining)
+          <button className="btn ghost" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? 'Loading…' : 'Load more'}
           </button>
         </div>
       )}
@@ -203,6 +279,47 @@ function Composer({ session, profile, onPosted, openRef }) {
   const [error, setError] = useState(null)
   const fileRef = useRef(null)
   const videoFileRef = useRef(null)
+  const showToast = useToast()
+  // Text-only draft autosave — closing the modal or a phone locking mid-post
+  // used to just lose whatever was typed. Attached photos/video can't
+  // round-trip through localStorage, so only title/body are persisted.
+  const draftKey = `eendrag-feed-draft-${session.user.id}`
+  const draftRestoredRef = useRef(false)
+
+  useEffect(() => {
+    if (!open || draftRestoredRef.current) return
+    draftRestoredRef.current = true
+    try {
+      const raw = localStorage.getItem(draftKey)
+      if (!raw) return
+      const saved = JSON.parse(raw)
+      if ((saved.title || '').trim() || hasText(saved.body || '')) {
+        setTitle(saved.title || '')
+        setBody(saved.body || '')
+        showToast('Draft restored')
+      }
+    } catch {
+      // corrupt/unavailable storage — nothing to restore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const t = setTimeout(() => {
+      try {
+        if (!title.trim() && !hasText(body)) {
+          localStorage.removeItem(draftKey)
+        } else {
+          localStorage.setItem(draftKey, JSON.stringify({ title, body }))
+        }
+      } catch {
+        // storage full/unavailable — draft just won't persist this time
+      }
+    }, 500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, body, open])
   const titleRef = useRef(null)
 
   const canPost = profile?.approved
@@ -311,6 +428,7 @@ function Composer({ session, profile, onPosted, openRef }) {
         setTitle(''); setBody(''); setFiles([])
         setVideoFile(null)
         setOpen(false)
+        try { localStorage.removeItem(draftKey) } catch { /* ignore */ }
         onPosted?.()
       }
     } catch (e) {

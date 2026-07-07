@@ -537,6 +537,51 @@ input, textarea, select { font: inherit; }
 
 .center-page { display: grid; place-items: center; min-height: 100vh; color: var(--ink-soft); }
 
+/* ---------- Toasts ---------- */
+.toast-stack {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 2200; /* above the profile modal (2000) and chat panel (1100) */
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+  width: min(420px, calc(100vw - 32px));
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+  animation: toast-in 0.18s ease;
+  max-width: 100%;
+  text-align: left;
+}
+.toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast svg { flex-shrink: 0; }
+.toast-success { background: var(--maroon-dark); }
+.toast-success svg { color: var(--orange); }
+.toast-error { background: var(--danger); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (max-width: 720px) {
+  /* Clear the bottom tab bar / chat FAB instead of sitting under them. */
+  .toast-stack { bottom: 84px; }
+}
+
 /* ---------- Buttons & fields ---------- */
 .btn {
   border-radius: var(--radius);
@@ -929,6 +974,8 @@ button.delete-danger svg { flex-shrink: 0; }
   margin-bottom: 4px;
 }
 .directory-toolbar .directory-search { flex: 1; margin-bottom: 0; }
+.feed-search-wrap, .events-search-wrap { margin: 4px 0 18px; }
+.feed-search-wrap .directory-search, .events-search-wrap .directory-search { margin-bottom: 0; }
 .search-wrap { position: relative; flex: 1; display: flex; }
 .search-wrap .directory-search { width: 100%; padding-right: 34px; }
 .search-clear {
@@ -964,6 +1011,33 @@ button.delete-danger svg { flex-shrink: 0; }
   white-space: nowrap;
 }
 .filters-toggle-btn:hover { border-color: var(--orange); color: var(--orange-dark); }
+.filters-toggle-btn.on { background: var(--orange-soft); border-color: var(--orange); color: var(--orange-dark); }
+
+/* Bookmark toggle on job/event cards — pinned to the top-right corner via
+   absolute positioning (not a grid column) so it stays put and stays
+   discoverable regardless of how the card's grid collapses on mobile,
+   instead of ending up as an isolated icon stranded below the content. */
+.job-card, .event-card { position: relative; }
+.job-save-btn, .event-save-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: var(--card);
+  box-shadow: 0 1px 3px rgba(26, 26, 26, 0.12);
+  color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.job-save-btn:hover, .event-save-btn:hover { background: var(--orange-soft); color: var(--orange-dark); }
+.job-save-btn.saved, .event-save-btn.saved { color: var(--orange); }
 .filters-toggle-badge {
   background: var(--orange);
   color: #fff;
@@ -1143,7 +1217,9 @@ button.delete-danger svg { flex-shrink: 0; }
 .load-more-row {
   display: flex;
   justify-content: center;
+  gap: 10px;
   margin-top: 20px;
+  flex-wrap: wrap;
 }
 .decade-row { margin-bottom: 8px; }
 .filter-year-row { display: flex; gap: 6px; align-items: center; }
@@ -2554,7 +2630,7 @@ button.delete-danger svg { flex-shrink: 0; }
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 18px 54px 18px 18px;
   box-shadow: var(--shadow-card);
   display: grid;
   grid-template-columns: 88px 1fr auto;
@@ -2644,7 +2720,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .attendee-message:hover { color: var(--orange-dark); }
 .attendee-message svg { width: 14px; height: 14px; }
 
-.job-card { grid-template-columns: 1fr auto; }
+.job-card { grid-template-columns: 1fr; }
 .job-card-main { display: flex; gap: 14px; align-items: flex-start; min-width: 0; }
 .job-card-content { min-width: 0; flex: 1; }
 .job-logo {

@@ -6,11 +6,20 @@ import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import DateTimePicker from './DateTimePicker.jsx'
+import { useToast } from './Toast.jsx'
 import { eventIcebreaker } from '../icebreaker.js'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const PAGE_SIZE = 20
+
+const EVENTS_SELECT = `
+  id, title, description, event_date, location, created_by,
+  profiles!events_created_by_fkey ( full_name ),
+  rsvps:event_rsvps(count),
+  comments:event_comments(count)
+`
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
@@ -24,6 +33,15 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
+function eventMatches(e, needle) {
+  return (
+    (e.title || '').toLowerCase().includes(needle)
+    || (e.description || '').toLowerCase().includes(needle)
+    || (e.location || '').toLowerCase().includes(needle)
+    || (e.profiles?.full_name || '').toLowerCase().includes(needle)
+  )
+}
+
 export default function Events({ session, profile, onMessage }) {
   const { eventId } = useParams() // set when someone opens a shared /events/:eventId link
   const [events, setEvents] = useState([])
@@ -35,21 +53,87 @@ export default function Events({ session, profile, onMessage }) {
     const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
   })
   const [selectedDay, setSelectedDay] = useState(null)
+  const [hasMoreUpcoming, setHasMoreUpcoming] = useState(true)
+  const [hasMorePast, setHasMorePast] = useState(true)
+  const [loadingMoreUpcoming, setLoadingMoreUpcoming] = useState(false)
+  const [loadingMorePast, setLoadingMorePast] = useState(false)
+  const [query, setQuery] = useState('')
+  const [savedIds, setSavedIds] = useState(new Set())
+  const [savedOnly, setSavedOnly] = useState(false)
+  const [savedEvents, setSavedEvents] = useState([])
+  const [savedLoading, setSavedLoading] = useState(false)
   const scrolledRef = useRef(false)
+  const showToast = useToast()
+  // How many upcoming/past rows we've fetched so far — tracked separately
+  // from `events.length` so a realtime insert from someone else (which
+  // splices into the merged array) can't throw off the next page's offset.
+  const upcomingOffsetRef = useRef(0)
+  const pastOffsetRef = useRef(0)
 
-  async function load() {
-    // Fetch a generous window so the calendar view has enough to browse.
-    const { data } = await supabase
+  async function loadSavedIds() {
+    const { data } = await supabase.from('saved_events').select('event_id').eq('user_id', session.user.id)
+    setSavedIds(new Set((data || []).map((r) => r.event_id)))
+  }
+
+  // Same reasoning as Jobs' "Saved" tab — a direct query against whatever's
+  // bookmarked, not a filter over whatever page happens to be loaded.
+  useEffect(() => {
+    if (!savedOnly) return
+    if (savedIds.size === 0) { setSavedEvents([]); return }
+    let cancelled = false
+    setSavedLoading(true)
+    supabase
       .from('events')
-      .select(`
-        id, title, description, event_date, location, created_by,
-        profiles!events_created_by_fkey ( full_name ),
-        rsvps:event_rsvps(count),
-        comments:event_comments(count)
-      `)
+      .select(EVENTS_SELECT)
+      .in('id', [...savedIds])
       .order('event_date', { ascending: true })
-      .limit(500)
-    setEvents(data || [])
+      .then(({ data }) => { if (!cancelled) { setSavedEvents(data || []); setSavedLoading(false) } })
+    return () => { cancelled = true }
+  }, [savedOnly, savedIds])
+
+  async function toggleSaveEvent(eventId) {
+    const isSaved = savedIds.has(eventId)
+    setSavedIds((prev) => {
+      const next = new Set(prev)
+      if (isSaved) next.delete(eventId); else next.add(eventId)
+      return next
+    })
+    const { error } = isSaved
+      ? await supabase.from('saved_events').delete().match({ event_id: eventId, user_id: session.user.id })
+      : await supabase.from('saved_events').insert({ event_id: eventId, user_id: session.user.id })
+    if (error) {
+      setSavedIds((prev) => {
+        const next = new Set(prev)
+        if (isSaved) next.add(eventId); else next.delete(eventId)
+        return next
+      })
+      showToast('Could not update saved events.', { type: 'error' })
+    } else {
+      showToast(isSaved ? 'Removed from saved' : 'Event saved')
+    }
+  }
+
+  // Two independent, real paginated feeds — upcoming events ordered soonest
+  // first, past events ordered most-recent-first — merged into one `events`
+  // array for rendering/RSVP bookkeeping. The old version fetched a single
+  // .limit(500) batch ordered oldest-first, which meant a chapter with
+  // enough history could quietly push future events out of the fetch
+  // entirely; this fixes that as a side effect of adding real pagination.
+  async function loadInitial() {
+    setLoading(true)
+    const nowIso = new Date().toISOString()
+    const [{ data: up, error: e1 }, { data: pa, error: e2 }] = await Promise.all([
+      supabase.from('events').select(EVENTS_SELECT)
+        .gte('event_date', nowIso).order('event_date', { ascending: true }).range(0, PAGE_SIZE - 1),
+      supabase.from('events').select(EVENTS_SELECT)
+        .lt('event_date', nowIso).order('event_date', { ascending: false }).range(0, PAGE_SIZE - 1),
+    ])
+    if (e1 || e2) { console.error(e1 || e2); setLoading(false); return }
+    upcomingOffsetRef.current = (up || []).length
+    pastOffsetRef.current = (pa || []).length
+    setEvents([...(up || []), ...(pa || [])])
+    setHasMoreUpcoming((up || []).length === PAGE_SIZE)
+    setHasMorePast((pa || []).length === PAGE_SIZE)
     setLoading(false)
 
     const { data: mine } = await supabase
@@ -59,11 +143,36 @@ export default function Events({ session, profile, onMessage }) {
     setMyRsvps(new Set((mine || []).map((r) => r.event_id)))
   }
 
+  async function loadMoreUpcoming() {
+    setLoadingMoreUpcoming(true)
+    const nowIso = new Date().toISOString()
+    const offset = upcomingOffsetRef.current
+    const { data } = await supabase.from('events').select(EVENTS_SELECT)
+      .gte('event_date', nowIso).order('event_date', { ascending: true }).range(offset, offset + PAGE_SIZE - 1)
+    upcomingOffsetRef.current += (data || []).length
+    setEvents((prev) => [...prev, ...(data || [])])
+    setHasMoreUpcoming((data || []).length === PAGE_SIZE)
+    setLoadingMoreUpcoming(false)
+  }
+
+  async function loadMorePast() {
+    setLoadingMorePast(true)
+    const nowIso = new Date().toISOString()
+    const offset = pastOffsetRef.current
+    const { data } = await supabase.from('events').select(EVENTS_SELECT)
+      .lt('event_date', nowIso).order('event_date', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
+    pastOffsetRef.current += (data || []).length
+    setEvents((prev) => [...prev, ...(data || [])])
+    setHasMorePast((data || []).length === PAGE_SIZE)
+    setLoadingMorePast(false)
+  }
+
   useEffect(() => {
-    load()
+    loadInitial()
+    loadSavedIds()
     const channel = supabase
       .channel('events')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, loadInitial)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_rsvps' }, (payload) => {
         // Our own RSVP toggles are already reflected optimistically the
         // instant you click — reloading here too would re-fetch mid-flight
@@ -73,14 +182,21 @@ export default function Events({ session, profile, onMessage }) {
         // "X going" counts stay live without fighting your own clicks.
         const affectedUser = payload.new?.user_id || payload.old?.user_id
         if (affectedUser === session.user.id) return
-        load()
+        loadInitial()
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function removeEvent(id) {
-    await supabase.from('events').delete().eq('id', id)
+    const { error } = await supabase.from('events').delete().eq('id', id)
+    if (error) {
+      showToast('Could not delete event.', { type: 'error' })
+      return
+    }
+    setEvents((prev) => prev.filter((e) => e.id !== id))
+    showToast('Event deleted')
   }
 
   // Tracks, per event, whether an insert/delete request is currently in
@@ -140,9 +256,16 @@ export default function Events({ session, profile, onMessage }) {
           // Roll back to whatever the server actually has (e.g. not yet approved)
           applyRsvpUi(eventId, !target, target)
           rsvpDesiredRef.current[eventId] = !target
+          showToast(target ? "Couldn't RSVP." : "Couldn't remove RSVP.", { type: 'error' })
           break
         }
-        if (rsvpDesiredRef.current[eventId] === target) break // no new clicks arrived while this was in flight
+        if (rsvpDesiredRef.current[eventId] === target) {
+          // No new clicks arrived while this was in flight — the database
+          // now matches the final state, so this is the one moment to
+          // confirm it (not on every intermediate click of a fast toggle).
+          showToast(target ? "You're going!" : 'RSVP removed')
+          break
+        }
       }
     } finally {
       rsvpFlightRef.current[eventId] = false
@@ -153,7 +276,14 @@ export default function Events({ session, profile, onMessage }) {
   const now = new Date()
   const upcoming = events.filter((e) => new Date(e.event_date) >= now)
   const past = events.filter((e) => new Date(e.event_date) < now).reverse()
-  const listItems = [...upcoming, ...past]
+  const needle = query.trim().toLowerCase()
+
+  // "Saved" replaces the upcoming/past list entirely with a direct query
+  // over bookmarked events — see the effect above.
+  const allListItems = savedOnly ? savedEvents : [...upcoming, ...past]
+  const listItems = needle
+    ? allListItems.filter((e) => eventMatches(e, needle))
+    : allListItems
 
   // A shared /events/:id link should land you on that event, scrolled into
   // view, rather than the top of a long list — otherwise a bookmarkable URL
@@ -184,15 +314,26 @@ export default function Events({ session, profile, onMessage }) {
             >
               List
             </button>
-            <button
-              role="tab"
-              aria-selected={view === 'calendar'}
-              className={view === 'calendar' ? 'on' : ''}
-              onClick={() => setView('calendar')}
-            >
-              Calendar
-            </button>
+            {!savedOnly && (
+              <button
+                role="tab"
+                aria-selected={view === 'calendar'}
+                className={view === 'calendar' ? 'on' : ''}
+                onClick={() => setView('calendar')}
+              >
+                Calendar
+              </button>
+            )}
           </div>
+          <button
+            className={savedOnly ? 'filters-toggle-btn on' : 'filters-toggle-btn'}
+            onClick={() => { setSavedOnly((s) => !s); setView('list') }}
+            aria-pressed={savedOnly}
+          >
+            <BookmarkIcon filled={savedOnly} />
+            Saved
+            {savedIds.size > 0 && <span className="filters-toggle-badge">{savedIds.size}</span>}
+          </button>
           {canPost && !showForm && (
             <button className="btn primary" onClick={() => setShowForm(true)}>Add event</button>
           )}
@@ -203,23 +344,46 @@ export default function Events({ session, profile, onMessage }) {
         <EventForm
           session={session}
           onCancel={() => setShowForm(false)}
-          onCreated={() => { setShowForm(false); load() }}
+          onCreated={() => { setShowForm(false); loadInitial(); showToast('Event created') }}
         />
       ) || null}
 
+      {view === 'list' && (events.length > 0 || savedOnly) && (
+        <div className="search-wrap events-search-wrap">
+          <input
+            className="search directory-search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search events…"
+          />
+          {query && (
+            <button className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+          )}
+        </div>
+      )}
+
       {view === 'list' ? (
         <>
-          {loading ? (
+          {(loading || (savedOnly && savedLoading)) ? (
             <LoadingState message="Loading events…" />
-          ) : listItems.length === 0 && (
-            <EmptyState
-              icon="events"
-              message="No events on the calendar yet."
-              subMessage="Post one to get the first reunion rolling."
-              actionLabel={canPost && !showForm ? 'Add event' : undefined}
-              onAction={() => setShowForm(true)}
-            />
+          ) : allListItems.length === 0 && (
+            savedOnly ? (
+              <p className="empty small">You haven't saved any events yet — tap the bookmark on one to keep it handy.</p>
+            ) : (
+              <EmptyState
+                icon="events"
+                message="No events on the calendar yet."
+                subMessage="Post one to get the first reunion rolling."
+                actionLabel={canPost && !showForm ? 'Add event' : undefined}
+                onAction={() => setShowForm(true)}
+              />
+            )
           )}
+
+          {!loading && allListItems.length > 0 && listItems.length === 0 && (
+            <p className="empty small">No events match "{query}".</p>
+          )}
+
           <ul className="event-list">
             {listItems.map((e) => (
               <EventCard
@@ -228,14 +392,34 @@ export default function Events({ session, profile, onMessage }) {
                 session={session}
                 profile={profile}
                 iAmGoing={myRsvps.has(e.id)}
+                isSaved={savedIds.has(e.id)}
+                onToggleSave={() => toggleSaveEvent(e.id)}
                 onToggleRsvp={() => toggleRsvp(e.id)}
                 onDelete={() => removeEvent(e.id)}
-                onSaved={load}
+                onSaved={loadInitial}
                 onMessage={onMessage}
                 highlighted={String(e.id) === eventId}
               />
             ))}
           </ul>
+
+          {/* Search only filters what's already loaded — hide the pagers
+              while searching, same reasoning as Feed/Jobs. Saved is its
+              own complete query, so it never has "more" to page in. */}
+          {!needle && !savedOnly && (hasMoreUpcoming || hasMorePast) && (
+            <div className="load-more-row events-load-more-row">
+              {hasMoreUpcoming && (
+                <button className="btn ghost" onClick={loadMoreUpcoming} disabled={loadingMoreUpcoming}>
+                  {loadingMoreUpcoming ? 'Loading…' : 'Load more upcoming'}
+                </button>
+              )}
+              {hasMorePast && (
+                <button className="btn ghost" onClick={loadMorePast} disabled={loadingMorePast}>
+                  {loadingMorePast ? 'Loading…' : 'Load more past events'}
+                </button>
+              )}
+            </div>
+          )}
         </>
       ) : (
         <CalendarView
@@ -247,9 +431,11 @@ export default function Events({ session, profile, onMessage }) {
           session={session}
           profile={profile}
           myRsvps={myRsvps}
+          savedIds={savedIds}
+          onToggleSaveEvent={toggleSaveEvent}
           onToggleRsvp={toggleRsvp}
           onDelete={removeEvent}
-          onSaved={load}
+          onSaved={loadInitial}
           onMessage={onMessage}
         />
       )}
@@ -257,11 +443,12 @@ export default function Events({ session, profile, onMessage }) {
   )
 }
 
-function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onSaved, onMessage, highlighted }) {
+function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onToggleRsvp, onDelete, onSaved, onMessage, highlighted }) {
   const [showAttendees, setShowAttendees] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [editing, setEditing] = useState(false)
   const [copied, setCopied] = useState(false)
+  const showToast = useToast()
   const d = new Date(e.event_date)
   const isPast = d < new Date()
   const rsvpCount = e.rsvps?.[0]?.count ?? 0
@@ -296,7 +483,7 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onSa
           session={session}
           initial={e}
           onCancel={() => setEditing(false)}
-          onCreated={() => { setEditing(false); onSaved?.() }}
+          onCreated={() => { setEditing(false); onSaved?.(); showToast('Event updated') }}
         />
       </li>
     )
@@ -308,6 +495,18 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onSa
       id={`event-${e.id}`}
       style={isPast ? { opacity: 0.65 } : undefined}
     >
+      {onToggleSave && (
+        <button
+          type="button"
+          className={isSaved ? 'event-save-btn saved' : 'event-save-btn'}
+          onClick={onToggleSave}
+          aria-pressed={isSaved}
+          aria-label={isSaved ? 'Remove from saved' : 'Save this event'}
+          title={isSaved ? 'Remove from saved' : 'Save this event'}
+        >
+          <BookmarkIcon filled={isSaved} />
+        </button>
+      )}
       <div className="event-date-block" style={isPast ? { background: 'var(--maroon)' } : undefined}>
         <div className="event-date-month">{MONTHS[d.getMonth()]}</div>
         <div className="event-date-day">{d.getDate()}</div>
@@ -531,7 +730,7 @@ function EventComments({ eventId, session, profile }) {
 }
 
 /* ---------- Calendar grid view ---------- */
-function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay, session, profile, myRsvps, onToggleRsvp, onDelete, onSaved, onMessage }) {
+function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay, session, profile, myRsvps, savedIds, onToggleSaveEvent, onToggleRsvp, onDelete, onSaved, onMessage }) {
   const year = cursorMonth.getFullYear()
   const month = cursorMonth.getMonth()
 
@@ -609,6 +808,8 @@ function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSel
                 session={session}
                 profile={profile}
                 iAmGoing={myRsvps.has(e.id)}
+                isSaved={savedIds?.has(e.id)}
+                onToggleSave={onToggleSaveEvent ? () => onToggleSaveEvent(e.id) : undefined}
                 onToggleRsvp={() => onToggleRsvp(e.id)}
                 onDelete={() => onDelete(e.id)}
                 onSaved={onSaved}
@@ -736,6 +937,13 @@ function EditIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  )
+}
+function BookmarkIcon({ filled = false }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   )
 }
