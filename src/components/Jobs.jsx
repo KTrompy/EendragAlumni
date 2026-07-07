@@ -164,9 +164,6 @@ export default function Jobs({ session, profile, onMessage }) {
           <h2 className="panel-title">Job board</h2>
           <p className="panel-sub">Roles and internships posted by Eendragters, for Eendragters.</p>
         </div>
-        {canPost && !showForm && (
-          <button className="btn primary" onClick={() => setShowForm(true)}>Post a role</button>
-        )}
       </div>
 
       {showForm && (

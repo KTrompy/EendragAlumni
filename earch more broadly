@@ -1,0 +1,51 @@
+Jul 04 15:52:35 KyleTrompeter (uetoothd)[16678]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mbluetooth.service: ConfigurationDirectory 'bluetooth' already exists but the mode is different. (File system: 755 ConfigurationDirectoryMode: 555)[0m
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: Bluetooth daemon 5.72
+Jul 04 15:52:35 KyleTrompeter systemd[1]: Started bluetooth.service - Bluetooth service.
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: Starting SDP server
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support csip plugin[0m
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mprofiles/audio/micp.c:micp_init() D-Bus experimental not enabled[0m
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support micp plugin[0m
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support vcp plugin[0m
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support mcp plugin[0m
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support bass plugin[0m
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support bap plugin[0m
+Jul 04 15:52:35 KyleTrompeter bluetoothd[16678]: Bluetooth management interface 1.23 initialized
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16678]: Terminating
+Jul 04 15:52:37 KyleTrompeter systemd[1]: Stopping bluetooth.service - Bluetooth service...
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16678]: Stopping SDP server
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16678]: Exit
+Jul 04 15:52:37 KyleTrompeter systemd[1]: bluetooth.service: Deactivated successfully.
+Jul 04 15:52:37 KyleTrompeter systemd[1]: Stopped bluetooth.service - Bluetooth service.
+Jul 04 15:52:37 KyleTrompeter (uetoothd)[16783]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mbluetooth.service: ConfigurationDirectory 'bluetooth' already exists but the mode is different. (File system: 755 ConfigurationDirectoryMode: 555)[0m
+Jul 04 15:52:37 KyleTrompeter systemd[1]: Starting bluetooth.service - Bluetooth service...
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: Bluetooth daemon 5.72
+Jul 04 15:52:37 KyleTrompeter systemd[1]: Started bluetooth.service - Bluetooth service.
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: Starting SDP server
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support csip plugin[0m
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mprofiles/audio/micp.c:micp_init() D-Bus experimental not enabled[0m
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support micp plugin[0m
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support vcp plugin[0m
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support mcp plugin[0m
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support bass plugin[0m
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support bap plugin[0m
+Jul 04 15:52:37 KyleTrompeter bluetoothd[16783]: Bluetooth management interface 1.23 initialized
+Jul 05 14:09:29 KyleTrompeter bluetoothd[16783]: Terminating
+Jul 05 14:09:29 KyleTrompeter systemd[1]: Stopping bluetooth.service - Bluetooth service...
+Jul 05 14:09:29 KyleTrompeter bluetoothd[16783]: Stopping SDP server
+Jul 05 14:09:29 KyleTrompeter bluetoothd[16783]: Exit
+Jul 05 14:09:29 KyleTrompeter systemd[1]: bluetooth.service: Deactivated successfully.
+Jul 05 14:09:29 KyleTrompeter systemd[1]: Stopped bluetooth.service - Bluetooth service.
+[0;1;39m-- Boot efc6f97b6463453aa30c00d76217870c --[0m
+Jul 05 14:09:48 KyleTrompeter systemd[1]: Starting bluetooth.service - Bluetooth service...
+Jul 05 14:09:48 KyleTrompeter (uetoothd)[1120]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mbluetooth.service: ConfigurationDirectory 'bluetooth' already exists but the mode is different. (File system: 755 ConfigurationDirectoryMode: 555)[0m
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: Bluetooth daemon 5.72
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: Starting SDP server
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support csip plugin[0m
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mprofiles/audio/micp.c:micp_init() D-Bus experimental not enabled[0m
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support micp plugin[0m
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support vcp plugin[0m
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support mcp plugin[0m
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support bass plugin[0m
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185msrc/plugin.c:plugin_init() System does not support bap plugin[0m
+Jul 05 14:09:48 KyleTrompeter systemd[1]: Started bluetooth.service - Bluetooth service.
+Jul 05 14:09:48 KyleTrompeter bluetoothd[1120]: Bluetooth management interface 1.23 initialized
