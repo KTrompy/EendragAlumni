@@ -1038,6 +1038,44 @@ input, textarea, select { font: inherit; }
 /* Autocomplete inputs (Country/Industry filters) reserve the same space for
    an "x" clear button when the field supports one. */
 .city-autocomplete.has-clear input { padding-right: 30px; }
+
+/* ---------- Multi-select autocomplete (e.g. Country/Industry filters) ---------- */
+.multi-select-chips {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.multi-select-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--orange-soft);
+  border: 1px solid var(--orange);
+  border-radius: 999px;
+  padding: 4px 6px 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--maroon-dark);
+}
+.multi-select-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: none;
+  color: var(--maroon-dark);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.multi-select-chip button:hover { background: rgba(90, 26, 43, 0.12); }
 .filter-clear {
   width: 100%;
   padding: 10px 0;

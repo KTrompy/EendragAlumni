@@ -5,7 +5,7 @@ import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
 import { buildIcebreaker, matchReason } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
-import ListAutocomplete from './ListAutocomplete.jsx'
+import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 
 const PAGE_SIZE = 12
 
@@ -66,8 +66,8 @@ const EMPTY_FILTERS = {
   mentor: MENTOR.ALL,
   yearFrom: '',
   yearTo: '',
-  country: '',
-  industry: '',
+  countries: [],
+  industries: [],
 }
 
 export default function Directory({ session, onMessage, hideHeader = false }) {
@@ -163,8 +163,11 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
     if (f.mentor === MENTOR.YES && !p.available_for_mentorship) return false
     if (f.yearFrom && (!p.grad_year || p.grad_year < Number(f.yearFrom))) return false
     if (f.yearTo && (!p.grad_year || p.grad_year > Number(f.yearTo))) return false
-    if (f.country && p.country !== f.country) return false
-    if (f.industry && p.industry !== f.industry) return false
+    // Multiple selections within one filter are OR'd together (e.g. Country:
+    // South Africa OR United Kingdom), while different filter types still
+    // AND together — same convention as every other filter here.
+    if (f.countries.length && !f.countries.includes(p.country)) return false
+    if (f.industries.length && !f.industries.includes(p.industry)) return false
     return true
   }
 
@@ -180,9 +183,10 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
   const hasMore = visibleCount < filtered.length
 
   function countActive(f) {
-    return Object.entries(f).filter(
-      ([k, v]) => v && !((k === 'status' && v === STATUS.ALL) || (k === 'mentor' && v === MENTOR.ALL))
-    ).length
+    return Object.entries(f).filter(([k, v]) => {
+      if (Array.isArray(v)) return v.length > 0
+      return v && !((k === 'status' && v === STATUS.ALL) || (k === 'mentor' && v === MENTOR.ALL))
+    }).length
   }
   const activeFilterCount = countActive(filters)
   const draftActiveFilterCount = countActive(draftFilters)
@@ -369,22 +373,20 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
             </FilterSection>
 
             <FilterSection title="Country">
-              <ListAutocomplete
+              <MultiSelectAutocomplete
                 options={COUNTRIES}
-                value={draftFilters.country}
-                onChange={(v) => setDraft('country', v)}
-                placeholder="All countries — start typing to filter"
-                clearable
+                values={draftFilters.countries}
+                onChange={(v) => setDraft('countries', v)}
+                placeholder="All countries — start typing to add one"
               />
             </FilterSection>
 
             <FilterSection title="Industry">
-              <ListAutocomplete
+              <MultiSelectAutocomplete
                 options={INDUSTRIES}
-                value={draftFilters.industry}
-                onChange={(v) => setDraft('industry', v)}
-                placeholder="All industries — start typing to filter"
-                clearable
+                values={draftFilters.industries}
+                onChange={(v) => setDraft('industries', v)}
+                placeholder="All industries — start typing to add one"
               />
             </FilterSection>
 
