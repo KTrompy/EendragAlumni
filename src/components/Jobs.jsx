@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -18,6 +18,7 @@ const POSTER_FIELDS =
   'is_current_resident, available_for_mentorship, mentorship_description, linkedin_url, bio'
 
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
+const MAX_LOGO_SIZE = 3 * 1024 * 1024
 
 const EMPTY_FILTERS = {
   type: '',
@@ -67,7 +68,7 @@ export default function Jobs({ session, profile, onMessage }) {
     const { data } = await supabase
       .from('jobs')
       .select(
-        `id, title, company, location, employment_type, description, apply_url, contact_email, created_at, posted_by,
+        `id, title, company, location, employment_type, description, apply_url, contact_email, logo_url, updated_at, created_at, posted_by,
          profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`
       )
       .order('created_at', { ascending: false })
@@ -311,17 +312,19 @@ export default function Jobs({ session, profile, onMessage }) {
 
           return (
             <li className="job-card" key={j.id}>
-              <div>
-                <h3 className="job-title">
-                  {j.title}
-                  {isNew && <span className="job-badge job-badge-new">New</span>}
-                  {j.employment_type && <span className="job-badge">{j.employment_type}</span>}
-                  {j.updated_at && <span className="edited-tag">edited</span>}
-                </h3>
-                <p className="job-meta">
-                  <strong>{j.company}</strong>
-                  {j.location && ` · ${j.location}`}
-                </p>
+              <div className="job-card-main">
+                <JobLogo url={j.logo_url} company={j.company} />
+                <div className="job-card-content">
+                  <h3 className="job-title">
+                    {j.title}
+                    {isNew && <span className="job-badge job-badge-new">New</span>}
+                    {j.employment_type && <span className="job-badge">{j.employment_type}</span>}
+                    {j.updated_at && <span className="edited-tag">edited</span>}
+                  </h3>
+                  <p className="job-meta">
+                    <strong>{j.company}</strong>
+                    {j.location && ` · ${j.location}`}
+                  </p>
                 <div className="job-poster-row">
                   <button className="job-poster" onClick={() => setOpenProfile(j.profiles)}>
                     <Avatar url={j.profiles?.avatar_url} name={j.profiles?.full_name} size={22} />
@@ -371,6 +374,7 @@ export default function Jobs({ session, profile, onMessage }) {
                     </button>
                   )}
                 </div>
+                </div>
               </div>
               {isMine && (
                 <DeleteButton
@@ -412,6 +416,16 @@ export default function Jobs({ session, profile, onMessage }) {
   )
 }
 
+/* ---------- Company/job logo shown on each card ---------- */
+function JobLogo({ url, company }) {
+  const initial = (company || '?').trim().charAt(0).toUpperCase()
+  return url ? (
+    <img className="job-logo" src={url} alt={company ? `${company} logo` : 'Company logo'} loading="lazy" />
+  ) : (
+    <div className="job-logo job-logo-fallback" aria-hidden="true">{initial}</div>
+  )
+}
+
 /* ---------- Filter accordion section (mirrors Directory's) ---------- */
 function FilterSection({ title, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -449,9 +463,12 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
     apply_url: initial?.apply_url || '',
     contact_email: initial?.contact_email || '',
   })
+  const [logoFile, setLogoFile] = useState(null) // newly picked file, not yet uploaded
+  const [logoUrl, setLogoUrl] = useState(initial?.logo_url || '') // existing/uploaded url
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [isClosing, setIsClosing] = useState(false)
+  const logoRef = useRef(null)
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
 
@@ -459,6 +476,35 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
     if (isEdit) { onCancel(); return }
     setIsClosing(true)
     setTimeout(onCancel, 200)
+  }
+
+  function pickLogo(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (f.size > MAX_LOGO_SIZE) {
+      setError('Logo image is over 3MB.')
+      e.target.value = ''
+      return
+    }
+    setLogoFile(f)
+    setError(null)
+    e.target.value = ''
+  }
+
+  function removeLogo() {
+    setLogoFile(null)
+    setLogoUrl('')
+  }
+
+  async function uploadLogo() {
+    const ext = logoFile.name.split('.').pop().toLowerCase()
+    const path = `${session.user.id}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('job-logos')
+      .upload(path, logoFile, { upsert: false, contentType: logoFile.type })
+    if (upErr) throw upErr
+    const { data } = supabase.storage.from('job-logos').getPublicUrl(path)
+    return data.publicUrl
   }
 
   async function submit() {
@@ -469,26 +515,35 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
       setError('Please provide at least one way to apply — either an Apply URL or Contact email.'); return
     }
     setBusy(true); setError(null)
-    const payload = {
-      ...form,
-      title: form.title.trim(),
-      company: form.company.trim(),
-      description: trimTrailingHtml(sanitizeHtml(form.description)),
-      apply_url: form.apply_url.trim(),
-      contact_email: form.contact_email.trim(),
-    }
-    const { error } = isEdit
-      ? await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', initial.id)
-      : await supabase.from('jobs').insert({ ...payload, posted_by: session.user.id })
-    if (error) {
-      setError(error.message.includes('policy')
-        ? 'Posting jobs unlocks once your account is approved.'
-        : error.message)
+    try {
+      const finalLogoUrl = logoFile ? await uploadLogo() : logoUrl
+      const payload = {
+        ...form,
+        title: form.title.trim(),
+        company: form.company.trim(),
+        description: trimTrailingHtml(sanitizeHtml(form.description)),
+        apply_url: form.apply_url.trim(),
+        contact_email: form.contact_email.trim(),
+        logo_url: finalLogoUrl,
+      }
+      const { error } = isEdit
+        ? await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', initial.id)
+        : await supabase.from('jobs').insert({ ...payload, posted_by: session.user.id })
+      if (error) {
+        setError(error.message.includes('policy')
+          ? 'Posting jobs unlocks once your account is approved.'
+          : error.message)
+        setBusy(false)
+      } else {
+        onCreated()
+      }
+    } catch (e) {
+      setError(e.message || 'Logo upload failed.')
       setBusy(false)
-    } else {
-      onCreated()
     }
   }
+
+  const logoPreview = logoFile ? URL.createObjectURL(logoFile) : logoUrl
 
   return (
     <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
@@ -506,6 +561,33 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
               <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
             </label>
           </div>
+
+          <label className="field"><span>Company / role logo (optional)</span></label>
+          <div className="job-logo-picker">
+            {logoPreview ? (
+              <img className="job-logo job-logo-preview" src={logoPreview} alt="Logo preview" />
+            ) : (
+              <div className="job-logo job-logo-fallback" aria-hidden="true">
+                {(form.company || '?').trim().charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="job-logo-picker-actions">
+              <button type="button" className="btn ghost small" onClick={() => logoRef.current?.click()}>
+                {logoPreview ? 'Replace image' : 'Upload image'}
+              </button>
+              {logoPreview && (
+                <button type="button" className="btn ghost small" onClick={removeLogo}>Remove</button>
+              )}
+            </div>
+            <input
+              ref={logoRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={pickLogo}
+            />
+          </div>
+
           <div className="field-row">
             <label className="field"><span>Location *</span>
               <input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Cape Town / Remote" />

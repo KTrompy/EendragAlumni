@@ -1,5 +1,6 @@
 -- ============================================================
--- Update 9: editing posts/jobs, and an in-app notification bell
+-- Update 9: editing posts/jobs, job listing logos, and an in-app
+-- notification bell.
 -- Run this in Supabase SQL Editor. Safe to re-run.
 -- ============================================================
 
@@ -14,12 +15,48 @@ create policy "Authors can update own posts"
 
 -- ---------- EDITING: jobs ----------
 alter table public.jobs add column if not exists updated_at timestamptz;
+alter table public.jobs add column if not exists logo_url text default '';
 
 drop policy if exists "Posters can update own jobs" on public.jobs;
 create policy "Posters can update own jobs"
   on public.jobs for update to authenticated
   using (posted_by = auth.uid())
   with check (posted_by = auth.uid());
+
+-- ---------- JOB LOGOS STORAGE ----------
+insert into storage.buckets (id, name, public)
+values ('job-logos', 'job-logos', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Approved members can upload job logos" on storage.objects;
+create policy "Approved members can upload job logos"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'job-logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+    and public.is_approved()
+  );
+
+drop policy if exists "Anyone can view job logos" on storage.objects;
+create policy "Anyone can view job logos"
+  on storage.objects for select
+  using (bucket_id = 'job-logos');
+
+drop policy if exists "Users can replace own job logos" on storage.objects;
+create policy "Users can replace own job logos"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'job-logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Users can delete own job logos" on storage.objects;
+create policy "Users can delete own job logos"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'job-logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
 
 -- ---------- EDITING: events ----------
 -- "Creators can update own events" already exists (schema-update-2.sql) —

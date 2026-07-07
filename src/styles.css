@@ -2471,6 +2471,30 @@ input, textarea, select { font: inherit; }
 .attendee-message svg { width: 14px; height: 14px; }
 
 .job-card { grid-template-columns: 1fr auto; }
+.job-card-main { display: flex; gap: 14px; align-items: flex-start; min-width: 0; }
+.job-card-content { min-width: 0; flex: 1; }
+.job-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.job-logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--maroon);
+  background: var(--orange-soft);
+}
+.job-logo-picker { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.job-logo-preview { object-fit: cover; }
+.job-logo-picker-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .job-badge {
   display: inline-block;
   background: var(--maroon);
