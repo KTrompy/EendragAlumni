@@ -434,8 +434,11 @@ function JobForm({ session, onCancel, onCreated }) {
   }
 
   async function submit() {
-    if (!form.title.trim() || !form.company.trim() || !hasText(form.description)) {
-      setError('Title, company and description are required.'); return
+    if (!form.title.trim() || !form.company.trim() || !form.location.trim() || !hasText(form.description)) {
+      setError('Title, company, location and description are required.'); return
+    }
+    if (!form.apply_url.trim() && !form.contact_email.trim()) {
+      setError('Please provide at least one way to apply — either an Apply URL or Contact email.'); return
     }
     setBusy(true); setError(null)
     const { error } = await supabase.from('jobs').insert({
@@ -474,7 +477,7 @@ function JobForm({ session, onCancel, onCreated }) {
             </label>
           </div>
           <div className="field-row">
-            <label className="field"><span>Location</span>
+            <label className="field"><span>Location *</span>
               <input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Cape Town / Remote" />
             </label>
             <label className="field"><span>Type</span>
@@ -494,14 +497,14 @@ function JobForm({ session, onCancel, onCreated }) {
             />
           </div>
           <div className="field-row" style={{ marginTop: 14 }}>
-            <label className="field"><span>Apply URL</span>
+            <label className="field"><span>Apply URL *</span>
               <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
             </label>
-            <label className="field"><span>Contact email</span>
+            <label className="field"><span>Contact email *</span>
               <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
             </label>
           </div>
-          <p className="form-hint">Add at least one of these so people can actually apply.</p>
+          <p className="form-hint">At least one of these is required so people can actually apply.</p>
           {error && <p className="form-error">{error}</p>}
         </div>
         <div className="btn-row">
