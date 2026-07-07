@@ -544,7 +544,7 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, 
               onConfirm={onDelete}
               label="Delete post"
               message="This can't be undone."
-              className="icon-btn-delete post-delete-btn"
+              className="icon-btn-delete post-delete-btn delete-danger"
             />
           </div>
         )}
@@ -707,7 +707,7 @@ function Comments({ postId, session, profile }) {
                   onConfirm={() => remove(c.id)}
                   label="Delete comment"
                   message="This can't be undone."
-                  className="icon-btn-delete small"
+                  className="icon-btn-delete small delete-danger"
                 />
               )}
               <p className="comment-text">{c.content}</p>

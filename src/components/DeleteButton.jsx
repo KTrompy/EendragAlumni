@@ -10,6 +10,7 @@ export default function DeleteButton({
   title,
   message = "This can't be undone.",
   className = 'icon-btn-delete',
+  children,
 }) {
   const [confirming, setConfirming] = useState(false)
 
@@ -23,6 +24,7 @@ export default function DeleteButton({
         title={label}
       >
         <TrashIcon />
+        {children}
       </button>
       {confirming && (
         <ConfirmDialog

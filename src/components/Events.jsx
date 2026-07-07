@@ -346,6 +346,16 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onSa
               <EditIcon /> Edit
             </button>
           )}
+          {isMine && (
+            <DeleteButton
+              onConfirm={onDelete}
+              label="Delete event"
+              message="This removes the event and everyone's RSVPs. This can't be undone."
+              className="post-action delete-danger"
+            >
+              Delete
+            </DeleteButton>
+          )}
         </div>
 
         {showAttendees && (
@@ -360,13 +370,6 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onSa
         )}
         {showComments && <EventComments eventId={e.id} session={session} profile={profile} />}
       </div>
-      {isMine && (
-        <DeleteButton
-          onConfirm={onDelete}
-          label="Delete event"
-          message="This removes the event and everyone's RSVPs. This can't be undone."
-        />
-      )}
     </li>
   )
 }
@@ -501,7 +504,7 @@ function EventComments({ eventId, session, profile }) {
                   onConfirm={() => remove(c.id)}
                   label="Delete comment"
                   message="This can't be undone."
-                  className="icon-btn-delete small"
+                  className="icon-btn-delete small delete-danger"
                 />
               )}
               <p className="comment-text">{c.content}</p>

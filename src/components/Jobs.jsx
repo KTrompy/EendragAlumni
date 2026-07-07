@@ -373,16 +373,19 @@ export default function Jobs({ session, profile, onMessage }) {
                       Edit
                     </button>
                   )}
+                  {isMine && (
+                    <DeleteButton
+                      onConfirm={() => removeJob(j.id)}
+                      label="Delete listing"
+                      message="This removes the job listing. This can't be undone."
+                      className="btn ghost small delete-danger"
+                    >
+                      Delete
+                    </DeleteButton>
+                  )}
                 </div>
                 </div>
               </div>
-              {isMine && (
-                <DeleteButton
-                  onConfirm={() => removeJob(j.id)}
-                  label="Delete listing"
-                  message="This removes the job listing. This can't be undone."
-                />
-              )}
             </li>
           )
         })}
