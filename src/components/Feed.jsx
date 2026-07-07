@@ -320,6 +320,18 @@ function Composer({ session, profile, onPosted, openRef }) {
     </div>
   )
 
+  /* ---- Quick-action buttons below the prompt ---- */
+  const quickActions = (
+    <div className="composer-quick-actions">
+      <button className="composer-quick-btn" onClick={() => { fileRef.current?.click(); setTimeout(openModal, 100) }} disabled={!canPost}>
+        <PhotoIcon /> Photo
+      </button>
+      <button className="composer-quick-btn" onClick={() => { videoFileRef.current?.click(); setTimeout(openModal, 100) }} disabled={!canPost}>
+        <VideoIcon /> Video
+      </button>
+    </div>
+  )
+
   /* ---- Toolbar inside the modal editor ---- */
   const mediaButtons = (
     <>
@@ -364,6 +376,7 @@ function Composer({ session, profile, onPosted, openRef }) {
     <>
       <div className="composer-card">
         {prompt}
+        {quickActions}
       </div>
 
       {open && (
