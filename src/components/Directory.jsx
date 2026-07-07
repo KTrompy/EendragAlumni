@@ -70,7 +70,7 @@ const EMPTY_FILTERS = {
   industry: '',
 }
 
-export default function Directory({ session, onMessage }) {
+export default function Directory({ session, onMessage, hideHeader = false }) {
   const [people, setPeople] = useState([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
@@ -220,9 +220,13 @@ export default function Directory({ session, onMessage }) {
   }, [people, me])
 
   return (
-    <section className="panel">
-      <h2 className="panel-title">Eendragters</h2>
-      <p className="panel-sub">The house, out in the world — and still in it.</p>
+    <section className={hideHeader ? '' : 'panel'}>
+      {!hideHeader && (
+        <>
+          <h2 className="panel-title">Eendragters</h2>
+          <p className="panel-sub">The house, out in the world — and still in it.</p>
+        </>
+      )}
 
       <div className="directory-toolbar">
         <div className="search-wrap">

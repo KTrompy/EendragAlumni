@@ -1,47 +1,49 @@
 import { useEffect, useRef, useState } from 'react'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Feed from './components/Feed.jsx'
-import Directory, { Avatar } from './components/Directory.jsx'
+import People from './components/People.jsx'
+import { Avatar } from './components/Directory.jsx'
 import FloatingMessages from './components/FloatingMessages.jsx'
 import Profile from './components/Profile.jsx'
 import Events from './components/Events.jsx'
 import Jobs from './components/Jobs.jsx'
 import Donate from './components/Donate.jsx'
-import AlumniMap from './components/AlumniMap.jsx'
 import Admin from './components/Admin.jsx'
+import NotificationBell from './components/NotificationBell.jsx'
 
+// Eendragters (directory) now includes the alumni map as a view toggle
+// (see People.jsx) instead of splitting "find a person" across two nav
+// items. Support/Donate isn't a top-level tab while it's still a stub with
+// no real payment flow — it's reachable from the footer link instead.
 const TABS = [
-  { id: 'directory', label: 'Eendragters' },
-  { id: 'map', label: 'Map' },
-  { id: 'feed', label: 'Feed' },
-  { id: 'events', label: 'Events' },
-  { id: 'jobs', label: 'Jobs' },
-  { id: 'donate', label: 'Support' },
-  { id: 'profile', label: 'My profile' },
+  { id: 'directory', label: 'Eendragters', path: '/directory' },
+  { id: 'feed', label: 'Feed', path: '/feed' },
+  { id: 'events', label: 'Events', path: '/events' },
+  { id: 'jobs', label: 'Jobs', path: '/jobs' },
+  { id: 'profile', label: 'My profile', path: '/profile' },
 ]
 
 // Admin-only, appended to the nav when the signed-in profile has is_admin
 // set — kept out of the base TABS list so it never flashes for regular
 // members before the profile loads.
-const ADMIN_TAB = { id: 'admin', label: 'Admin' }
+const ADMIN_TAB = { id: 'admin', label: 'Admin', path: '/admin' }
 
-// The mobile bottom tab bar — a smaller, reordered subset of TABS (Support,
-// My profile and Sign out move to the mobile header/avatar instead, so the
-// bar itself stays to five core sections).
+// The mobile bottom tab bar — a smaller subset of TABS (My profile and Sign
+// out move to the mobile header/avatar instead, so the bar stays to four
+// core sections now that Map lives inside Eendragters).
 const MOBILE_TABS = [
-  { id: 'directory', label: 'Eendragters', icon: PeopleIcon },
-  { id: 'jobs', label: 'Jobs', icon: JobsIcon },
-  { id: 'map', label: 'Map', icon: MapIcon },
-  { id: 'feed', label: 'Feed', icon: FeedIcon },
-  { id: 'events', label: 'Events', icon: EventsIcon },
+  { id: 'directory', label: 'Eendragters', path: '/directory', icon: PeopleIcon },
+  { id: 'feed', label: 'Feed', path: '/feed', icon: FeedIcon },
+  { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
+  { id: 'jobs', label: 'Jobs', path: '/jobs', icon: JobsIcon },
 ]
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [tab, setTab] = useState('directory')
   const [dmTarget, setDmTarget] = useState(null) // profile to open a DM with
   const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
   const [messagesOpen, setMessagesOpen] = useState(false)
@@ -49,6 +51,9 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+
+  const navigate = useNavigate()
+  const location = useLocation()
 
   // Guards against losing unsaved profile edits. `profileDirty` mirrors
   // whether the profile form currently has unsaved changes; `profileSaveRef`
@@ -77,12 +82,16 @@ export default function App() {
   // Runs `action` immediately unless the profile page currently has unsaved
   // changes, in which case it's stashed and the confirm prompt takes over.
   function attemptNavigate(action) {
-    if (tab === 'profile' && profileDirty) {
+    if (location.pathname.startsWith('/profile') && profileDirty) {
       setLeaveError(null)
       setPendingNav(() => action)
     } else {
       action()
     }
+  }
+
+  function goTo(path) {
+    attemptNavigate(() => { navigate(path); setNavOpen(false) })
   }
 
   async function confirmSaveAndLeave() {
@@ -140,6 +149,14 @@ export default function App() {
     setMessagesOpen(true)
   }
 
+  // Used by the notification bell to jump straight to whatever the
+  // notification was about.
+  function handleNotificationNavigate(target) {
+    if (target === 'messages') { setMessagesOpen(true); return }
+    const tab = TABS.find((t) => t.id === target)
+    if (tab) goTo(tab.path)
+  }
+
   if (loading) return <div className="center-page">Loading…</div>
   if (!session) return <Auth />
 
@@ -151,11 +168,14 @@ export default function App() {
         onDone={(updatedProfile) => {
           setProfile(updatedProfile)
           setShowOnboarding(false)
-          setTab('profile')
+          navigate('/profile')
         }}
       />
     )
   }
+
+  const navTabs = profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS
+  const activeTabId = navTabs.find((t) => location.pathname.startsWith(t.path))?.id
 
   return (
     <div className="app">
@@ -169,29 +189,34 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            className="mobile-avatar-btn"
-            onClick={() => attemptNavigate(() => setTab('profile'))}
-            aria-label="My profile (click to open)"
-            title="Click to open your profile"
-          >
-            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
-          </button>
+          <div className="masthead-actions">
+            <NotificationBell session={session} onNavigate={handleNotificationNavigate} />
 
-          <button
-            className="nav-toggle"
-            onClick={() => setNavOpen((o) => !o)}
-            aria-label={navOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={navOpen}
-          >
-            {navOpen ? <CloseIcon /> : <BurgerIcon />}
-          </button>
+            <button
+              className="mobile-avatar-btn"
+              onClick={() => goTo('/profile')}
+              aria-label="My profile (click to open)"
+              title="Click to open your profile"
+            >
+              <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
+            </button>
+
+            <button
+              className="nav-toggle"
+              onClick={() => setNavOpen((o) => !o)}
+              aria-label={navOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={navOpen}
+            >
+              {navOpen ? <CloseIcon /> : <BurgerIcon />}
+            </button>
+          </div>
+
           <nav className={navOpen ? 'tabs open' : 'tabs'} aria-label="Main">
-            {(profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS).map((t) => (
+            {navTabs.map((t) => (
               <button
                 key={t.id}
-                className={tab === t.id ? 'tab active' : 'tab'}
-                onClick={() => attemptNavigate(() => { setTab(t.id); setNavOpen(false) })}
+                className={activeTabId === t.id ? 'tab active' : 'tab'}
+                onClick={() => goTo(t.path)}
               >
                 {t.label}
               </button>
@@ -214,31 +239,33 @@ export default function App() {
       )}
 
       <main className="content">
-        {tab === 'feed' && <Feed session={session} profile={profile} onMessage={openMessage} />}
-        {tab === 'directory' && (
-          <Directory session={session} onMessage={openMessage} />
-        )}
-        {tab === 'map' && (
-          <AlumniMap
-            session={session}
-            onMessage={openMessage}
-            onGoToProfile={() => attemptNavigate(() => setTab('profile'))}
+        <Routes>
+          <Route path="/" element={<Navigate to="/directory" replace />} />
+          <Route path="/directory" element={<People session={session} onMessage={openMessage} onGoToProfile={() => goTo('/profile')} />} />
+          <Route path="/feed" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
+          <Route path="/events" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
+          <Route path="/events/:eventId" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
+          <Route path="/jobs" element={<Jobs session={session} profile={profile} onMessage={openMessage} />} />
+          <Route path="/donate" element={<Donate />} />
+          <Route
+            path="/admin"
+            element={profile?.is_admin ? <Admin session={session} /> : <Navigate to="/directory" replace />}
           />
-        )}
-        {tab === 'events' && <Events session={session} profile={profile} onMessage={openMessage} />}
-        {tab === 'jobs' && <Jobs session={session} profile={profile} onMessage={openMessage} />}
-        {tab === 'donate' && <Donate />}
-        {tab === 'admin' && profile?.is_admin && <Admin session={session} />}
-        {tab === 'profile' && (
-          <Profile
-            session={session}
-            profile={profile}
-            onSaved={setProfile}
-            onDirtyChange={setProfileDirty}
-            saveRef={profileSaveRef}
-            onNavigateHome={() => attemptNavigate(() => setTab('directory'))}
+          <Route
+            path="/profile"
+            element={
+              <Profile
+                session={session}
+                profile={profile}
+                onSaved={setProfile}
+                onDirtyChange={setProfileDirty}
+                saveRef={profileSaveRef}
+                onNavigateHome={() => goTo('/directory')}
+              />
+            }
           />
-        )}
+          <Route path="*" element={<Navigate to="/directory" replace />} />
+        </Routes>
       </main>
 
       <footer className="footer">
@@ -247,7 +274,9 @@ export default function App() {
           <span>Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.</span>
           <span className="footer-credit">
             Initiated and built by Kyle Trompeter —{' '}
-            <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>.
+            <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>
+            {' · '}
+            <button className="footer-link footer-link-btn" onClick={() => goTo('/donate')}>Support the house</button>.
           </span>
         </div>
       </footer>
@@ -258,8 +287,8 @@ export default function App() {
           return (
             <button
               key={t.id}
-              className={tab === t.id ? 'mobile-tab active' : 'mobile-tab'}
-              onClick={() => attemptNavigate(() => setTab(t.id))}
+              className={activeTabId === t.id ? 'mobile-tab active' : 'mobile-tab'}
+              onClick={() => goTo(t.path)}
             >
               <Icon />
               <span>{t.label}</span>
@@ -278,7 +307,7 @@ export default function App() {
         onTargetConsumed={() => { setDmTarget(null); setDmDraft('') }}
         onBrowseDirectory={() => {
           setMessagesOpen(false)
-          attemptNavigate(() => setTab('directory'))
+          goTo('/directory')
         }}
       />
 
@@ -330,15 +359,6 @@ function CloseIcon() {
     </svg>
   )
 }
-function SupportIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="3.5" />
-      <path d="M5.6 5.6l3.1 3.1M18.4 5.6l-3.1 3.1M18.4 18.4l-3.1-3.1M5.6 18.4l3.1-3.1" />
-    </svg>
-  )
-}
 
 /* ---------- Mobile bottom tab bar icons ---------- */
 function PeopleIcon() {
@@ -357,14 +377,6 @@ function JobsIcon() {
       <rect x="3" y="7.5" width="18" height="12" rx="2" />
       <path d="M8.5 7.5V6a2.5 2.5 0 0 1 2.5-2.5h2A2.5 2.5 0 0 1 15 6v1.5" />
       <path d="M3 12.5h18" />
-    </svg>
-  )
-}
-function MapIcon() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 21s-7-6.2-7-11.2A7 7 0 0 1 19 9.8C19 14.8 12 21 12 21z" />
-      <circle cx="12" cy="9.6" r="2.4" />
     </svg>
   )
 }

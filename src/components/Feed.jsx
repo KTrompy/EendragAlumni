@@ -96,6 +96,15 @@ export default function Feed({ session, profile, onMessage }) {
     await supabase.from('posts').delete().eq('id', id)
   }
 
+  async function editPost(id, { title, content }) {
+    const { error } = await supabase
+      .from('posts')
+      .update({ title, content, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (!error) load()
+    return error
+  }
+
   async function toggleLike(postId) {
     const liked = myLikes.has(postId)
     setMyLikes((prev) => {
@@ -156,6 +165,7 @@ export default function Feed({ session, profile, onMessage }) {
             liked={myLikes.has(p.id)}
             onLike={() => toggleLike(p.id)}
             onDelete={() => removePost(p.id)}
+            onEdit={(fields) => editPost(p.id, fields)}
             onImageClick={(src) => setLightbox(src)}
             onMessage={() => onMessage?.(
               { id: p.author_id, full_name: p.profiles?.full_name },
@@ -396,10 +406,7 @@ function Composer({ session, profile, onPosted, openRef }) {
             <div className="composer-modal-header">
               <div className="composer-modal-user">
                 <Avatar url={profile?.avatar_url} name={profile?.full_name} size={44} />
-                <div>
-                  <span className="composer-modal-name">{profile?.full_name || 'Alumnus'}</span>
-                  <span className="composer-modal-audience">Post to Everyone</span>
-                </div>
+                <span className="composer-modal-name">{profile?.full_name || 'Alumnus'}</span>
               </div>
               <button className="composer-modal-close" onClick={closeModal} aria-label="Close">×</button>
             </div>
@@ -470,15 +477,43 @@ function Composer({ session, profile, onPosted, openRef }) {
 }
 
 /* ---------- Post item ---------- */
-function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageClick, onMessage }) {
+function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, onImageClick, onMessage }) {
   const [showComments, setShowComments] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState(p.title || '')
+  const [editBody, setEditBody] = useState(p.content === '(no text)' ? '' : (p.content || ''))
+  const [editBusy, setEditBusy] = useState(false)
+  const [editError, setEditError] = useState(null)
   const bodyRef = useRef(null)
   const [needsTruncation, setNeedsTruncation] = useState(false)
   const likeCount = p.likes?.[0]?.count ?? 0
   const commentCount = p.comments?.[0]?.count ?? 0
   const canInteract = profile?.approved
   const images = p.image_urls || []
+  const isMine = p.author_id === session.user.id
+
+  function startEdit() {
+    setEditTitle(p.title || '')
+    setEditBody(p.content === '(no text)' ? '' : (p.content || ''))
+    setEditError(null)
+    setEditing(true)
+  }
+
+  async function saveEdit() {
+    if (!hasText(editBody) && images.length === 0 && !p.video_url) {
+      setEditError('A post needs some text.')
+      return
+    }
+    setEditBusy(true); setEditError(null)
+    const error = await onEdit?.({
+      title: editTitle.trim(),
+      content: hasText(editBody) ? sanitizeHtml(editBody) : '(no text)',
+    })
+    setEditBusy(false)
+    if (error) setEditError(error.message || 'Could not save changes.')
+    else setEditing(false)
+  }
 
   useEffect(() => {
     if (bodyRef.current) {
@@ -500,28 +535,56 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
           {headline && <span className="post-headline">{headline}</span>}
           <span className="post-time">{timeAgo(p.created_at)}</span>
         </div>
-        {p.author_id === session.user.id && (
-          <DeleteButton
-            onConfirm={onDelete}
-            label="Delete post"
-            message="This can't be undone."
-            className="icon-btn-delete post-delete-btn"
-          />
+        {isMine && !editing && (
+          <div className="post-owner-actions">
+            <button type="button" className="icon-btn-delete post-delete-btn" onClick={startEdit} aria-label="Edit post" title="Edit post">
+              <EditIcon />
+            </button>
+            <DeleteButton
+              onConfirm={onDelete}
+              label="Delete post"
+              message="This can't be undone."
+              className="icon-btn-delete post-delete-btn"
+            />
+          </div>
         )}
       </div>
 
-      {p.title && <h3 className="post-title">{p.title}</h3>}
-      {p.content && p.content !== '(no text)' && (
-        <div className="post-body-wrap">
-          <div
-            ref={bodyRef}
-            className={`post-body rendered-html${!expanded && needsTruncation ? ' truncated' : ''}`}
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.content) }}
+      {editing ? (
+        <div className="post-edit-form">
+          <input
+            className="composer-modal-title"
+            style={{ padding: '10px 0' }}
+            placeholder="Post title (optional)"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            maxLength={200}
           />
-          {needsTruncation && !expanded && (
-            <button className="post-see-more" onClick={() => setExpanded(true)}>…see more</button>
-          )}
+          <RichTextEditor value={editBody} onChange={setEditBody} placeholder="What do you want to talk about?" />
+          {editError && <p className="form-error">{editError}</p>}
+          <div className="btn-row" style={{ padding: '10px 0 0' }}>
+            <button className="btn ghost" onClick={() => setEditing(false)} disabled={editBusy}>Cancel</button>
+            <button className="btn primary" onClick={saveEdit} disabled={editBusy}>
+              {editBusy ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
         </div>
+      ) : (
+        <>
+          {p.title && <h3 className="post-title">{p.title}{p.updated_at && <span className="edited-tag">edited</span>}</h3>}
+          {p.content && p.content !== '(no text)' && (
+            <div className="post-body-wrap">
+              <div
+                ref={bodyRef}
+                className={`post-body rendered-html${!expanded && needsTruncation ? ' truncated' : ''}`}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.content) }}
+              />
+              {needsTruncation && !expanded && (
+                <button className="post-see-more" onClick={() => setExpanded(true)}>…see more</button>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {p.video_url && (
@@ -698,6 +761,14 @@ function PhotoIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" />
       <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  )
+}
+function EditIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
     </svg>
   )
 }

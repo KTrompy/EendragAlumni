@@ -61,6 +61,7 @@ export default function Jobs({ session, profile, onMessage }) {
   const [filterOpen, setFilterOpen] = useState(false)
   const [openProfile, setOpenProfile] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
 
   async function load() {
     const { data } = await supabase
@@ -294,6 +295,20 @@ export default function Jobs({ session, profile, onMessage }) {
           const isMine = j.posted_by === session.user.id
           const isNew = Date.now() - new Date(j.created_at).getTime() < NEW_WINDOW_MS
           const reason = !isMine ? matchReason(profile, j.profiles) : null
+
+          if (editingId === j.id) {
+            return (
+              <li className="job-card" key={j.id}>
+                <JobForm
+                  session={session}
+                  initial={j}
+                  onCancel={() => setEditingId(null)}
+                  onCreated={() => { setEditingId(null); load() }}
+                />
+              </li>
+            )
+          }
+
           return (
             <li className="job-card" key={j.id}>
               <div>
@@ -301,6 +316,7 @@ export default function Jobs({ session, profile, onMessage }) {
                   {j.title}
                   {isNew && <span className="job-badge job-badge-new">New</span>}
                   {j.employment_type && <span className="job-badge">{j.employment_type}</span>}
+                  {j.updated_at && <span className="edited-tag">edited</span>}
                 </h3>
                 <p className="job-meta">
                   <strong>{j.company}</strong>
@@ -349,6 +365,11 @@ export default function Jobs({ session, profile, onMessage }) {
                   <button className="btn ghost small" onClick={() => shareJob(j)}>
                     {copiedId === j.id ? 'Copied!' : 'Share'}
                   </button>
+                  {isMine && (
+                    <button className="btn ghost small" onClick={() => setEditingId(j.id)}>
+                      Edit
+                    </button>
+                  )}
                 </div>
               </div>
               {isMine && (
@@ -417,10 +438,16 @@ function FilterIcon() {
   )
 }
 
-function JobForm({ session, onCancel, onCreated }) {
+function JobForm({ session, onCancel, onCreated, initial = null }) {
+  const isEdit = !!initial
   const [form, setForm] = useState({
-    title: '', company: '', location: '', employment_type: 'Full-time',
-    description: '', apply_url: '', contact_email: '',
+    title: initial?.title || '',
+    company: initial?.company || '',
+    location: initial?.location || '',
+    employment_type: initial?.employment_type || 'Full-time',
+    description: initial?.description || '',
+    apply_url: initial?.apply_url || '',
+    contact_email: initial?.contact_email || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -429,6 +456,7 @@ function JobForm({ session, onCancel, onCreated }) {
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
 
   function handleCancel() {
+    if (isEdit) { onCancel(); return }
     setIsClosing(true)
     setTimeout(onCancel, 200)
   }
@@ -441,15 +469,17 @@ function JobForm({ session, onCancel, onCreated }) {
       setError('Please provide at least one way to apply — either an Apply URL or Contact email.'); return
     }
     setBusy(true); setError(null)
-    const { error } = await supabase.from('jobs').insert({
+    const payload = {
       ...form,
       title: form.title.trim(),
       company: form.company.trim(),
       description: trimTrailingHtml(sanitizeHtml(form.description)),
       apply_url: form.apply_url.trim(),
       contact_email: form.contact_email.trim(),
-      posted_by: session.user.id,
-    })
+    }
+    const { error } = isEdit
+      ? await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', initial.id)
+      : await supabase.from('jobs').insert({ ...payload, posted_by: session.user.id })
     if (error) {
       setError(error.message.includes('policy')
         ? 'Posting jobs unlocks once your account is approved.'
@@ -461,9 +491,9 @@ function JobForm({ session, onCancel, onCreated }) {
   }
 
   return (
-    <div className={`create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={(e) => e.target === e.currentTarget && handleCancel()}>
-      <div className={`create-panel ${isClosing ? 'closing' : ''}`}>
-        <h3>Post a role</h3>
+    <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
+      <div className={isEdit ? 'create-panel inline' : `create-panel ${isClosing ? 'closing' : ''}`}>
+        <h3>{isEdit ? 'Edit role' : 'Post a role'}</h3>
         <div className="create-panel-content">
           <p className="form-hint">
             Takes about two minutes — the more specific the listing, the more likely a fellow Eendragter applies.
@@ -510,7 +540,7 @@ function JobForm({ session, onCancel, onCreated }) {
         <div className="btn-row">
           <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
           <button className="btn primary" onClick={submit} disabled={busy}>
-            {busy ? 'Posting…' : 'Post job'}
+            {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'Post job')}
           </button>
         </div>
       </div>

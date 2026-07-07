@@ -112,6 +112,98 @@ input, textarea, select { font: inherit; }
 .nav-toggle:hover { background: rgba(255, 255, 255, 0.1); }
 .nav-toggle:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 
+/* ---------- Notification bell ---------- */
+.notif-wrap { position: relative; }
+.notif-bell-btn {
+  position: relative;
+  background: none;
+  border: none;
+  color: #fff;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-shrink: 0;
+}
+.notif-bell-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.notif-bell-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--orange);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 2px solid var(--maroon);
+}
+.notif-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  z-index: 80;
+  overflow: hidden;
+}
+.notif-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.notif-dropdown-header h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--maroon);
+}
+.notif-list { max-height: 360px; overflow-y: auto; }
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 12px 16px;
+  cursor: pointer;
+}
+.notif-item:hover { background: rgba(0, 0, 0, 0.03); }
+.notif-item.unread { background: var(--orange-soft); }
+.notif-item.unread:hover { background: var(--orange-soft); filter: brightness(0.98); }
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+  background: transparent;
+}
+.notif-item.unread .notif-dot { background: var(--orange); }
+.notif-item-body { display: flex; flex-direction: column; gap: 2px; }
+.notif-item-message { font-size: 13.5px; line-height: 1.4; }
+.notif-item-time { font-size: 11.5px; color: var(--ink-soft); }
+@media (max-width: 640px) {
+  .notif-dropdown { position: fixed; top: 64px; right: 12px; left: 12px; width: auto; }
+}
+
 .pending-banner {
   background: var(--orange-soft);
   border-bottom: 1px solid var(--orange);
@@ -177,6 +269,19 @@ input, textarea, select { font: inherit; }
 .footer-credit { color: var(--ink-soft); }
 .footer-link { color: var(--orange); font-weight: 600; text-decoration: none; }
 .footer-link:hover { text-decoration: underline; }
+.footer-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--orange);
+  font-weight: 600;
+  text-decoration: none;
+}
+.footer-link-btn:hover { text-decoration: underline; }
+
+.masthead-actions { display: flex; align-items: center; gap: 4px; }
 
 /* ---------- Floating messages widget ---------- */
 .chat-fab {
@@ -1469,16 +1574,9 @@ input, textarea, select { font: inherit; }
   gap: 12px;
 }
 .composer-modal-name {
-  display: block;
   font-weight: 700;
   font-size: 15px;
   color: var(--ink);
-}
-.composer-modal-audience {
-  display: block;
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  font-weight: 500;
 }
 .composer-modal-close {
   width: 36px;
@@ -1682,7 +1780,9 @@ input, textarea, select { font: inherit; }
 .post-author:hover { color: var(--orange); cursor: pointer; }
 .post-headline { color: var(--ink-soft); font-size: 12.5px; line-height: 1.35; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .post-time { color: var(--ink-soft); font-size: 12px; margin-top: 1px; }
-.post-delete-btn { margin-left: auto; flex-shrink: 0; }
+.post-delete-btn { flex-shrink: 0; }
+.post-owner-actions { display: flex; gap: 4px; margin-left: auto; flex-shrink: 0; }
+.post-edit-form { padding: 0 16px 8px; }
 
 /* Trashcan delete buttons — replace the old plain-text "Delete" links so an
    accidental tap doesn't read as a real button and a real click still needs
@@ -2475,6 +2575,34 @@ input, textarea, select { font: inherit; }
 
 .create-panel.closing {
   animation: fall-out 0.2s ease forwards;
+}
+
+/* Edit forms rendered in-place (e.g. an event/job/post card being edited)
+   reuse the same field styling as the "create" panels, but sit inline in
+   the list instead of floating over a backdrop. */
+.create-panel.inline {
+  max-width: none;
+  max-height: none;
+  border-top: none;
+  border: 1px solid var(--line);
+  width: 100%;
+  animation: none;
+}
+.create-panel.inline h3 { background: var(--paper); color: var(--maroon); border-bottom: 1px solid var(--line); }
+
+.edited-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-left: 6px;
+}
+
+.event-card-highlighted {
+  outline: 2px solid var(--orange);
+  outline-offset: 3px;
+  border-radius: var(--radius);
 }
 
 @keyframes fall-out { from { transform: none; opacity: 1; } to { transform: translateY(10px); opacity: 0; } }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -24,6 +25,7 @@ function timeAgo(iso) {
 }
 
 export default function Events({ session, profile, onMessage }) {
+  const { eventId } = useParams() // set when someone opens a shared /events/:eventId link
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [myRsvps, setMyRsvps] = useState(new Set())
@@ -33,6 +35,7 @@ export default function Events({ session, profile, onMessage }) {
     const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
   })
   const [selectedDay, setSelectedDay] = useState(null)
+  const scrolledRef = useRef(false)
 
   async function load() {
     // Fetch a generous window so the calendar view has enough to browse.
@@ -152,6 +155,18 @@ export default function Events({ session, profile, onMessage }) {
   const past = events.filter((e) => new Date(e.event_date) < now).reverse()
   const listItems = [...upcoming, ...past]
 
+  // A shared /events/:id link should land you on that event, scrolled into
+  // view, rather than the top of a long list — otherwise a bookmarkable URL
+  // wouldn't actually save anyone the scrolling it's meant to save.
+  useEffect(() => {
+    if (!eventId || loading || scrolledRef.current) return
+    const el = document.getElementById(`event-${eventId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      scrolledRef.current = true
+    }
+  }, [eventId, loading, events])
+
   return (
     <section className="panel">
       <div className="panel-header-row">
@@ -215,7 +230,9 @@ export default function Events({ session, profile, onMessage }) {
                 iAmGoing={myRsvps.has(e.id)}
                 onToggleRsvp={() => toggleRsvp(e.id)}
                 onDelete={() => removeEvent(e.id)}
+                onSaved={load}
                 onMessage={onMessage}
+                highlighted={String(e.id) === eventId}
               />
             ))}
           </ul>
@@ -232,6 +249,7 @@ export default function Events({ session, profile, onMessage }) {
           myRsvps={myRsvps}
           onToggleRsvp={toggleRsvp}
           onDelete={removeEvent}
+          onSaved={load}
           onMessage={onMessage}
         />
       )}
@@ -239,14 +257,17 @@ export default function Events({ session, profile, onMessage }) {
   )
 }
 
-function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onMessage }) {
+function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onSaved, onMessage, highlighted }) {
   const [showAttendees, setShowAttendees] = useState(false)
   const [showComments, setShowComments] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [copied, setCopied] = useState(false)
   const d = new Date(e.event_date)
   const isPast = d < new Date()
   const rsvpCount = e.rsvps?.[0]?.count ?? 0
   const commentCount = e.comments?.[0]?.count ?? 0
   const canInteract = profile?.approved
+  const isMine = e.created_by === session.user.id
 
   // The moment you RSVP "I'm going", show who else is — turning a passive
   // RSVP into an actual connection point instead of something you'd only
@@ -257,8 +278,36 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onMe
     wasGoingRef.current = iAmGoing
   }, [iAmGoing])
 
+  async function copyLink() {
+    const url = `${window.location.origin}/events/${e.id}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Clipboard API unavailable — button just won't confirm.
+    }
+  }
+
+  if (editing) {
+    return (
+      <li className="event-card" id={`event-${e.id}`}>
+        <EventForm
+          session={session}
+          initial={e}
+          onCancel={() => setEditing(false)}
+          onCreated={() => { setEditing(false); onSaved?.() }}
+        />
+      </li>
+    )
+  }
+
   return (
-    <li className="event-card" style={isPast ? { opacity: 0.65 } : undefined}>
+    <li
+      className={highlighted ? 'event-card event-card-highlighted' : 'event-card'}
+      id={`event-${e.id}`}
+      style={isPast ? { opacity: 0.65 } : undefined}
+    >
       <div className="event-date-block" style={isPast ? { background: 'var(--maroon)' } : undefined}>
         <div className="event-date-month">{MONTHS[d.getMonth()]}</div>
         <div className="event-date-day">{d.getDate()}</div>
@@ -268,6 +317,7 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onMe
         <h3 className="event-title">
           {e.title}
           {isPast && <span className="job-badge" style={{ background: 'var(--ink-soft)' }}>Past</span>}
+          {e.updated_at && <span className="edited-tag">edited</span>}
         </h3>
         {e.location && <p className="event-location">📍 {e.location}</p>}
         {e.description && <p className="event-desc">{e.description.trimEnd()}</p>}
@@ -288,6 +338,14 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onMe
           <button className="post-action" onClick={() => setShowComments((s) => !s)}>
             <CommentIcon /> {commentCount}
           </button>
+          <button className="post-action" onClick={copyLink} title="Copy a link to this event">
+            <LinkIcon /> {copied ? 'Copied!' : 'Share'}
+          </button>
+          {isMine && (
+            <button className="post-action" onClick={() => setEditing(true)} title="Edit event">
+              <EditIcon /> Edit
+            </button>
+          )}
         </div>
 
         {showAttendees && (
@@ -302,7 +360,7 @@ function EventCard({ e, session, profile, iAmGoing, onToggleRsvp, onDelete, onMe
         )}
         {showComments && <EventComments eventId={e.id} session={session} profile={profile} />}
       </div>
-      {e.created_by === session.user.id && (
+      {isMine && (
         <DeleteButton
           onConfirm={onDelete}
           label="Delete event"
@@ -470,7 +528,7 @@ function EventComments({ eventId, session, profile }) {
 }
 
 /* ---------- Calendar grid view ---------- */
-function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay, session, profile, myRsvps, onToggleRsvp, onDelete, onMessage }) {
+function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay, session, profile, myRsvps, onToggleRsvp, onDelete, onSaved, onMessage }) {
   const year = cursorMonth.getFullYear()
   const month = cursorMonth.getMonth()
 
@@ -550,6 +608,7 @@ function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSel
                 iAmGoing={myRsvps.has(e.id)}
                 onToggleRsvp={() => onToggleRsvp(e.id)}
                 onDelete={() => onDelete(e.id)}
+                onSaved={onSaved}
                 onMessage={onMessage}
               />
             ))}
@@ -560,11 +619,12 @@ function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSel
   )
 }
 
-function EventForm({ session, onCancel, onCreated }) {
-  const [title, setTitle] = useState('')
-  const [date, setDate] = useState(null)
-  const [location, setLocation] = useState('')
-  const [description, setDescription] = useState('')
+function EventForm({ session, onCancel, onCreated, initial = null }) {
+  const isEdit = !!initial
+  const [title, setTitle] = useState(initial?.title || '')
+  const [date, setDate] = useState(initial ? new Date(initial.event_date) : null)
+  const [location, setLocation] = useState(initial?.location || '')
+  const [description, setDescription] = useState(initial?.description || '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [isClosing, setIsClosing] = useState(false)
@@ -577,13 +637,15 @@ function EventForm({ session, onCancel, onCreated }) {
   async function submit() {
     if (!title.trim() || !date) { setError('Title and date are required.'); return }
     setBusy(true); setError(null)
-    const { error } = await supabase.from('events').insert({
+    const payload = {
       title: title.trim(),
       event_date: date.toISOString(),
       location: location.trim(),
       description: description.trim(),
-      created_by: session.user.id,
-    })
+    }
+    const { error } = isEdit
+      ? await supabase.from('events').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', initial.id)
+      : await supabase.from('events').insert({ ...payload, created_by: session.user.id })
     if (error) {
       setError(error.message.includes('policy')
         ? 'Creating events unlocks once your account is approved.'
@@ -595,9 +657,9 @@ function EventForm({ session, onCancel, onCreated }) {
   }
 
   return (
-    <div className={`create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={(e) => e.target === e.currentTarget && handleCancel()}>
-      <div className={`create-panel ${isClosing ? 'closing' : ''}`}>
-        <h3>Add an event</h3>
+    <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
+      <div className={isEdit ? 'create-panel inline' : `create-panel ${isClosing ? 'closing' : ''}`}>
+        <h3>{isEdit ? 'Edit event' : 'Add an event'}</h3>
         <div className="create-panel-content">
           <label className="field"><span>Title</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="60-year reunion braai" />
@@ -618,7 +680,7 @@ function EventForm({ session, onCancel, onCreated }) {
         <div className="btn-row">
           <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
           <button className="btn primary" onClick={submit} disabled={busy}>
-            {busy ? 'Posting…' : 'Post event'}
+            {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'Post event')}
           </button>
         </div>
       </div>
@@ -655,6 +717,22 @@ function EnvelopeIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7l9 6 9-6" />
+    </svg>
+  )
+}
+function LinkIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  )
+}
+function EditIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
     </svg>
   )
 }
