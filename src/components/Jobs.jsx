@@ -424,8 +424,14 @@ function JobForm({ session, onCancel, onCreated }) {
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [isClosing, setIsClosing] = useState(false)
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
+
+  function handleCancel() {
+    setIsClosing(true)
+    setTimeout(onCancel, 200)
+  }
 
   async function submit() {
     if (!form.title.trim() || !form.company.trim() || !hasText(form.description)) {
@@ -452,7 +458,7 @@ function JobForm({ session, onCancel, onCreated }) {
   }
 
   return (
-    <div className="create-panel">
+    <div className={`create-panel ${isClosing ? 'closing' : ''}`}>
       <h3>Post a role</h3>
       <p className="form-hint">
         Takes about two minutes — the more specific the listing, the more likely a fellow Eendragter applies.
@@ -496,7 +502,7 @@ function JobForm({ session, onCancel, onCreated }) {
       <p className="form-hint">Add at least one of these so people can actually apply.</p>
       {error && <p className="form-error">{error}</p>}
       <div className="btn-row">
-        <button className="btn ghost" onClick={onCancel}>Cancel</button>
+        <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
         <button className="btn primary" onClick={submit} disabled={busy}>
           {busy ? 'Posting…' : 'Post job'}
         </button>

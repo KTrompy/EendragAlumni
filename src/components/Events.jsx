@@ -567,6 +567,12 @@ function EventForm({ session, onCancel, onCreated }) {
   const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [isClosing, setIsClosing] = useState(false)
+
+  function handleCancel() {
+    setIsClosing(true)
+    setTimeout(onCancel, 200)
+  }
 
   async function submit() {
     if (!title.trim() || !date) { setError('Title and date are required.'); return }
@@ -589,7 +595,7 @@ function EventForm({ session, onCancel, onCreated }) {
   }
 
   return (
-    <div className="create-panel">
+    <div className={`create-panel ${isClosing ? 'closing' : ''}`}>
       <h3>Add an event</h3>
       <label className="field"><span>Title</span>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="60-year reunion braai" />
@@ -607,7 +613,7 @@ function EventForm({ session, onCancel, onCreated }) {
       </label>
       {error && <p className="form-error">{error}</p>}
       <div className="btn-row">
-        <button className="btn ghost" onClick={onCancel}>Cancel</button>
+        <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
         <button className="btn primary" onClick={submit} disabled={busy}>
           {busy ? 'Posting…' : 'Post event'}
         </button>
