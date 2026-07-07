@@ -2886,7 +2886,7 @@ input, textarea, select { font: inherit; }
   .job-card > div:first-child { display: flex; flex-direction: column; }
   .job-card > .btn, .event-card > .btn,
   .job-card > .icon-btn-delete, .event-card > .icon-btn-delete { justify-self: start; margin-top: 8px; }
-  .events-header-actions { flex-wrap: nowrap; }
+  .events-header-actions { width: 100%; }
   .events-header-actions .btn { margin-left: auto; }
   .create-panel { padding: 14px; }
 }
