@@ -1373,8 +1373,8 @@ input, textarea, select { font: inherit; }
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 16px 20px 12px;
-  margin-bottom: 20px;
+  padding: 18px 20px;
+  margin-bottom: 24px;
   box-shadow: var(--shadow-card);
 }
 .composer-prompt {
@@ -1382,48 +1382,53 @@ input, textarea, select { font: inherit; }
   align-items: center;
   gap: 12px;
   cursor: pointer;
+  margin-bottom: 12px;
 }
 .composer-prompt-input {
   flex: 1;
-  background: none;
+  background: var(--paper);
   border: 1px solid var(--line-strong);
   border-radius: 24px;
-  padding: 11px 18px;
+  padding: 12px 20px;
   text-align: left;
   color: var(--ink-soft);
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 500;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 .composer-prompt-input:hover:not(:disabled) {
-  background: var(--paper);
-  border-color: var(--ink-soft);
+  background: #f8f6f1;
+  border-color: var(--line);
 }
 .composer-prompt-input:disabled { opacity: 0.55; cursor: not-allowed; }
 .composer-quick-actions {
   display: flex;
-  gap: 4px;
-  margin-top: 10px;
-  padding-top: 10px;
+  gap: 8px;
+  margin-top: 0;
+  padding-top: 0;
   border-top: 1px solid var(--line);
-  justify-content: space-around;
+  border-top-margin: 8px;
+  padding-top: 12px;
+  justify-content: flex-start;
 }
 .composer-quick-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   background: none;
   border: none;
   color: var(--ink-soft);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   padding: 8px 16px;
   border-radius: 6px;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
+  flex: 1;
 }
 .composer-quick-btn:hover:not(:disabled) { background: var(--paper); color: var(--ink); }
 .composer-quick-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.composer-quick-btn svg { color: var(--orange); }
+.composer-quick-btn svg { width: 18px; height: 18px; color: var(--orange); }
 
 /* ---------- Composer: modal overlay ---------- */
 .composer-overlay {
@@ -1657,21 +1662,28 @@ input, textarea, select { font: inherit; }
 .composer-preview button:hover { background: var(--danger); }
 
 /* ---------- Post list ---------- */
-.post-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.post-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; }
 .post {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 20px;
+  padding: 0;
   box-shadow: var(--shadow-card);
   transition: box-shadow 0.2s;
+  overflow: hidden;
 }
 .post:hover { box-shadow: var(--shadow-lift); }
-.post-head { display: flex; align-items: flex-start; gap: 10px; }
+.post-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
 .post-head-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.post-author { font-weight: 700; color: var(--ink); font-size: 14.5px; line-height: 1.3; }
-.post-meta { color: var(--ink-soft); font-size: 12.5px; line-height: 1.3; }
-.post-time { color: var(--ink-soft); font-size: 11.5px; margin-top: 1px; }
+.post-author { font-weight: 700; color: var(--ink); font-size: 15px; line-height: 1.4; }
+.post-meta { color: var(--ink-soft); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+.post-time { color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
 .post-delete-btn { margin-left: auto; flex-shrink: 0; }
 
 /* Trashcan delete buttons — replace the old plain-text "Delete" links so an
@@ -1695,26 +1707,35 @@ input, textarea, select { font: inherit; }
 .post-title {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 18px;
-  margin: 14px 0 4px;
+  font-size: 17px;
+  margin: 0;
   color: var(--maroon);
-  line-height: 1.3;
+  line-height: 1.4;
+  padding: 0 20px;
+  padding-top: 12px;
 }
-.post-body { margin: 8px 0 0; white-space: pre-wrap; color: var(--ink); line-height: 1.6; }
+.post-body {
+  margin: 0;
+  padding: 12px 20px;
+  white-space: pre-wrap;
+  color: var(--ink);
+  line-height: 1.6;
+  font-size: 15px;
+}
 
 .post-video {
-  margin-top: 14px;
-  border-radius: 10px;
-  overflow: hidden;
+  width: 100%;
   aspect-ratio: 16 / 9;
+  border-radius: 0;
+  overflow: hidden;
 }
-.post-video iframe { width: 100%; height: 100%; border: none; display: block; }
+.post-video video { width: 100%; height: 100%; border: none; display: block; object-fit: cover; }
 
 .post-images {
-  margin-top: 14px;
+  width: 100%;
   display: grid;
-  gap: 4px;
-  border-radius: 10px;
+  gap: 0;
+  border-radius: 0;
   overflow: hidden;
 }
 .post-images.count-1 { grid-template-columns: 1fr; }
@@ -1746,23 +1767,28 @@ input, textarea, select { font: inherit; }
 
 .post-actions {
   display: flex;
-  gap: 4px;
-  margin-top: 14px;
-  padding-top: 12px;
+  gap: 0;
+  margin-top: 0;
+  padding: 12px 20px;
   border-top: 1px solid var(--line);
+  flex-wrap: wrap;
 }
 .post-action {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   background: none;
+  flex: 1;
+  min-width: 60px;
   border: none;
   color: var(--ink-soft);
   padding: 8px 14px;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 13.5px;
   transition: background 0.15s, color 0.15s;
+  cursor: pointer;
 }
 .post-action:hover { background: var(--paper); color: var(--ink); }
 .post-action.liked { color: var(--orange); }
@@ -1771,14 +1797,14 @@ input, textarea, select { font: inherit; }
 .post-action:disabled:hover { background: none; color: var(--ink-soft); }
 
 .post-comments {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 0;
+  padding: 16px 20px 0;
   border-top: 1px solid var(--line);
 }
-.comment-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.comment-list { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 12px; }
 .comment {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
 }
 .comment-body {
@@ -1798,15 +1824,23 @@ input, textarea, select { font: inherit; }
 }
 .comment-delete:hover { color: var(--danger); }
 
-.comment-form { display: flex; gap: 8px; }
+.comment-form {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
 .comment-form input {
   flex: 1;
   border: 1px solid var(--line-strong);
   border-radius: 20px;
-  padding: 9px 16px;
+  padding: 10px 16px;
   font-size: 14px;
+  background: var(--paper);
 }
 .comment-form input:focus { outline: 2px solid var(--orange); border-color: transparent; }
+.comment-form .btn { flex-shrink: 0; }
 
 /* ---------- Directory profile modal buttons ---------- */
 .icon-btn {
