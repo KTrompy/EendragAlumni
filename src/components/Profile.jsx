@@ -349,7 +349,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             onSelectCoords={setCityCoords}
             placeholder="e.g. Cape Town, London, New York"
           />
-          <span className="hint">Start typing and choose a suggestion from the list — this field only accepts real places, so you'll always show up correctly on the Alumni Map.</span>
+          <span className="hint">Start typing and choose a suggestion from the list</span>
         </label>
       </div>
 
