@@ -2281,40 +2281,57 @@ input, textarea, select { font: inherit; }
 }
 
 /* Simple form panel used by events + jobs create */
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.create-panel-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(26, 15, 29, 0.6);
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  animation: fade-in 0.15s ease;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(12px);
-  }
+.create-panel-backdrop.closing {
+  animation: fade-out 0.15s ease forwards;
 }
+
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
 
 .create-panel {
   background: var(--card);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--orange);
-  border-radius: var(--radius);
-  padding: 18px;
-  margin-bottom: 24px;
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: none;
+  border-top: 4px solid var(--orange);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 620px;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin-bottom: 0;
+  animation: rise-in 0.2s ease;
 }
 
 .create-panel.closing {
-  animation: slideDown 0.2s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  animation: fall-out 0.2s ease forwards;
+}
+
+@keyframes fall-out { from { transform: none; opacity: 1; } to { transform: translateY(10px); opacity: 0; } }
+
+.create-panel > * {
+  padding: 0 20px;
+}
+
+.create-panel > :first-child {
+  padding-top: 20px;
+}
+
+.create-panel > :last-child {
+  padding-bottom: 20px;
 }
 
 .create-panel h3 {
@@ -2324,8 +2341,26 @@ input, textarea, select { font: inherit; }
   letter-spacing: 0.06em;
   margin: 0 0 12px;
   color: var(--maroon);
+  padding: 20px 20px 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--maroon);
+  color: #fff;
+  margin: 0;
 }
-.create-panel .btn-row { display: flex; gap: 10px; justify-content: flex-end; }
+
+.create-panel .btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 0 20px 20px 20px;
+}
+
+.create-panel-content {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 20px;
+}
 
 /* ---------- Donate ---------- */
 .donate-panel {

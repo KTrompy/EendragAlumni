@@ -190,7 +190,7 @@ export default function Events({ session, profile, onMessage }) {
           onCancel={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); load() }}
         />
-      )}
+      ) || null}
 
       {view === 'list' ? (
         <>
@@ -595,28 +595,32 @@ function EventForm({ session, onCancel, onCreated }) {
   }
 
   return (
-    <div className={`create-panel ${isClosing ? 'closing' : ''}`}>
-      <h3>Add an event</h3>
-      <label className="field"><span>Title</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="60-year reunion braai" />
-      </label>
-      <div className="field-row">
-        <label className="field"><span>Date & time</span>
-          <DateTimePicker value={date} onChange={setDate} placeholder="Pick a date & time" />
-        </label>
-        <label className="field"><span>Location</span>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Eendrag, Stellenbosch" />
-        </label>
-      </div>
-      <label className="field"><span>Description</span>
-        <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's happening, RSVP details, cost…" style={{ resize: 'none' }} />
-      </label>
-      {error && <p className="form-error">{error}</p>}
-      <div className="btn-row">
-        <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
-        <button className="btn primary" onClick={submit} disabled={busy}>
-          {busy ? 'Posting…' : 'Post event'}
-        </button>
+    <div className={`create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={(e) => e.target === e.currentTarget && handleCancel()}>
+      <div className={`create-panel ${isClosing ? 'closing' : ''}`}>
+        <h3>Add an event</h3>
+        <div className="create-panel-content">
+          <label className="field"><span>Title</span>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="60-year reunion braai" />
+          </label>
+          <div className="field-row">
+            <label className="field"><span>Date & time</span>
+              <DateTimePicker value={date} onChange={setDate} placeholder="Pick a date & time" />
+            </label>
+            <label className="field"><span>Location</span>
+              <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Eendrag, Stellenbosch" />
+            </label>
+          </div>
+          <label className="field"><span>Description</span>
+            <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's happening, RSVP details, cost…" style={{ resize: 'none' }} />
+          </label>
+          {error && <p className="form-error">{error}</p>}
+        </div>
+        <div className="btn-row">
+          <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
+          <button className="btn primary" onClick={submit} disabled={busy}>
+            {busy ? 'Posting…' : 'Post event'}
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -172,7 +172,7 @@ export default function Jobs({ session, profile, onMessage }) {
           onCancel={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); load() }}
         />
-      )}
+      ) || null}
 
       {/* Social proof + a standing nudge to post, visible on every visit
           (not just when the board is empty) — the header button is easy to
@@ -458,54 +458,58 @@ function JobForm({ session, onCancel, onCreated }) {
   }
 
   return (
-    <div className={`create-panel ${isClosing ? 'closing' : ''}`}>
-      <h3>Post a role</h3>
-      <p className="form-hint">
-        Takes about two minutes — the more specific the listing, the more likely a fellow Eendragter applies.
-      </p>
-      <div className="field-row">
-        <label className="field"><span>Title *</span>
-          <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Junior software engineer" />
-        </label>
-        <label className="field"><span>Company *</span>
-          <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
-        </label>
-      </div>
-      <div className="field-row">
-        <label className="field"><span>Location</span>
-          <input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Cape Town / Remote" />
-        </label>
-        <label className="field"><span>Type</span>
-          <div className="select-wrap">
-            <select value={form.employment_type} onChange={(e) => set('employment_type', e.target.value)}>
-              {TYPES.map((t) => <option key={t}>{t}</option>)}
-            </select>
+    <div className={`create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={(e) => e.target === e.currentTarget && handleCancel()}>
+      <div className={`create-panel ${isClosing ? 'closing' : ''}`}>
+        <h3>Post a role</h3>
+        <div className="create-panel-content">
+          <p className="form-hint">
+            Takes about two minutes — the more specific the listing, the more likely a fellow Eendragter applies.
+          </p>
+          <div className="field-row">
+            <label className="field"><span>Title *</span>
+              <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Junior software engineer" />
+            </label>
+            <label className="field"><span>Company *</span>
+              <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
+            </label>
           </div>
-        </label>
-      </div>
-      <label className="field"><span>Description *</span></label>
-      <div className="rte-box">
-        <RichTextEditor
-          value={form.description}
-          onChange={(v) => set('description', v)}
-          placeholder="Role, requirements, why you'd want a fellow Eendragter…"
-        />
-      </div>
-      <div className="field-row" style={{ marginTop: 14 }}>
-        <label className="field"><span>Apply URL</span>
-          <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
-        </label>
-        <label className="field"><span>Contact email</span>
-          <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
-        </label>
-      </div>
-      <p className="form-hint">Add at least one of these so people can actually apply.</p>
-      {error && <p className="form-error">{error}</p>}
-      <div className="btn-row">
-        <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
-        <button className="btn primary" onClick={submit} disabled={busy}>
-          {busy ? 'Posting…' : 'Post job'}
-        </button>
+          <div className="field-row">
+            <label className="field"><span>Location</span>
+              <input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Cape Town / Remote" />
+            </label>
+            <label className="field"><span>Type</span>
+              <div className="select-wrap">
+                <select value={form.employment_type} onChange={(e) => set('employment_type', e.target.value)}>
+                  {TYPES.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </label>
+          </div>
+          <label className="field"><span>Description *</span></label>
+          <div className="rte-box">
+            <RichTextEditor
+              value={form.description}
+              onChange={(v) => set('description', v)}
+              placeholder="Role, requirements, why you'd want a fellow Eendragter…"
+            />
+          </div>
+          <div className="field-row" style={{ marginTop: 14 }}>
+            <label className="field"><span>Apply URL</span>
+              <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
+            </label>
+            <label className="field"><span>Contact email</span>
+              <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
+            </label>
+          </div>
+          <p className="form-hint">Add at least one of these so people can actually apply.</p>
+          {error && <p className="form-error">{error}</p>}
+        </div>
+        <div className="btn-row">
+          <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
+          <button className="btn primary" onClick={submit} disabled={busy}>
+            {busy ? 'Posting…' : 'Post job'}
+          </button>
+        </div>
       </div>
     </div>
   )
