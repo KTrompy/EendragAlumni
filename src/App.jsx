@@ -161,14 +161,6 @@ export default function App() {
     <div className="app">
       <header className="masthead">
         <div className="masthead-inner">
-          <button
-            className="mobile-support-btn"
-            onClick={() => attemptNavigate(() => setTab('donate'))}
-          >
-            <SupportIcon />
-            Support
-          </button>
-
           <div className="brand">
             <img src="/eendrag-logo.png" alt="Eendrag logo" className="brand-logo" />
             <div>
@@ -180,7 +172,8 @@ export default function App() {
           <button
             className="mobile-avatar-btn"
             onClick={() => attemptNavigate(() => setTab('profile'))}
-            aria-label="My profile"
+            aria-label="My profile (click to open)"
+            title="Click to open your profile"
           >
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
           </button>
@@ -243,6 +236,7 @@ export default function App() {
             onSaved={setProfile}
             onDirtyChange={setProfileDirty}
             saveRef={profileSaveRef}
+            onNavigateHome={() => attemptNavigate(() => setTab('directory'))}
           />
         )}
       </main>

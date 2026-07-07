@@ -134,6 +134,29 @@ input, textarea, select { font: inherit; }
   color: var(--maroon);
 }
 .panel-sub { margin: 0 0 22px; color: var(--ink-soft); }
+.profile-header-with-back {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.profile-back-btn {
+  background: none;
+  border: none;
+  color: var(--orange);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: color 0.15s ease;
+}
+.profile-back-btn:hover { color: var(--orange-dark); }
+@media (min-width: 560px) {
+  .profile-back-btn { display: none; }
+}
 .empty { color: var(--ink-soft); padding: 24px 0; }
 .empty.small { padding: 8px; font-size: 13px; }
 
@@ -2879,36 +2902,26 @@ input, textarea, select { font: inherit; }
   .tabs { display: none !important; }
   .masthead-inner {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto;
     align-items: center;
     gap: 10px;
   }
-  .brand { justify-content: center; text-align: center; min-width: 0; }
+  .brand { justify-content: flex-start; text-align: left; min-width: 0; }
   .brand-name, .brand-motto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mobile-avatar-btn {
     display: inline-flex;
     background: none;
-    border: none;
-    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    padding: 3px;
     border-radius: 50%;
     flex-shrink: 0;
+    transition: border-color 0.2s ease;
+    cursor: pointer;
   }
+  .mobile-avatar-btn:hover { border-color: var(--orange); }
   .mobile-support-btn {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 4px 2px;
-    flex-shrink: 0;
+    display: none;
   }
-  .mobile-support-btn:hover { color: var(--orange); }
 
   /* Reserve room at the bottom of the page for the fixed tab bar (and the
      floating chat bubble, moved up to sit just above it), so neither

@@ -19,7 +19,7 @@ const EMPTY = {
   is_current_resident: false,
 }
 
-export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef }) {
+export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
   const [form, setForm] = useState(EMPTY)
   const [customIndustry, setCustomIndustry] = useState('')
   const [customCity, setCustomCity] = useState('')
@@ -205,10 +205,17 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
   return (
     <section className="panel narrow">
-      <h2 className="panel-title">My profile</h2>
-      <p className="panel-sub">
-        This is what other Eendragters see on the wall and in the directory.
-      </p>
+      <div className="profile-header-with-back">
+        <button className="profile-back-btn" onClick={onNavigateHome} aria-label="Back to home">
+          ← Home
+        </button>
+        <div>
+          <h2 className="panel-title">My profile</h2>
+          <p className="panel-sub">
+            This is what other Eendragters see on the wall and in the directory.
+          </p>
+        </div>
+      </div>
 
       <div className="avatar-editor">
         <Avatar url={profile?.avatar_url} name={form.full_name} size={88} />
