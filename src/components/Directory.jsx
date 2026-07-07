@@ -195,7 +195,7 @@ export default function Directory({ session, onMessage }) {
     onMessage(p, buildIcebreaker(me, p))
   }
 
-  // "People like you" — browsing today means already knowing who you're
+  // "Connection suggestions" — browsing today means already knowing who you're
   // looking for. This surfaces a few Eendragters who share something with
   // your own profile (grad year, city, or industry), so there's something
   // to discover even without a search term. Deliberately excludes mentoring
@@ -245,7 +245,7 @@ export default function Directory({ session, onMessage }) {
 
       {!needle && activeFilterCount === 0 && similarPeople.length > 0 && (
         <div className="similar-people">
-          <h3 className="similar-people-title">People like you</h3>
+          <h3 className="similar-people-title">Connection suggestions</h3>
           <ul className="similar-people-row">
             {similarPeople.map((p) => (
               <li className="similar-person-card" key={p.id}>

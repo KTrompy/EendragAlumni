@@ -954,7 +954,7 @@ input, textarea, select { font: inherit; }
 }
 .directory-search { margin-bottom: 0; }
 
-/* "People like you" — a horizontal-scroll discovery row above the main
+/* "Connection suggestions" — a horizontal-scroll discovery row above the main
    directory grid, so browsing doesn't require already knowing who you're
    looking for. */
 .similar-people { margin: 4px 0 22px; }
