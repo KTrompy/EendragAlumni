@@ -472,21 +472,32 @@ function Composer({ session, profile, onPosted, openRef }) {
 /* ---------- Post item ---------- */
 function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageClick, onMessage }) {
   const [showComments, setShowComments] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const bodyRef = useRef(null)
+  const [needsTruncation, setNeedsTruncation] = useState(false)
   const likeCount = p.likes?.[0]?.count ?? 0
   const commentCount = p.comments?.[0]?.count ?? 0
   const canInteract = profile?.approved
   const images = p.image_urls || []
 
+  useEffect(() => {
+    if (bodyRef.current) {
+      setNeedsTruncation(bodyRef.current.scrollHeight > 120)
+    }
+  }, [p.content])
+
+  const headline = [
+    p.profiles?.occupation,
+    p.profiles?.grad_year ? "Class of '" + String(p.profiles.grad_year).slice(-2) : '',
+  ].filter(Boolean).join(' · ')
+
   return (
     <li className="post">
       <div className="post-head">
-        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={40} />
+        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={48} />
         <div className="post-head-info">
           <span className="post-author">{p.profiles?.full_name || 'Alumnus'}</span>
-          <span className="post-meta">
-            {p.profiles?.grad_year ? "Class of '" + String(p.profiles.grad_year).slice(-2) : ''}
-            {p.profiles?.occupation ? ` · ${p.profiles.occupation}` : ''}
-          </span>
+          {headline && <span className="post-headline">{headline}</span>}
           <span className="post-time">{timeAgo(p.created_at)}</span>
         </div>
         {p.author_id === session.user.id && (
@@ -501,12 +512,21 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
 
       {p.title && <h3 className="post-title">{p.title}</h3>}
       {p.content && p.content !== '(no text)' && (
-        <div className="post-body rendered-html" dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.content) }} />
+        <div className="post-body-wrap">
+          <div
+            ref={bodyRef}
+            className={`post-body rendered-html${!expanded && needsTruncation ? ' truncated' : ''}`}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.content) }}
+          />
+          {needsTruncation && !expanded && (
+            <button className="post-see-more" onClick={() => setExpanded(true)}>…see more</button>
+          )}
+        </div>
       )}
 
       {p.video_url && (
         <div className="post-video">
-          <video controls style={{ width: '100%' }}>
+          <video controls>
             <source src={p.video_url} />
             Your browser doesn't support video playback
           </video>
@@ -521,6 +541,22 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
         </div>
       )}
 
+      {(likeCount > 0 || commentCount > 0) && (
+        <div className="post-stats">
+          {likeCount > 0 && (
+            <span className="post-stat-item">
+              <span className="post-stat-dot like" />
+              {likeCount} {likeCount === 1 ? 'like' : 'likes'}
+            </span>
+          )}
+          {commentCount > 0 && (
+            <span className="post-stat-item" onClick={() => setShowComments(true)} style={{ cursor: 'pointer' }}>
+              {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="post-actions">
         <button
           className={liked ? 'post-action liked' : 'post-action'}
@@ -528,13 +564,13 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
           disabled={!canInteract}
           title={canInteract ? (liked ? 'Unlike' : 'Like') : 'Liking unlocks after approval'}
         >
-          <HeartIcon filled={liked} /> {likeCount}
+          <HeartIcon filled={liked} /> Like
         </button>
         <button
           className="post-action"
           onClick={() => setShowComments((s) => !s)}
         >
-          <CommentIcon /> {commentCount}
+          <CommentIcon /> Comment
         </button>
         {p.author_id !== session.user.id && (
           <button
