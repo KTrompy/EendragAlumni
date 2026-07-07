@@ -13,6 +13,29 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
+function sameDay(a, b) {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate()
+}
+
+// Small "Today / Yesterday / Jul 3" pill shown whenever the conversation
+// crosses a calendar day — gives longer threads a modern, scannable rhythm
+// instead of one unbroken column of bubbles.
+function daySeparatorLabel(iso) {
+  const d = new Date(iso)
+  const now = new Date()
+  if (sameDay(d, now)) return 'Today'
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (sameDay(d, yesterday)) return 'Yesterday'
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+  })
+}
+
 export default function Messages({ session, profile, initialTarget, initialDraft, onTargetConsumed, onRead, onBrowseDirectory, hideTitle }) {
   const [threads, setThreads] = useState([])
   const [activeId, setActiveId] = useState(null)
@@ -247,11 +270,17 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                 {messages.map((m, i) => {
                   const mine = m.sender_id === me
                   const prev = messages[i - 1]
-                  const isGroupStart = !prev
+                  const isNewDay = !prev || !sameDay(new Date(m.created_at), new Date(prev.created_at))
+                  const isGroupStart = isNewDay
                     || prev.sender_id !== m.sender_id
                     || (new Date(m.created_at) - new Date(prev.created_at)) > GROUP_GAP_MS
 
-                  return (
+                  return [
+                    isNewDay && (
+                      <div key={`sep-${m.id}`} className="date-separator">
+                        <span>{daySeparatorLabel(m.created_at)}</span>
+                      </div>
+                    ),
                     <div
                       key={m.id}
                       className={[
@@ -279,8 +308,8 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                         <span className="message-time-spacer" aria-hidden="true">{timeAgo(m.created_at)}</span>
                         <span className="message-time">{timeAgo(m.created_at)}</span>
                       </div>
-                    </div>
-                  )
+                    </div>,
+                  ]
                 })}
                 <div ref={bottomRef} />
               </div>

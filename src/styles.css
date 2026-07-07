@@ -430,6 +430,111 @@ input, textarea, select { font: inherit; }
   .chat-panel-body .messages-panel[data-view="list"] .chat { display: none; }
 }
 
+/* ---------- Mobile messaging redesign ----------
+   Same underlying pattern as desktop (grouped bubbles, thread list, WA-ish
+   input) but tuned for a lighter, cleaner, single-screen feel: one header
+   instead of two stacked bars, a flat surface instead of the dotted paper
+   texture, softer full-round bubbles with no tail, and roomier tap targets
+   throughout. */
+@media (max-width: 720px) {
+  /* The outer "Messages" bar (title + close) only earns its keep in list
+     view — once a conversation is open, .chat-header already has its own
+     back button, name and avatar, so showing both read as a cluttered
+     double header. Collapse the outer bar there instead. */
+  .chat-panel:has(.messages-panel[data-view="chat"]) .chat-panel-header {
+    display: none;
+  }
+  .chat-panel-header {
+    background: var(--card);
+    color: var(--maroon);
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 17px;
+    font-weight: 800;
+    padding: 14px 10px 14px 18px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    border-bottom: 1px solid var(--line);
+  }
+  .chat-panel-header .modal-close {
+    color: var(--ink-soft);
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .chat-panel-header .modal-close:hover { background: var(--paper); color: var(--ink); }
+
+  /* The inner "Chats" label duplicated the title above it — drop it and
+     let the search field sit right under the (now single) header. */
+  .chat-panel-body .thread-list-header { display: none; }
+  .chat-panel-body .thread-search-wrap { margin: 14px 16px; }
+  .chat-panel-body .thread-search { padding: 11px 16px 11px 38px; font-size: 14.5px; }
+
+  /* Roomier, borderless rows with a soft highlight instead of a hard
+     left-edge bar — reads as a modern list, not a spreadsheet. */
+  .chat-panel-body .thread {
+    padding: 12px 16px;
+    border-bottom: none;
+    border-radius: 12px;
+    margin: 0 8px 2px;
+    width: calc(100% - 16px);
+  }
+  .chat-panel-body .thread.active { background: var(--orange-soft); }
+  .chat-panel-body .thread.active::before { display: none; }
+  .chat-panel-body .thread-name { font-size: 15px; }
+  .chat-panel-body .thread-preview { font-size: 13px; }
+
+  /* Conversation header: sticky, roomy back button, safe-area aware. */
+  .chat-panel-body .chat-header {
+    padding: 10px 16px;
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .chat-panel-body .chat-back {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    margin-left: -6px;
+  }
+  .chat-panel-body .chat-header-name { font-size: 16px; }
+
+  /* Flat surface instead of the dotted paper texture — calmer background
+     that lets the bubbles do the talking. */
+  .chat-panel-body .chat { background-color: var(--paper); background-image: none; }
+  .chat-panel-body .chat-scroll { padding: 14px 14px 6px; gap: 3px; }
+
+  /* Soft, fully-rounded bubbles with no folded-corner tail — a cleaner,
+     more contemporary read than the WA-style corner fold. */
+  .chat-panel-body .bubble {
+    border-radius: 18px;
+    padding: 9px 14px 20px;
+    font-size: 15px;
+    line-height: 1.42;
+    box-shadow: none;
+  }
+  .chat-panel-body .bubble.mine { background: var(--orange); color: #fff; }
+  .chat-panel-body .bubble.mine .message-time { color: rgba(255, 255, 255, 0.75); }
+  .chat-panel-body .message-row.group-start:not(.mine) .bubble::before,
+  .chat-panel-body .message-row.group-start.mine .bubble::before {
+    content: none;
+  }
+  .chat-panel-body .message-row { max-width: 82%; }
+
+  /* Larger, more tappable composer. */
+  .chat-panel-body .chat-input {
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+  .chat-panel-body .chat-input input { padding: 12px 16px; font-size: 15px; }
+  .chat-panel-body .chat-send { width: 42px; height: 42px; }
+
+  .chat-panel-body .date-separator span { font-size: 10.5px; }
+}
+
 .center-page { display: grid; place-items: center; min-height: 100vh; color: var(--ink-soft); }
 
 /* ---------- Buttons & fields ---------- */
@@ -2335,6 +2440,25 @@ input, textarea, select { font: inherit; }
 .message-row.group-start { margin-top: 8px; }
 .message-row:first-child.group-start { margin-top: 0; }
 .avatar-spacer { flex-shrink: 0; display: inline-block; height: 1px; }
+
+/* Centered "Today / Yesterday / Jul 3" pill wherever the thread crosses a
+   calendar day — breaks long conversations into scannable chunks. */
+.date-separator {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 8px;
+}
+.date-separator:first-child { margin-top: 0; }
+.date-separator span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
 
 /* WA-style inline timestamp: always visible, tucked in the bubble's
    bottom-right corner. */
