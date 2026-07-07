@@ -497,10 +497,10 @@ function JobForm({ session, onCancel, onCreated }) {
             />
           </div>
           <div className="field-row" style={{ marginTop: 14 }}>
-            <label className="field"><span>Apply URL *</span>
+            <label className="field"><span>Apply URL</span>
               <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
             </label>
-            <label className="field"><span>Contact email *</span>
+            <label className="field"><span>Contact email</span>
               <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
             </label>
           </div>
