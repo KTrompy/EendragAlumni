@@ -1601,7 +1601,7 @@ input, textarea, select { font: inherit; }
 .rendered-html i, .rendered-html em { font-style: italic; }
 .rendered-html > *:last-child { margin-bottom: 0; }
 
-.composer-video-row { padding: 0 20px 12px; }
+.composer-video-row { padding: 0 20px 12px; position: relative; }
 .composer-video-input {
   width: 100%;
   border: 1px solid var(--line-strong);
@@ -1610,13 +1610,21 @@ input, textarea, select { font: inherit; }
   background: var(--card);
   color: var(--ink);
 }
-.composer-video-preview {
+.composer-video-preview, .composer-video-preview-wrap {
   margin-top: 10px;
   border-radius: 8px;
   overflow: hidden;
   aspect-ratio: 16 / 9;
+  position: relative;
 }
 .composer-video-preview iframe { width: 100%; height: 100%; border: none; display: block; }
+.composer-video-preview-wrap video { width: 100%; height: 100%; border: none; display: block; object-fit: contain; }
+.composer-video-preview-wrap .search-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
 
 .composer-previews {
   display: grid;

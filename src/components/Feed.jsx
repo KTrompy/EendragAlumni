@@ -9,6 +9,7 @@ import { sanitizeHtml } from '../sanitizeHtml.js'
 
 const MAX_IMAGES = 4
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024
 const PAGE_SIZE = 10
 
 function timeAgo(iso) {
@@ -187,34 +188,32 @@ function Composer({ session, profile, onPosted, openRef }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [files, setFiles] = useState([])
-  const [videoUrl, setVideoUrl] = useState('')
-  const [showVideo, setShowVideo] = useState(false)
+  const [videoFile, setVideoFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const fileRef = useRef(null)
+  const videoFileRef = useRef(null)
   const titleRef = useRef(null)
-  const videoRef = useRef(null)
 
   const canPost = profile?.approved
-  const canSubmit = canPost && (hasText(body) || files.length > 0 || Boolean(videoEmbedUrl(videoUrl)))
+  const canSubmit = canPost && (hasText(body) || files.length > 0 || videoFile)
 
-  function openModal(focusVideo = false) {
+  function openModal() {
     if (!canPost) return
     setOpen(true)
-    if (focusVideo) setShowVideo(true)
-    setTimeout(() => (focusVideo ? videoRef.current : titleRef.current)?.focus(), 50)
+    setTimeout(() => titleRef.current?.focus(), 50)
   }
 
   function closeModal() {
     if (busy) return
     setOpen(false)
     setTitle(''); setBody(''); setFiles([]); setError(null)
-    setVideoUrl(''); setShowVideo(false)
+    setVideoFile(null)
   }
 
   // Lets a CTA outside this component (the Feed empty state) trigger the
   // same "start a post" flow as clicking the prompt.
-  if (openRef) openRef.current = () => openModal(false)
+  if (openRef) openRef.current = () => openModal()
 
   function pickFiles(e) {
     const chosen = Array.from(e.target.files || [])
@@ -230,8 +229,25 @@ function Composer({ session, profile, onPosted, openRef }) {
     e.target.value = ''
   }
 
+  function pickVideo(e) {
+    const chosen = e.target.files?.[0]
+    if (!chosen) return
+    if (chosen.size > MAX_VIDEO_SIZE) {
+      setError(`Video is over 100MB.`)
+      e.target.value = ''
+      return
+    }
+    setVideoFile(chosen)
+    setError(null)
+    e.target.value = ''
+  }
+
   function removeFile(idx) {
     setFiles((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function removeVideo() {
+    setVideoFile(null)
   }
 
   async function uploadAll() {
@@ -250,12 +266,24 @@ function Composer({ session, profile, onPosted, openRef }) {
     return urls
   }
 
+  async function uploadVideo() {
+    if (!videoFile) return null
+    const ext = videoFile.name.split('.').pop().toLowerCase()
+    const path = `${session.user.id}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('post-videos')
+      .upload(path, videoFile, { upsert: false, contentType: videoFile.type })
+    if (upErr) throw upErr
+    const { data } = supabase.storage.from('post-videos').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   async function publish() {
     if (!canSubmit) return
     setBusy(true); setError(null)
     try {
       const image_urls = files.length ? await uploadAll() : []
-      const video_url = videoEmbedUrl(videoUrl) ? videoUrl.trim() : null
+      const video_url = videoFile ? await uploadVideo() : null
       const { error } = await supabase
         .from('posts')
         .insert({
@@ -271,7 +299,7 @@ function Composer({ session, profile, onPosted, openRef }) {
           : error.message)
       } else {
         setTitle(''); setBody(''); setFiles([])
-        setVideoUrl(''); setShowVideo(false)
+        setVideoFile(null)
         setOpen(false)
         onPosted?.()
       }
@@ -295,17 +323,14 @@ function Composer({ session, profile, onPosted, openRef }) {
   /* ---- Quick-action buttons below the prompt ---- */
   const quickActions = (
     <div className="composer-quick-actions">
-      <button className="composer-quick-btn" onClick={() => openModal(false)} disabled={!canPost}>
-        <PhotoIcon /> Photo
-      </button>
-      <button className="composer-quick-btn" onClick={() => openModal(true)} disabled={!canPost}>
-        <VideoIcon /> Add video
+      <button className="composer-quick-btn" onClick={openModal} disabled={!canPost}>
+        Start a post
       </button>
     </div>
   )
 
   /* ---- Toolbar inside the modal editor ---- */
-  const photoButton = (
+  const mediaButtons = (
     <>
       <button
         type="button"
@@ -324,6 +349,22 @@ function Composer({ session, profile, onPosted, openRef }) {
         multiple
         style={{ display: 'none' }}
         onChange={pickFiles}
+      />
+      <button
+        type="button"
+        className="composer-photo-btn"
+        onClick={() => videoFileRef.current?.click()}
+        disabled={!canPost || !!videoFile}
+        title="Add video"
+      >
+        <VideoIcon />
+      </button>
+      <input
+        ref={videoFileRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        style={{ display: 'none' }}
+        onChange={pickVideo}
       />
     </>
   )
@@ -366,36 +407,25 @@ function Composer({ session, profile, onPosted, openRef }) {
                 value={body}
                 onChange={setBody}
                 placeholder="What do you want to talk about?"
-                toolbarExtra={photoButton}
+                toolbarExtra={mediaButtons}
               />
             </div>
 
-            {/* Video link */}
-            {showVideo && (
+            {/* Video preview */}
+            {videoFile && (
               <div className="composer-video-row">
-                <div className="input-clear-wrap">
-                  <input
-                    ref={videoRef}
-                    className="composer-video-input"
-                    placeholder="Paste a YouTube or Vimeo link…"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                  />
+                <div className="composer-video-preview-wrap">
+                  <video controls width="100%">
+                    <source src={URL.createObjectURL(videoFile)} />
+                    Your browser doesn't support video playback
+                  </video>
                   <button
                     type="button"
                     className="search-clear"
-                    onClick={() => { setVideoUrl(''); setShowVideo(false) }}
+                    onClick={removeVideo}
                     aria-label="Remove video"
                   >×</button>
                 </div>
-                {videoUrl && !videoEmbedUrl(videoUrl) && (
-                  <p className="form-warning">Couldn't recognize that as a YouTube or Vimeo link — it won't be attached.</p>
-                )}
-                {videoEmbedUrl(videoUrl) && (
-                  <div className="composer-video-preview">
-                    <iframe src={videoEmbedUrl(videoUrl)} title="Video preview" allowFullScreen />
-                  </div>
-                )}
               </div>
             )}
 
@@ -461,15 +491,12 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onImageC
         <div className="post-body rendered-html" dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.content) }} />
       )}
 
-      {p.video_url && videoEmbedUrl(p.video_url) && (
+      {p.video_url && (
         <div className="post-video">
-          <iframe
-            src={videoEmbedUrl(p.video_url)}
-            title="Post video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            loading="lazy"
-          />
+          <video controls style={{ width: '100%' }}>
+            <source src={p.video_url} />
+            Your browser doesn't support video playback
+          </video>
         </div>
       )}
 
