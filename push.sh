@@ -13,6 +13,6 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-git add src/ public/ *.sql package.json package-lock.json vite.config.js index.html README.md push.sh 2>/dev/null
+git add src/ public/ *.sql package.json package-lock.json vite.config.js index.html vercel.json README.md push.sh 2>/dev/null
 git commit -m "$1"
 git push
