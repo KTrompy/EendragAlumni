@@ -320,13 +320,23 @@ function Composer({ session, profile, onPosted, openRef }) {
     </div>
   )
 
+  function openModalWithPhoto() {
+    openModal()
+    setTimeout(() => fileRef.current?.click(), 50)
+  }
+
+  function openModalWithVideo() {
+    openModal()
+    setTimeout(() => videoFileRef.current?.click(), 50)
+  }
+
   /* ---- Quick-action buttons below the prompt ---- */
   const quickActions = (
     <div className="composer-quick-actions">
-      <button className="composer-quick-btn" onClick={() => { fileRef.current?.click(); setTimeout(openModal, 100) }} disabled={!canPost}>
+      <button className="composer-quick-btn" onClick={openModalWithPhoto} disabled={!canPost}>
         <PhotoIcon /> Photo
       </button>
-      <button className="composer-quick-btn" onClick={() => { videoFileRef.current?.click(); setTimeout(openModal, 100) }} disabled={!canPost}>
+      <button className="composer-quick-btn" onClick={openModalWithVideo} disabled={!canPost}>
         <VideoIcon /> Video
       </button>
     </div>
