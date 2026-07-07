@@ -13,6 +13,7 @@ import Jobs from './components/Jobs.jsx'
 import Donate from './components/Donate.jsx'
 import Admin from './components/Admin.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
+import ConfirmDialog from './components/ConfirmDialog.jsx'
 
 // Eendragters (directory) now includes the alumni map as a view toggle
 // (see People.jsx) instead of splitting "find a person" across two nav
@@ -66,6 +67,7 @@ export default function App() {
   const [pendingNav, setPendingNav] = useState(null)
   const [leaveBusy, setLeaveBusy] = useState(false)
   const [leaveError, setLeaveError] = useState(null)
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false)
 
   // Warn on an actual browser navigation/refresh/close too, not just
   // switching tabs inside the app.
@@ -223,7 +225,7 @@ export default function App() {
             ))}
             <button
               className="tab signout"
-              onClick={() => attemptNavigate(() => { setNavOpen(false); supabase.auth.signOut() })}
+              onClick={() => attemptNavigate(() => { setNavOpen(false); setConfirmingSignOut(true) })}
             >
               Sign out
             </button>
@@ -310,6 +312,16 @@ export default function App() {
           goTo('/directory')
         }}
       />
+
+      {confirmingSignOut && (
+        <ConfirmDialog
+          title="Sign out?"
+          message="You'll need to sign back in to post, message, or view your profile."
+          confirmLabel="Sign out"
+          onConfirm={() => { setConfirmingSignOut(false); supabase.auth.signOut() }}
+          onCancel={() => setConfirmingSignOut(false)}
+        />
+      )}
 
       {pendingNav && (
         <div
