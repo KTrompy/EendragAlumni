@@ -3246,6 +3246,355 @@ button.delete-danger svg { flex-shrink: 0; }
   flex-shrink: 0;
 }
 
+/* ---------- Revamped Profile Page (Modern & Professional) ---------- */
+
+/* Overall page layout */
+.profile-page {
+  animation: fade-in 0.3s ease;
+}
+
+/* Photo section hero - featured at top */
+.profile-photo-section {
+  margin: 0 0 28px;
+  animation: profile-section-in 0.35s ease both;
+  animation-delay: 0.01s;
+}
+
+.profile-photo-card {
+  background: linear-gradient(135deg, var(--orange-soft) 0%, var(--paper) 100%);
+  border: 1px solid var(--orange);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(232, 97, 28, 0.08);
+}
+
+.profile-photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.profile-photo-hint {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Improved section styling */
+.profile-section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 18px;
+  animation: profile-section-in 0.35s ease both;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.03);
+}
+
+.profile-section:hover {
+  border-color: var(--orange);
+  box-shadow: 0 4px 12px rgba(232, 97, 28, 0.08);
+}
+
+.profile-section:nth-of-type(1) { animation-delay: 0.04s; }
+.profile-section:nth-of-type(2) { animation-delay: 0.08s; }
+.profile-section:nth-of-type(3) { animation-delay: 0.12s; }
+.profile-section:nth-of-type(4) { animation-delay: 0.16s; }
+.profile-section:nth-of-type(5) { animation-delay: 0.2s; }
+.profile-section:nth-of-type(6) { animation-delay: 0.24s; }
+.profile-section:nth-of-type(7) { animation-delay: 0.28s; }
+
+.profile-section-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--maroon);
+  margin: 0 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-section-title::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+/* Business profile collapsible toggle */
+.profile-business-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.profile-business-toggle:hover {
+  color: var(--orange);
+}
+
+.profile-business-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--maroon);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-business-title::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+.toggle-arrow {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  color: var(--orange);
+  font-size: 12px;
+}
+
+.toggle-arrow.open {
+  transform: rotate(180deg);
+}
+
+.profile-business-content {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 2000px;
+  }
+}
+
+/* Improved tag grid - more compact and scannable */
+.tags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.tags-grid.compact {
+  gap: 8px;
+}
+
+.tag-btn {
+  padding: 8px 14px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tag-btn:hover {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  transform: translateY(-1px);
+}
+
+.tag-btn.selected {
+  background: var(--maroon);
+  border-color: var(--maroon);
+  color: white;
+  font-weight: 600;
+}
+
+.tag-btn.selected:hover {
+  background: var(--maroon-dark);
+  border-color: var(--maroon-dark);
+  transform: translateY(-1px);
+}
+
+/* Field layout improvements */
+.field {
+  display: block;
+  margin-bottom: 18px;
+  flex: 1;
+}
+
+.field span {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+.field-row {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 640px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Choice row styling */
+.profile-choice-row {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  gap: 0;
+}
+
+.profile-choice-row .onboarding-choice {
+  flex: 1;
+  padding: 11px 16px;
+  font-size: 13px;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--paper);
+  transition: all 0.15s ease;
+}
+
+.profile-choice-row .onboarding-choice:last-child {
+  border-right: none;
+}
+
+.profile-choice-row .onboarding-choice:hover:not(.on) {
+  background: #f5f2ed;
+}
+
+.profile-choice-row .onboarding-choice.on {
+  background: var(--orange);
+  color: white;
+  font-weight: 600;
+}
+
+/* Profile actions - improved layout */
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  animation: profile-section-in 0.35s ease both;
+  animation-delay: 0.32s;
+}
+
+.profile-actions .btn {
+  white-space: nowrap;
+}
+
+.profile-actions .btn.primary {
+  box-shadow: 0 4px 12px rgba(232, 97, 28, 0.2);
+}
+
+.profile-saved-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ok);
+  font-size: 13px;
+  font-weight: 600;
+  animation: profile-chip-in 0.25s ease;
+  margin-left: auto;
+}
+
+@media (max-width: 560px) {
+  .profile-saved-chip {
+    margin-left: 0;
+    order: -1;
+    width: 100%;
+  }
+}
+
+/* Mobile optimization */
+@media (max-width: 640px) {
+  .profile-photo-card {
+    padding: 24px 20px;
+  }
+
+  .profile-section {
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+
+  .profile-section-title {
+    font-size: 11px;
+    margin-bottom: 14px;
+  }
+
+  .field {
+    margin-bottom: 14px;
+  }
+
+  .profile-choice-row .onboarding-choice {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .tags-grid {
+    gap: 8px;
+  }
+
+  .tag-btn {
+    padding: 7px 11px;
+    font-size: 12px;
+  }
+
+  .profile-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .profile-actions .btn {
+    width: 100%;
+  }
+}
+
 /* ---------- Custom-styled selects ----------
    Keeps a real <select> under the hood (full keyboard nav + screen reader
    support) but hides the native arrow and draws our own, so it matches the

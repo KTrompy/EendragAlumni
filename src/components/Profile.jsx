@@ -34,6 +34,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   const [geoWarning, setGeoWarning] = useState(false)
   const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
   const [dirty, setDirty] = useState(false)
+  const [showBusinessProfile, setShowBusinessProfile] = useState(false)
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -220,7 +221,8 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
 
   return (
-    <section className="panel narrow">
+    <section className="panel narrow profile-page">
+      {/* Header */}
       <div className="profile-header-with-back">
         <button className="profile-back-btn" onClick={onNavigateHome} aria-label="Back to home">
           ← Home
@@ -228,22 +230,25 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <div>
           <h2 className="panel-title">My profile</h2>
           <p className="panel-sub">
-            This is what other Eendragters see on the wall and in the directory.
+            Control how you appear in the directory and what other Eendragters see.
           </p>
         </div>
       </div>
 
-      <div className="avatar-editor">
-        <Avatar url={profile?.avatar_url} name={form.full_name} size={88} />
-        <div>
-          <button
-            className="btn ghost"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-          >
-            {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change photo' : 'Add photo'}
-          </button>
-          <p className="hint">JPG, PNG or WebP, up to 8MB. You'll be able to reposition it next.</p>
+      {/* Photo Section - Hero */}
+      <div className="profile-photo-section">
+        <div className="profile-photo-card">
+          <Avatar url={profile?.avatar_url} name={form.full_name} size={120} />
+          <div className="profile-photo-actions">
+            <button
+              className="btn primary small"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change' : 'Add photo'}
+            </button>
+            <p className="profile-photo-hint">JPG, PNG or WebP • Max 8MB</p>
+          </div>
           <input
             ref={fileRef}
             type="file"
@@ -254,8 +259,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </div>
       </div>
 
+      {/* Basic Info Section */}
       <div className="profile-section">
-        <h3 className="profile-section-title">Basic info</h3>
+        <h3 className="profile-section-title">About you</h3>
+
         <label className="field"><span>Full name</span>
           <ClearableInput
             value={form.full_name}
@@ -264,8 +271,19 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           />
         </label>
 
+        <label className="field"><span>Bio</span>
+          <ClearableInput
+            as="textarea"
+            rows={3}
+            value={form.bio}
+            onChange={(e) => set('bio', e.target.value)}
+            onClear={() => set('bio', '')}
+            placeholder="What you've been up to since Eendrag…"
+          />
+        </label>
+
         <div className="field-row">
-          <label className="field"><span>Year left / leaving Eendrag</span>
+          <label className="field"><span>Graduation year</span>
             <ClearableInput
               type="number"
               value={form.grad_year}
@@ -274,18 +292,18 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               placeholder="2024"
             />
           </label>
-          <label className="field"><span>Degree studied</span>
+          <label className="field"><span>Degree</span>
             <ClearableInput
               value={form.degree}
               onChange={(e) => set('degree', e.target.value)}
               onClear={() => set('degree', '')}
-              placeholder="e.g. BCom Accounting, BEng Mechanical"
+              placeholder="e.g. BCom Accounting"
             />
           </label>
         </div>
 
         <div className="field">
-          <span>Current status</span>
+          <span>Status</span>
           <div className="onboarding-choice-row profile-choice-row">
             <button
               type="button"
@@ -299,14 +317,16 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               className={form.is_current_resident ? 'onboarding-choice on' : 'onboarding-choice'}
               onClick={() => set('is_current_resident', true)}
             >
-              Still living in Eendrag
+              Still here
             </button>
           </div>
         </div>
       </div>
 
+      {/* Career Section */}
       <div className="profile-section">
         <h3 className="profile-section-title">Career</h3>
+
         <label className="field"><span>Industry</span>
           <div className="select-wrap">
             <select value={form.industry} onChange={(e) => set('industry', e.target.value)}>
@@ -316,8 +336,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             </select>
           </div>
         </label>
+
         {form.industry === 'Other' && (
-          <label className="field"><span>Type your industry</span>
+          <label className="field"><span>Your industry</span>
             <ClearableInput
               value={customIndustry}
               onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false); setDirty(true) }}
@@ -327,27 +348,30 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           </label>
         )}
 
-        <label className="field"><span>Job title / Position</span>
-          <ClearableInput
-            value={form.occupation}
-            onChange={(e) => set('occupation', e.target.value)}
-            onClear={() => set('occupation', '')}
-            placeholder="e.g. Software Engineer, Director, Student"
-          />
-        </label>
-
-        <label className="field"><span>Company</span>
-          <ClearableInput
-            value={form.company}
-            onChange={(e) => set('company', e.target.value)}
-            onClear={() => set('company', '')}
-            placeholder="Naspers"
-          />
-        </label>
+        <div className="field-row">
+          <label className="field"><span>Job title</span>
+            <ClearableInput
+              value={form.occupation}
+              onChange={(e) => set('occupation', e.target.value)}
+              onClear={() => set('occupation', '')}
+              placeholder="e.g. Software Engineer"
+            />
+          </label>
+          <label className="field"><span>Company</span>
+            <ClearableInput
+              value={form.company}
+              onChange={(e) => set('company', e.target.value)}
+              onClear={() => set('company', '')}
+              placeholder="e.g. Naspers"
+            />
+          </label>
+        </div>
       </div>
 
+      {/* Location Section */}
       <div className="profile-section profile-section-location">
         <h3 className="profile-section-title">Location</h3>
+
         <label className="field"><span>Country</span>
           <CountryAutocomplete
             value={form.country}
@@ -365,12 +389,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             onSelectCoords={setCityCoords}
             placeholder="e.g. Cape Town, London, New York"
           />
-          <span className="hint">Start typing and choose a suggestion from the list</span>
+          <span className="hint">Start typing and choose from suggestions</span>
         </label>
       </div>
 
+      {/* Connect Section */}
       <div className="profile-section">
-        <h3 className="profile-section-title">Online</h3>
+        <h3 className="profile-section-title">Connect</h3>
+
         <label className="field"><span>LinkedIn URL</span>
           <ClearableInput
             type="url"
@@ -382,99 +408,98 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </label>
       </div>
 
+      {/* Business Profile - Collapsible */}
       <div className="profile-section">
-        <h3 className="profile-section-title">Business Profile</h3>
+        <button
+          className="profile-business-toggle"
+          onClick={() => setShowBusinessProfile(!showBusinessProfile)}
+        >
+          <span className="profile-business-title">Business profile</span>
+          <span className={`toggle-arrow ${showBusinessProfile ? 'open' : ''}`}>▼</span>
+        </button>
 
-        <label className="field"><span>What's your main area of expertise?</span>
-          <div className="select-wrap">
-            <select value={form.expertise} onChange={(e) => set('expertise', e.target.value)}>
-              <option value="">Select your expertise</option>
-              {EXPERTISE_OPTIONS.map((exp) => <option key={exp} value={exp}>{exp}</option>)}
-            </select>
+        {showBusinessProfile && (
+          <div className="profile-business-content">
+            <label className="field"><span>Main area of expertise</span>
+              <div className="select-wrap">
+                <select value={form.expertise} onChange={(e) => set('expertise', e.target.value)}>
+                  <option value="">Select your expertise</option>
+                  {EXPERTISE_OPTIONS.map((exp) => <option key={exp} value={exp}>{exp}</option>)}
+                </select>
+              </div>
+            </label>
+
+            <div className="field">
+              <span>What can you offer?</span>
+              <div className="tags-grid compact">
+                {SERVICES_OFFERED.map((service) => (
+                  <button
+                    key={service}
+                    type="button"
+                    className={`tag-btn ${form.services_offered.includes(service) ? 'selected' : ''}`}
+                    onClick={() => toggleTag('services_offered', service)}
+                  >
+                    {service}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="field">
+              <span>Collaboration types</span>
+              <div className="tags-grid compact">
+                {COLLABORATION_TYPES.map((collab) => (
+                  <button
+                    key={collab}
+                    type="button"
+                    className={`tag-btn ${form.looking_to_connect.includes(collab) ? 'selected' : ''}`}
+                    onClick={() => toggleTag('looking_to_connect', collab)}
+                  >
+                    {collab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="field">
+              <span>Business categories</span>
+              <div className="tags-grid compact">
+                {BUSINESS_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`tag-btn ${form.business_categories.includes(cat) ? 'selected' : ''}`}
+                    onClick={() => toggleTag('business_categories', cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              <p className="hint">Select all that apply</p>
+            </div>
+
+            <label className="field"><span>Business website or portfolio</span>
+              <ClearableInput
+                type="url"
+                value={form.business_website}
+                onChange={(e) => set('business_website', e.target.value)}
+                onClear={() => set('business_website', '')}
+                placeholder="https://yourwebsite.com"
+              />
+            </label>
           </div>
-        </label>
-
-        <div className="field">
-          <span>What can you offer to other alumni?</span>
-          <div className="tags-grid">
-            {SERVICES_OFFERED.map((service) => (
-              <button
-                key={service}
-                type="button"
-                className={`tag-btn ${form.services_offered.includes(service) ? 'selected' : ''}`}
-                onClick={() => toggleTag('services_offered', service)}
-              >
-                {service}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="field">
-          <span>What types of business collaboration are you open to?</span>
-          <div className="tags-grid">
-            {COLLABORATION_TYPES.map((collab) => (
-              <button
-                key={collab}
-                type="button"
-                className={`tag-btn ${form.looking_to_connect.includes(collab) ? 'selected' : ''}`}
-                onClick={() => toggleTag('looking_to_connect', collab)}
-              >
-                {collab}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="field">
-          <span>Business category</span>
-          <div className="tags-grid">
-            {BUSINESS_CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                className={`tag-btn ${form.business_categories.includes(cat) ? 'selected' : ''}`}
-                onClick={() => toggleTag('business_categories', cat)}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-          <p className="hint">Select all that apply</p>
-        </div>
-
-        <label className="field"><span>Business website or portfolio</span>
-          <ClearableInput
-            type="url"
-            value={form.business_website}
-            onChange={(e) => set('business_website', e.target.value)}
-            onClear={() => set('business_website', '')}
-            placeholder="https://yourwebsite.com"
-          />
-        </label>
+        )}
       </div>
 
-      <div className="profile-section">
-        <h3 className="profile-section-title">Bio</h3>
-        <label className="field"><span>Bio</span>
-          <ClearableInput
-            as="textarea"
-            rows={3}
-            value={form.bio}
-            onChange={(e) => set('bio', e.target.value)}
-            onClear={() => set('bio', '')}
-            placeholder="What you've been up to since Eendrag…"
-          />
-        </label>
-      </div>
-
+      {/* Status messages */}
       {error && <p className="form-error">{error}</p>}
       {geoWarning && (
         <p className="form-warning">
-          Saved — but we couldn't find "{form.city}" to place you on the Alumni Map. Double-check the spelling, or pick a suggestion from the dropdown next time.
+          Saved — but couldn't locate "{form.city}" for the Alumni Map. Double-check the spelling.
         </p>
       )}
 
+      {/* Actions */}
       <div className="profile-actions">
         <button className="btn primary" onClick={save} disabled={busy}>
           {busy ? 'Saving…' : 'Save changes'}
@@ -482,13 +507,13 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <button className="btn ghost" onClick={() => supabase.auth.signOut()} disabled={busy}>
           Sign out
         </button>
-        <button className="btn ghost" onClick={deleteProfile} disabled={busy} style={{ color: 'var(--error)' }}>
-          Delete profile
+        <button className="btn ghost delete-danger" onClick={deleteProfile} disabled={busy}>
+          Delete account
         </button>
         {saved && (
           <span className="profile-saved-chip">
             <span className="check">✓</span>
-            Profile saved
+            Saved
           </span>
         )}
       </div>
