@@ -85,7 +85,7 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, full_name, grad_year, degree, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, approved')
+      .select('id, full_name, grad_year, degree, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, approved, expertise, services_offered, business_website, looking_to_connect, business_categories')
       .order('grad_year', { ascending: false, nullsFirst: false })
       .then(({ data }) => { setPeople(data || []); setLoading(false) })
   }, [])
@@ -429,6 +429,17 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
           <p className="person-occupation">{roleLine || ' '}</p>
           <p className="person-location">{locationLine || ' '}</p>
           <p className="person-industry">{p.industry || ' '}</p>
+          {p.expertise && <p className="person-expertise">{p.expertise}</p>}
+          {p.business_categories && p.business_categories.length > 0 && (
+            <div className="person-tags">
+              {p.business_categories.slice(0, 2).map((cat) => (
+                <span key={cat} className="person-tag">{cat}</span>
+              ))}
+              {p.business_categories.length > 2 && (
+                <span className="person-tag-more">+{p.business_categories.length - 2}</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="person-actions" onClick={(e) => e.stopPropagation()}>
           <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label="Send a message">

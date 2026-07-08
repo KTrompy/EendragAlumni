@@ -1556,6 +1556,39 @@ button.delete-danger svg { flex-shrink: 0; }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.person-expertise {
+  font-size: 12.5px;
+  color: var(--maroon);
+  margin: 4px 0 0;
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.person-tags {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0 0;
+  flex-wrap: wrap;
+}
+.person-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 8px;
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.person-tag-more {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 6px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
 .person-year-badge {
   font-family: var(--display);
   font-weight: 800;
@@ -3147,6 +3180,37 @@ button.delete-danger svg { flex-shrink: 0; }
     font-size: 12px;
   }
   .profile-choice-row .onboarding-choice:last-child { border-right: none; }
+}
+.tags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+.tag-btn {
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.tag-btn:hover {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+}
+.tag-btn.selected {
+  background: var(--maroon);
+  border-color: var(--maroon-dark);
+  color: white;
+}
+.tag-btn.selected:hover {
+  background: var(--maroon-dark);
+  border-color: var(--maroon-dark);
 }
 .profile-actions {
   display: flex;

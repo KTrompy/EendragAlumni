@@ -92,3 +92,60 @@ export const COUNTRIES = [
   'Yemen',
   'Zambia','Zimbabwe',
 ]
+
+// Business profile options
+export const EXPERTISE_OPTIONS = [
+  'Strategy & Business Development',
+  'Finance & Investment',
+  'Technology & Software',
+  'Marketing & Sales',
+  'Operations & Supply Chain',
+  'Human Resources',
+  'Legal & Compliance',
+  'Engineering & Manufacturing',
+  'Hospitality & Tourism',
+  'Real Estate & Construction',
+  'Agriculture & Food',
+  'Education & Training',
+  'Healthcare & Wellness',
+  'Creative & Design',
+  'Import/Export & Trade',
+  'Non-Profit Management',
+]
+
+export const SERVICES_OFFERED = [
+  'Consulting',
+  'Mentoring/Coaching',
+  'Job Opportunities',
+  'Investment/Funding',
+  'B2B Partnerships',
+  'Client Referrals',
+  'Supplier Recommendations',
+  'Technical Expertise',
+  'Market Insights',
+  'Network Connections',
+]
+
+export const COLLABORATION_TYPES = [
+  'B2B Partnerships',
+  'Joint Ventures',
+  'Mentorship',
+  'Investor Connections',
+  'Supplier Relationships',
+  'Client Referrals',
+  'Knowledge Sharing',
+  'Recruitment',
+]
+
+export const BUSINESS_CATEGORIES = [
+  'Service Provider',
+  'Product Company',
+  'Consulting Firm',
+  'Investor/Advisor',
+  'Job Creator',
+  'Startup',
+  'Non-Profit',
+  'Corporate Executive',
+  'Freelancer/Contractor',
+  'Student/Emerging Professional',
+]

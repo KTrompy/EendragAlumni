@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { INDUSTRIES, SA_CITIES } from '../constants.js'
+import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, SERVICES_OFFERED, COLLABORATION_TYPES, BUSINESS_CATEGORIES } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
@@ -15,6 +15,11 @@ const EMPTY = {
   bio: '',
   linkedin_url: '',
   is_current_resident: false,
+  expertise: '',
+  services_offered: [],
+  business_website: '',
+  looking_to_connect: [],
+  business_categories: [],
 }
 
 export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
@@ -46,6 +51,11 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
         is_current_resident: !!profile.is_current_resident,
+        expertise: profile.expertise || '',
+        services_offered: Array.isArray(profile.services_offered) ? profile.services_offered : [],
+        business_website: profile.business_website || '',
+        looking_to_connect: Array.isArray(profile.looking_to_connect) ? profile.looking_to_connect : [],
+        business_categories: Array.isArray(profile.business_categories) ? profile.business_categories : [],
       })
       if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
       setCityCoords(null)
@@ -63,6 +73,16 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   useEffect(() => { if (saveRef) saveRef.current = save }) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false); setDirty(true) }
+
+  function toggleTag(field, tag) {
+    setForm((f) => {
+      const arr = f[field] || []
+      const newArr = arr.includes(tag) ? arr.filter(t => t !== tag) : [...arr, tag]
+      return { ...f, [field]: newArr }
+    })
+    setSaved(false)
+    setDirty(true)
+  }
 
   const isSA = form.country === 'South Africa'
 
@@ -358,6 +378,78 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             onChange={(e) => set('linkedin_url', e.target.value)}
             onClear={() => set('linkedin_url', '')}
             placeholder="https://linkedin.com/in/yourname"
+          />
+        </label>
+      </div>
+
+      <div className="profile-section">
+        <h3 className="profile-section-title">Business Profile</h3>
+
+        <label className="field"><span>What's your main area of expertise?</span>
+          <div className="select-wrap">
+            <select value={form.expertise} onChange={(e) => set('expertise', e.target.value)}>
+              <option value="">Select your expertise</option>
+              {EXPERTISE_OPTIONS.map((exp) => <option key={exp} value={exp}>{exp}</option>)}
+            </select>
+          </div>
+        </label>
+
+        <div className="field">
+          <span>What can you offer to other alumni?</span>
+          <div className="tags-grid">
+            {SERVICES_OFFERED.map((service) => (
+              <button
+                key={service}
+                type="button"
+                className={`tag-btn ${form.services_offered.includes(service) ? 'selected' : ''}`}
+                onClick={() => toggleTag('services_offered', service)}
+              >
+                {service}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <span>What types of business collaboration are you open to?</span>
+          <div className="tags-grid">
+            {COLLABORATION_TYPES.map((collab) => (
+              <button
+                key={collab}
+                type="button"
+                className={`tag-btn ${form.looking_to_connect.includes(collab) ? 'selected' : ''}`}
+                onClick={() => toggleTag('looking_to_connect', collab)}
+              >
+                {collab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <span>Business category</span>
+          <div className="tags-grid">
+            {BUSINESS_CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`tag-btn ${form.business_categories.includes(cat) ? 'selected' : ''}`}
+                onClick={() => toggleTag('business_categories', cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <p className="hint">Select all that apply</p>
+        </div>
+
+        <label className="field"><span>Business website or portfolio</span>
+          <ClearableInput
+            type="url"
+            value={form.business_website}
+            onChange={(e) => set('business_website', e.target.value)}
+            onClear={() => set('business_website', '')}
+            placeholder="https://yourwebsite.com"
           />
         </label>
       </div>
