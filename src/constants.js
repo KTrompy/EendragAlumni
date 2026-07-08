@@ -113,19 +113,21 @@ export const EXPERTISE_OPTIONS = [
   'Non-Profit Management',
 ]
 
+// Consolidated: Services & Opportunities (merged Services + Collaboration)
 export const SERVICES_OFFERED = [
-  'Consulting',
   'Mentoring/Coaching',
+  'Consulting',
+  'Technical Expertise',
   'Job Opportunities',
   'Investment/Funding',
   'B2B Partnerships',
   'Client Referrals',
-  'Supplier Recommendations',
-  'Technical Expertise',
+  'Supplier Introductions',
   'Market Insights',
   'Network Connections',
 ]
 
+// Kept for backward compatibility but no longer shown in UI
 export const COLLABORATION_TYPES = [
   'B2B Partnerships',
   'Joint Ventures',
@@ -137,15 +139,30 @@ export const COLLABORATION_TYPES = [
   'Recruitment',
 ]
 
+// Improved: Clearer, more discoverable business categories
 export const BUSINESS_CATEGORIES = [
+  'Founder/Entrepreneur',
+  'Corporate Executive',
+  'Investor/Advisor',
   'Service Provider',
   'Product Company',
-  'Consulting Firm',
-  'Investor/Advisor',
-  'Job Creator',
-  'Startup',
-  'Non-Profit',
-  'Corporate Executive',
-  'Freelancer/Contractor',
-  'Student/Emerging Professional',
+  'Consultant/Freelancer',
+  'Job Creator/Recruiter',
+  'Non-Profit Leader',
+]
+
+// New: Availability/Capacity
+export const AVAILABILITY_OPTIONS = [
+  'Available now',
+  'Part-time available',
+  'By request/ad-hoc',
+  'Fully booked',
+]
+
+// New: Geographic focus
+export const GEOGRAPHIC_FOCUS = [
+  'Local (South Africa)',
+  'Pan-Africa',
+  'Global',
+  'Remote only',
 ]
