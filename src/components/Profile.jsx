@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, SERVICES_OFFERED, COLLABORATION_TYPES, BUSINESS_CATEGORIES } from '../constants.js'
+import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, SERVICES_OFFERED, BUSINESS_CATEGORIES, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
@@ -18,8 +18,12 @@ const EMPTY = {
   expertise: '',
   services_offered: [],
   business_website: '',
-  looking_to_connect: [],
   business_categories: [],
+  is_open_to_opportunities: true,
+  availability: '',
+  geographic_focus: [],
+  // keeping looking_to_connect for backward compatibility but not using in UI
+  looking_to_connect: [],
 }
 
 export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
@@ -55,8 +59,11 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         expertise: profile.expertise || '',
         services_offered: Array.isArray(profile.services_offered) ? profile.services_offered : [],
         business_website: profile.business_website || '',
-        looking_to_connect: Array.isArray(profile.looking_to_connect) ? profile.looking_to_connect : [],
         business_categories: Array.isArray(profile.business_categories) ? profile.business_categories : [],
+        is_open_to_opportunities: profile.is_open_to_opportunities !== false,
+        availability: profile.availability || '',
+        geographic_focus: Array.isArray(profile.geographic_focus) ? profile.geographic_focus : [],
+        looking_to_connect: Array.isArray(profile.looking_to_connect) ? profile.looking_to_connect : [],
       })
       if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
       setCityCoords(null)
@@ -420,6 +427,55 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
         {showBusinessProfile && (
           <div className="profile-business-content">
+            {/* Quick discovery toggles */}
+            <div className="field">
+              <span>Are you open to business opportunities?</span>
+              <div className="onboarding-choice-row profile-choice-row">
+                <button
+                  type="button"
+                  className={form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
+                  onClick={() => set('is_open_to_opportunities', true)}
+                >
+                  Yes, reach out
+                </button>
+                <button
+                  type="button"
+                  className={!form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
+                  onClick={() => set('is_open_to_opportunities', false)}
+                >
+                  Not right now
+                </button>
+              </div>
+            </div>
+
+            <div className="field-row">
+              <label className="field"><span>Availability</span>
+                <div className="select-wrap">
+                  <select value={form.availability} onChange={(e) => set('availability', e.target.value)}>
+                    <option value="">Select your availability</option>
+                    {AVAILABILITY_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+              </label>
+
+              <div className="field">
+                <span>Geographic focus</span>
+                <div className="tags-grid compact">
+                  {GEOGRAPHIC_FOCUS.map((geo) => (
+                    <button
+                      key={geo}
+                      type="button"
+                      className={`tag-btn ${form.geographic_focus.includes(geo) ? 'selected' : ''}`}
+                      onClick={() => toggleTag('geographic_focus', geo)}
+                    >
+                      {geo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Main expertise */}
             <label className="field"><span>Main area of expertise</span>
               <div className="select-wrap">
                 <select value={form.expertise} onChange={(e) => set('expertise', e.target.value)}>
@@ -429,8 +485,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               </div>
             </label>
 
+            {/* Services & opportunities offered */}
             <div className="field">
-              <span>What can you offer?</span>
+              <span>What can you offer to other Eendragters?</span>
               <div className="tags-grid compact">
                 {SERVICES_OFFERED.map((service) => (
                   <button
@@ -445,24 +502,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               </div>
             </div>
 
+            {/* Business categories */}
             <div className="field">
-              <span>Collaboration types</span>
-              <div className="tags-grid compact">
-                {COLLABORATION_TYPES.map((collab) => (
-                  <button
-                    key={collab}
-                    type="button"
-                    className={`tag-btn ${form.looking_to_connect.includes(collab) ? 'selected' : ''}`}
-                    onClick={() => toggleTag('looking_to_connect', collab)}
-                  >
-                    {collab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="field">
-              <span>Business categories</span>
+              <span>What best describes your role?</span>
               <div className="tags-grid compact">
                 {BUSINESS_CATEGORIES.map((cat) => (
                   <button
@@ -475,10 +517,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                   </button>
                 ))}
               </div>
-              <p className="hint">Select all that apply</p>
             </div>
 
-            <label className="field"><span>Business website or portfolio</span>
+            {/* Business website */}
+            <label className="field"><span>Business website or portfolio (optional)</span>
               <ClearableInput
                 type="url"
                 value={form.business_website}
