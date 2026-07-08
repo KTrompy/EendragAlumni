@@ -68,6 +68,7 @@ export default function App() {
   const [leaveBusy, setLeaveBusy] = useState(false)
   const [leaveError, setLeaveError] = useState(null)
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
+  const [directoryRefetchTrigger, setDirectoryRefetchTrigger] = useState(0) // increment to trigger refetch
 
   // Warn on an actual browser navigation/refresh/close too, not just
   // switching tabs inside the app.
@@ -243,7 +244,7 @@ export default function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<Navigate to="/directory" replace />} />
-          <Route path="/directory" element={<People session={session} onMessage={openMessage} onGoToProfile={() => goTo('/profile')} />} />
+          <Route path="/directory" element={<People session={session} onMessage={openMessage} onGoToProfile={() => goTo('/profile')} refetchTrigger={directoryRefetchTrigger} />} />
           <Route path="/feed" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
           <Route path="/events" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
           <Route path="/events/:eventId" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
@@ -259,7 +260,10 @@ export default function App() {
               <Profile
                 session={session}
                 profile={profile}
-                onSaved={setProfile}
+                onSaved={(updated) => {
+                  setProfile(updated)
+                  setDirectoryRefetchTrigger((t) => t + 1)
+                }}
                 onDirtyChange={setProfileDirty}
                 saveRef={profileSaveRef}
                 onNavigateHome={() => goTo('/directory')}

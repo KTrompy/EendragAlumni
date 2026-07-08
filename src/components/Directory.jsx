@@ -68,7 +68,7 @@ const EMPTY_FILTERS = {
   industries: [],
 }
 
-export default function Directory({ session, onMessage, hideHeader = false }) {
+export default function Directory({ session, onMessage, hideHeader = false, refetchTrigger }) {
   const [people, setPeople] = useState([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
@@ -83,13 +83,24 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
   const [filterOpen, setFilterOpen] = useState(false)
   const [suggestionsOpen, setSuggestionsOpen] = useState(true)
 
-  useEffect(() => {
-    supabase
+  async function fetchPeople() {
+    setLoading(true)
+    const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, grad_year, degree, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, approved, expertise, services_offered, business_website, looking_to_connect, business_categories')
+      .select('id, full_name, grad_year, degree, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, approved, expertise, services_offered, business_website, looking_to_connect, business_categories, availability, geographic_focus, is_open_to_opportunities')
       .order('grad_year', { ascending: false, nullsFirst: false })
-      .then(({ data }) => { setPeople(data || []); setLoading(false) })
+    setPeople(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchPeople()
   }, [])
+
+  // Refetch when triggered from parent (e.g. after profile update)
+  useEffect(() => {
+    if (refetchTrigger) fetchPeople()
+  }, [refetchTrigger])
 
   // Lock body scroll while the filter drawer is open, and let Escape close it.
   useEffect(() => {

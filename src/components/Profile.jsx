@@ -502,23 +502,6 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               </div>
             </div>
 
-            {/* Business categories */}
-            <div className="field">
-              <span>What best describes your role?</span>
-              <div className="tags-grid compact">
-                {BUSINESS_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    className={`tag-btn ${form.business_categories.includes(cat) ? 'selected' : ''}`}
-                    onClick={() => toggleTag('business_categories', cat)}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Business website */}
             <label className="field"><span>Business website or portfolio (optional)</span>
               <ClearableInput

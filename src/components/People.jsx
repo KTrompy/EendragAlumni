@@ -7,7 +7,7 @@ import AlumniMap from './AlumniMap.jsx'
 // of splitting "search for a person" and "browse a map of people" into two
 // separate places to check. The chosen view is kept in the URL (?view=map)
 // so a link to it is shareable and survives a refresh.
-export default function People({ session, onMessage, onGoToProfile }) {
+export default function People({ session, onMessage, onGoToProfile, refetchTrigger }) {
   const [params, setParams] = useSearchParams()
   const view = params.get('view') === 'map' ? 'map' : 'list'
 
@@ -39,7 +39,7 @@ export default function People({ session, onMessage, onGoToProfile }) {
       </div>
 
       {view === 'list'
-        ? <Directory session={session} onMessage={onMessage} hideHeader />
+        ? <Directory session={session} onMessage={onMessage} hideHeader refetchTrigger={refetchTrigger} />
         : <AlumniMap session={session} onMessage={onMessage} onGoToProfile={onGoToProfile} hideHeader />}
     </section>
   )
