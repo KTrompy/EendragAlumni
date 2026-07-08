@@ -1483,7 +1483,7 @@ button.delete-danger svg { flex-shrink: 0; }
 
 .card-grid {
   list-style: none; margin: 0; padding: 0;
-  display: grid; gap: 10px;
+  display: grid; gap: 16px;
   /* auto-fill + minmax keeps every card in a row the same width automatically,
      and lets the count per row grow with available space instead of a fixed
      number — smaller minimum on phones (room for 2-3), larger on laptops
@@ -1491,13 +1491,13 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
 }
 @media (min-width: 480px) {
-  .card-grid { gap: 14px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .card-grid { gap: 20px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 }
 @media (min-width: 560px) {
-  .card-grid { gap: 18px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .card-grid { gap: 24px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
 }
 @media (min-width: 900px) {
-  .card-grid { gap: 24px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .card-grid { gap: 32px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 }
 
 /* SACS-style card: dominant photo, info block below, icon row at foot */
