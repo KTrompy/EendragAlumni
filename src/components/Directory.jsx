@@ -257,7 +257,7 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
               aria-expanded={suggestionsOpen}
               aria-label={suggestionsOpen ? 'Collapse connection suggestions' : 'Expand connection suggestions'}
             >
-              <span className={`toggle-chevron ${suggestionsOpen ? 'open' : ''}`}>▸</span>
+              <span className={`toggle-chevron ${suggestionsOpen ? 'open' : ''}`}>›</span>
             </button>
           </div>
           {suggestionsOpen && (

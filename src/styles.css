@@ -1385,22 +1385,32 @@ button.delete-danger svg { flex-shrink: 0; }
 .similar-people-toggle {
   background: none;
   border: none;
-  padding: 4px 8px;
+  padding: 6px 10px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--orange);
-  transition: transform 0.2s ease;
+  transition: color 0.2s ease;
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
 }
 .similar-people-toggle:hover {
-  opacity: 0.8;
+  color: var(--orange-dark);
+  opacity: 0.9;
+}
+.similar-people-toggle:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 .toggle-chevron {
   display: inline-block;
-  font-size: 14px;
+  font-size: 20px;
   transition: transform 0.2s ease;
   transform: rotate(0deg);
+  font-weight: 600;
 }
 .toggle-chevron.open {
   transform: rotate(90deg);
