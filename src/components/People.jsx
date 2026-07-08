@@ -19,9 +19,10 @@ export default function People({ session, onMessage, onGoToProfile }) {
   }
 
   return (
-    <section className="panel">
+    <section className="panel eendragters-page">
       <div className="panel-header-row">
         <div>
+          <span className="eendragters-eyebrow">Community directory</span>
           <h2 className="panel-title">Eendragters</h2>
           <p className="panel-sub">
             {view === 'list' ? 'The house, out in the world — and still in it.' : 'Where are we all now?'}
@@ -29,10 +30,10 @@ export default function People({ session, onMessage, onGoToProfile }) {
         </div>
         <div className="view-switch" role="tablist" aria-label="Eendragters view">
           <button role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>
-            List
+            <ListViewIcon /> List
           </button>
           <button role="tab" aria-selected={view === 'map'} className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>
-            Map
+            <MapViewIcon /> Map
           </button>
         </div>
       </div>
@@ -41,5 +42,22 @@ export default function People({ session, onMessage, onGoToProfile }) {
         ? <Directory session={session} onMessage={onMessage} hideHeader />
         : <AlumniMap session={session} onMessage={onMessage} onGoToProfile={onGoToProfile} hideHeader />}
     </section>
+  )
+}
+
+function ListViewIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 6h13M8 12h13M8 18h13" />
+      <path d="M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  )
+}
+function MapViewIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 4.5L3.5 6.7v13l5.5-2.2 6 2.2 5.5-2.2v-13L15 6.7l-6-2.2z" />
+      <path d="M9 4.5v13.2M15 6.7v13.2" />
+    </svg>
   )
 }

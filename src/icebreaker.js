@@ -19,17 +19,12 @@ export function buildIcebreaker(me, them) {
   if (me.industry && them.industry && me.industry === them.industry) {
     return `Hi ${firstName}! Saw we're both in ${them.industry} — would love to connect.`
   }
-  if (them.available_for_mentorship) {
-    return `Hi ${firstName}! Saw you're open to mentoring — I'd love to pick your brain sometime.`
-  }
   return `Hi ${firstName}!`
 }
 
 // A short label describing *why* two profiles were matched for the
 // "People like you" row — same fields the similarity score in Directory.jsx
-// is built from (grad year, city, industry). Mentoring status is
-// deliberately excluded: it isn't a similarity between the two of you, so
-// it's not a valid "why you're alike" reason. Returns every criterion that
+// is built from (grad year, city, industry). Returns every criterion that
 // matched (not just the first) so the badge reflects the full overlap.
 export function matchReason(me, them) {
   if (!me || !them) return null

@@ -11,8 +11,7 @@ import { buildIcebreaker } from '../icebreaker.js'
 
 const PROFILE_FIELDS =
   'id, full_name, grad_year, degree, occupation, industry, company, city, country, ' +
-  'is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, ' +
-  'mentorship_description, approved, lat, lng'
+  'is_current_resident, bio, avatar_url, linkedin_url, approved, lat, lng'
 
 // People sharing a city/country cluster onto one pin, so a city with 40
 // Eendragters doesn't paint 40 overlapping markers on top of each other —

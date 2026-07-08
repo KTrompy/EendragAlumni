@@ -59,11 +59,9 @@ function FilterSection({ title, children, defaultOpen = true }) {
 }
 
 const STATUS = { ALL: 'all', CURRENT: 'current', ALUMNI: 'alumni' }
-const MENTOR = { ALL: 'all', YES: 'yes' }
 
 const EMPTY_FILTERS = {
   status: STATUS.ALL,
-  mentor: MENTOR.ALL,
   yearFrom: '',
   yearTo: '',
   countries: [],
@@ -87,7 +85,7 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('id, full_name, grad_year, degree, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, available_for_mentorship, mentorship_description, approved')
+      .select('id, full_name, grad_year, degree, occupation, industry, company, city, country, is_current_resident, bio, avatar_url, linkedin_url, approved')
       .order('grad_year', { ascending: false, nullsFirst: false })
       .then(({ data }) => { setPeople(data || []); setLoading(false) })
   }, [])
@@ -160,7 +158,6 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
     }
     if (f.status === STATUS.CURRENT && !p.is_current_resident) return false
     if (f.status === STATUS.ALUMNI && p.is_current_resident) return false
-    if (f.mentor === MENTOR.YES && !p.available_for_mentorship) return false
     if (f.yearFrom && (!p.grad_year || p.grad_year < Number(f.yearFrom))) return false
     if (f.yearTo && (!p.grad_year || p.grad_year > Number(f.yearTo))) return false
     // Multiple selections within one filter are OR'd together (e.g. Country:
@@ -185,7 +182,7 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
   function countActive(f) {
     return Object.entries(f).filter(([k, v]) => {
       if (Array.isArray(v)) return v.length > 0
-      return v && !((k === 'status' && v === STATUS.ALL) || (k === 'mentor' && v === MENTOR.ALL))
+      return v && !(k === 'status' && v === STATUS.ALL)
     }).length
   }
   const activeFilterCount = countActive(filters)
@@ -202,10 +199,8 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
   // "Connection suggestions" — browsing today means already knowing who you're
   // looking for. This surfaces a few Eendragters who share something with
   // your own profile (grad year, city, or industry), so there's something
-  // to discover even without a search term. Deliberately excludes mentoring
-  // status: being open to mentoring isn't a similarity between two people,
-  // so it shouldn't be a reason someone shows up in this row. Only shown on
-  // the default, unfiltered view so it doesn't compete with an active search.
+  // to discover even without a search term. Only shown on the default,
+  // unfiltered view so it doesn't compete with an active search.
   const similarPeople = useMemo(() => {
     if (!me) return []
     return people
@@ -320,20 +315,6 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
               <button className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
             </div>
 
-            <div className="filter-section filter-section-primary">
-              <div className="filter-section-body">
-                <div className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    id="mentor-filter"
-                    checked={draftFilters.mentor === MENTOR.YES}
-                    onChange={(e) => setDraft('mentor', e.target.checked ? MENTOR.YES : MENTOR.ALL)}
-                  />
-                  <label htmlFor="mentor-filter">🤝 Open to mentoring</label>
-                </div>
-              </div>
-            </div>
-
             <FilterSection title="Status">
               <div className="filter-radio-row">
                 <button className={draftFilters.status === STATUS.ALL ? 'on' : ''} onClick={() => setDraft('status', STATUS.ALL)}>All</button>
@@ -436,8 +417,8 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
         onKeyDown={onKey}
         aria-label={`Open profile for ${p.full_name || 'alumnus'}`}
       >
-        {p.available_for_mentorship && (
-          <span className="person-mentor-badge">🤝 Mentoring</span>
+        {p.grad_year && (
+          <span className="person-grad-badge">{p.is_current_resident ? 'In house' : `’${String(p.grad_year).slice(2)}`}</span>
         )}
         <PhotoBlock url={p.avatar_url} name={p.full_name} />
         <div className="person-info">

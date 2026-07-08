@@ -17,12 +17,17 @@
   --line-strong: #C9BFAE;
   --danger: #A33327;
   --ok: #2C6E49;
-  --radius: 10px;
-  --radius-sm: 6px;
-  --shadow-card: 0 1px 2px rgba(26, 26, 26, 0.06), 0 1px 3px rgba(26, 26, 26, 0.04);
-  --shadow-lift: 0 8px 24px rgba(26, 26, 26, 0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 20px;
+  --shadow-card: 0 1px 2px rgba(26, 26, 26, 0.05), 0 2px 8px rgba(26, 26, 26, 0.05);
+  --shadow-lift: 0 16px 36px rgba(26, 26, 26, 0.14);
   --display: 'Archivo', sans-serif;
   --body: 'Inter', sans-serif;
+  /* Shared easing for hover/entrance motion — a bit of overshoot-free
+     "settle" so interactions feel smooth and connected rather than linear
+     or abrupt, used consistently across cards, buttons and panels. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * { box-sizing: border-box; }
@@ -47,6 +52,7 @@ input, textarea, select { font: inherit; }
   position: sticky;
   top: 0;
   z-index: 50;
+  box-shadow: 0 6px 20px rgba(26, 15, 29, 0.18);
 }
 .masthead-inner {
   max-width: 1180px;
@@ -88,12 +94,13 @@ input, textarea, select { font: inherit; }
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.72);
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  border-radius: 999px;
   font-weight: 600;
   font-size: 14px;
+  transition: background 0.18s var(--ease), color 0.18s ease;
 }
-.tab:hover { color: #fff; }
+.tab:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
 .tab.active { background: var(--maroon-dark); color: var(--orange); }
 .tab.signout { color: rgba(255, 255, 255, 0.5); margin-left: 8px; }
 .tab:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
@@ -217,13 +224,28 @@ input, textarea, select { font: inherit; }
 .content { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
 .panel.narrow { max-width: 620px; margin: 0 auto; }
 .panel-title {
+  position: relative;
   font-family: var(--display);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   font-size: 24px;
-  margin: 0 0 4px;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
   color: var(--maroon);
+}
+/* Small gradient accent bar under every page title — a cheap, consistent
+   visual thread that ties Feed/Events/Jobs/Eendragters/Profile (and Admin,
+   since it shares the same title element) back to the same crest palette. */
+.panel-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--orange), var(--maroon-soft));
 }
 .panel-sub { margin: 0 0 22px; color: var(--ink-soft); }
 .profile-header-with-back {
@@ -588,16 +610,16 @@ input, textarea, select { font: inherit; }
   border: 1px solid transparent;
   padding: 9px 18px;
   font-weight: 600;
-  transition: transform 0.05s ease, background 0.15s ease;
+  transition: transform 0.15s var(--ease), background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--orange); color: #fff; }
-.btn.primary:hover:not(:disabled) { background: var(--orange-dark); }
+.btn.primary:hover:not(:disabled) { background: var(--orange-dark); transform: translateY(-1px); box-shadow: 0 8px 18px rgba(232, 97, 28, 0.28); }
 .btn.primary:disabled { opacity: 0.45; cursor: default; }
 .btn.secondary { background: var(--maroon); color: #fff; }
-.btn.secondary:hover:not(:disabled) { background: var(--maroon-dark); }
+.btn.secondary:hover:not(:disabled) { background: var(--maroon-dark); transform: translateY(-1px); box-shadow: 0 8px 18px rgba(90, 26, 43, 0.28); }
 .btn.ghost { background: transparent; border-color: var(--maroon); color: var(--maroon); }
-.btn.ghost:hover:not(:disabled) { background: var(--maroon); color: #fff; }
+.btn.ghost:hover:not(:disabled) { background: var(--maroon); color: #fff; transform: translateY(-1px); }
 .btn.danger { background: var(--danger); color: #fff; }
 .btn.danger:hover:not(:disabled) { background: #7e271d; }
 .btn.ghost.orange { border-color: var(--orange); color: var(--orange); }
@@ -640,10 +662,12 @@ button.delete-danger svg { flex-shrink: 0; }
   padding: 10px 12px;
   background: var(--card);
   color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .field input:focus, .field textarea:focus, .field select:focus, .search:focus {
-  outline: 2px solid var(--orange);
-  border-color: transparent;
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 4px rgba(232, 97, 28, 0.14);
 }
 .field-row { display: flex; gap: 14px; }
 .form-error { color: var(--danger); font-size: 13.5px; margin: 6px 0; }
@@ -977,7 +1001,23 @@ button.delete-danger svg { flex-shrink: 0; }
 .feed-search-wrap, .events-search-wrap { margin: 4px 0 18px; }
 .feed-search-wrap .directory-search, .events-search-wrap .directory-search { margin-bottom: 0; }
 .search-wrap { position: relative; flex: 1; display: flex; }
-.search-wrap .directory-search { width: 100%; padding-right: 34px; }
+.search-wrap .directory-search {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 10px 40px 10px 42px;
+  background-color: var(--card);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23928A7E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 15px center;
+  background-size: 17px;
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.03);
+}
+.search-wrap .directory-search:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 4px rgba(232, 97, 28, 0.14);
+}
+.search-wrap .search-clear { right: 10px; }
 .search-clear {
   position: absolute;
   right: 8px;
@@ -1004,13 +1044,15 @@ button.delete-danger svg { flex-shrink: 0; }
   padding: 0 18px;
   background: var(--card);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
+  border-radius: 999px;
   color: var(--ink);
   font-weight: 600;
   font-size: 14px;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.03);
+  transition: transform 0.15s var(--ease), box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-.filters-toggle-btn:hover { border-color: var(--orange); color: var(--orange-dark); }
+.filters-toggle-btn:hover { border-color: var(--orange); color: var(--orange-dark); transform: translateY(-1px); box-shadow: 0 8px 18px rgba(26, 26, 26, 0.1); }
 .filters-toggle-btn.on { background: var(--orange-soft); border-color: var(--orange); color: var(--orange-dark); }
 
 /* Bookmark toggle on job/event cards — pinned to the top-right corner via
@@ -1057,7 +1099,9 @@ button.delete-danger svg { flex-shrink: 0; }
 .filter-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(26, 15, 29, 0.5);
+  background: rgba(26, 15, 29, 0.45);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   z-index: 59;
   animation: fade-in 0.15s ease;
 }
@@ -1070,18 +1114,19 @@ button.delete-danger svg { flex-shrink: 0; }
   width: 340px;
   max-width: 88vw;
   background: var(--card);
-  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.18);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  box-shadow: -24px 0 60px -20px rgba(26, 26, 26, 0.35);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  animation: slide-in-right 0.2s ease;
+  animation: slide-in-right 0.3s var(--ease);
 }
 @keyframes slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .filter-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 16px 8px;
+  padding: 20px 22px 8px;
   position: sticky;
   top: 0;
   background: var(--card);
@@ -1102,15 +1147,19 @@ button.delete-danger svg { flex-shrink: 0; }
   bottom: 0;
   background: var(--card);
   border-top: 1px solid var(--line);
-  padding: 12px 16px 16px;
+  padding: 16px 22px 22px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+.filter-panel-footer .btn.primary.wide {
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(232, 97, 28, 0.35);
+}
 
 .filter-section {
   border-top: 1px solid var(--line);
-  padding: 10px 16px;
+  padding: 12px 22px;
 }
 .filter-section:first-of-type { border-top: none; }
 .filter-section-header {
@@ -1154,11 +1203,12 @@ button.delete-danger svg { flex-shrink: 0; }
   flex: 0 0 auto;
   padding: 6px 12px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   background: #E7E2D5;
   font-size: 12.5px;
   color: var(--ink);
   font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .filter-radio-row button:hover { background: #DCD6C6; }
 .filter-radio-row button.on {
@@ -1190,28 +1240,44 @@ button.delete-danger svg { flex-shrink: 0; }
   gap: 12px;
   flex-wrap: wrap;
 }
+/* Segmented pill switch — a shared control for any "two or three ways to
+   view this list" toggle (Eendragters List/Map, Events List/Calendar). */
 .view-switch {
+  position: relative;
   display: inline-flex;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  border: none;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  padding: 4px;
+  border-radius: 999px;
+  gap: 2px;
+  overflow: visible;
   flex: 0 0 auto;
 }
 .view-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: 0 0 auto;
-  padding: 8px 16px;
+  padding: 9px 18px;
   border: none;
-  border-right: 1px solid var(--line-strong);
-  background: var(--card);
+  border-radius: 999px;
+  background: transparent;
   color: var(--ink-soft);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
-.view-switch button:last-child { border-right: none; }
-.view-switch button:hover { background: #EDE8DC; }
+.view-switch button:hover { color: var(--maroon); }
 .view-switch button.on {
   background: var(--orange);
   color: #fff;
+  box-shadow: 0 6px 16px rgba(232, 97, 28, 0.35);
+}
+.view-switch button.on:hover { color: #fff; }
+@media (max-width: 640px) {
+  .view-switch { width: 100%; }
+  .view-switch button { flex: 1; justify-content: center; }
 }
 
 .load-more-row {
@@ -1283,7 +1349,14 @@ button.delete-danger svg { flex-shrink: 0; }
 .filter-clear:hover { color: var(--orange); }
 
 .result-count {
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  font-size: 12.5px;
   color: var(--ink-soft);
   margin: 12px 0 16px;
   letter-spacing: 0.02em;
@@ -1489,24 +1562,6 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--orange);
   font-size: 13px;
 }
-/* Overlaid on the card's photo, top-left — only rendered when the person
-   is actually open to mentoring (no "not mentoring" clutter otherwise). */
-.person-mentor-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 2;
-  background: var(--orange);
-  color: #fff;
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
-  box-shadow: var(--shadow-card);
-}
-
 .person-actions {
   display: flex;
   gap: 4px;
@@ -1533,7 +1588,9 @@ button.delete-danger svg { flex-shrink: 0; }
 /* ---------- Profile Modal ---------- */
 .modal-backdrop {
   position: fixed; inset: 0;
-  background: rgba(26, 15, 29, 0.6);
+  background: rgba(26, 15, 29, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   /* Above Leaflet's internal panes/controls (it uses z-index up to 1000
      for its own overlays), so profile modals opened from the Alumni Map
      land on top of the map with their dark backdrop, instead of behind it. */
@@ -1550,7 +1607,7 @@ button.delete-danger svg { flex-shrink: 0; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 .modal {
   background: var(--card);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 620px;
   /* 100vh is a fallback for older browsers — on mobile Safari/Chrome it's
@@ -1563,9 +1620,10 @@ button.delete-danger svg { flex-shrink: 0; }
   display: flex;
   flex-direction: column;
   border-top: 4px solid var(--orange);
-  animation: rise-in 0.2s ease;
+  box-shadow: var(--shadow-lift);
+  animation: rise-in 0.25s var(--ease);
 }
-@keyframes rise-in { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rise-in { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
 .modal-confirm { max-width: 420px; }
 .modal-header {
   padding: 16px 20px;
@@ -1610,68 +1668,97 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .industry-other-row input { flex: 1; }
 
+/* ---------- Profile modal: business-card-style header ---------- */
+/* Photo sits beside the name/role/location instead of alone on its own
+   centered row — reads like a printed bio card, not a data table. */
+.profile-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
 .modal-photo {
-  width: 100%;
-  max-width: 260px;
-  aspect-ratio: 4 / 5;
+  width: 76px;
+  height: 76px;
+  aspect-ratio: 1;
+  flex-shrink: 0;
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--maroon);
   color: var(--orange-soft);
   display: grid;
   place-items: center;
-  margin-bottom: 18px;
   border: 2px solid var(--orange);
 }
 .modal-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
-.modal-photo .person-photo-initials { font-size: 60px; }
-
-.detail-row {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-}
-.detail-row:last-child { border-bottom: none; }
-.detail-label {
-  font-weight: 600;
-  color: var(--maroon);
-  font-size: 13.5px;
-  letter-spacing: 0.02em;
-}
-.detail-value {
-  font-size: 14px;
-  color: var(--ink);
-  white-space: pre-wrap;
-}
-.detail-value.muted { color: var(--ink-soft); font-style: italic; }
-.detail-mentorship-yes { color: var(--ok); font-weight: 600; }
-.detail-mentorship-no { color: var(--ink-soft); }
-
-.mentor-chip {
-  display: inline-block;
-  background: var(--orange-soft);
-  color: var(--orange-dark);
-  font-size: 11px;
+.modal-photo .person-photo-initials { font-size: 26px; }
+.profile-card-heading { padding-top: 2px; min-width: 0; }
+.profile-card-role {
   font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 999px;
-  margin-left: 6px;
-  vertical-align: middle;
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0 0 4px;
 }
-
-.industry-chip {
+.profile-card-location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+}
+.profile-card-location svg { flex-shrink: 0; color: var(--ink-soft); }
+.profile-status-pill {
   display: inline-block;
   background: var(--paper);
   border: 1px solid var(--line-strong);
   color: var(--maroon);
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
   border-radius: 999px;
-  margin-right: 6px;
-  vertical-align: middle;
+}
+
+/* Compact "spec sheet" facts strip — short label above a short value,
+   for the handful of structured fields the header above doesn't cover. */
+.profile-fact-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.profile-fact { display: flex; flex-direction: column; gap: 3px; }
+.profile-fact-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.profile-fact-value { font-size: 14.5px; color: var(--ink); font-weight: 600; }
+.profile-fact-value.muted { color: var(--ink-soft); font-weight: 400; font-style: italic; }
+
+.profile-card-section + .profile-card-section { margin-top: 18px; }
+.profile-card-section-title {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--maroon);
+  margin: 0 0 8px;
+}
+.profile-card-bio {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+  margin: 0;
 }
 
 .modal-footer {
@@ -1708,11 +1795,13 @@ button.delete-danger svg { flex-shrink: 0; }
 .composer-card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: 14px 16px;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
+.composer-card:hover { box-shadow: var(--shadow-lift); border-color: var(--line-strong); }
 .composer-prompt {
   display: flex;
   align-items: center;
@@ -1991,14 +2080,15 @@ button.delete-danger svg { flex-shrink: 0; }
 .composer-preview button:hover { background: var(--danger); }
 
 /* ---------- Post list ---------- */
-.post-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.post-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
 .post {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: 0;
   box-shadow: var(--shadow-card);
   overflow: hidden;
+  transition: box-shadow 0.2s ease;
 }
 .post-head {
   display: flex;
@@ -2229,7 +2319,7 @@ button.delete-danger svg { flex-shrink: 0; }
   border: none;
   color: var(--ink-soft);
   padding: 10px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: 13px;
   transition: background 0.12s, color 0.12s;
@@ -2355,28 +2445,18 @@ button.delete-danger svg { flex-shrink: 0; }
   background: none;
   border: none;
   padding: 12px 14px;
-  border-radius: 0;
+  border-radius: 12px;
+  margin: 2px 8px;
+  width: calc(100% - 16px);
   color: var(--ink);
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  transition: background 0.1s ease;
-  border-bottom: 1px solid var(--line);
+  transition: background 0.15s ease;
   position: relative;
 }
-.thread:last-child { border-bottom: none; }
 .thread:hover { background: var(--paper); }
 .thread.active { background: var(--orange-soft); }
-.thread.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--orange);
-}
 .thread.active .thread-preview { color: var(--ink-soft); }
 .thread.active .thread-time { color: var(--orange-dark); font-weight: 700; }
 .thread.active .thread-year { color: var(--orange-dark); }
@@ -2478,7 +2558,7 @@ button.delete-danger svg { flex-shrink: 0; }
   position: relative;
   max-width: 100%;
   padding: 7px 10px 18px;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--card);
   border: none;
   white-space: pre-wrap;
@@ -2636,6 +2716,12 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-columns: 88px 1fr auto;
   gap: 16px;
   align-items: start;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.event-card:hover, .job-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--line-strong);
 }
 .event-date-block {
   background: var(--orange);
@@ -3046,9 +3132,9 @@ button.delete-danger svg { flex-shrink: 0; }
   font-size: 13.5px;
   border-right-width: 1px;
 }
-/* Profile's Current status / mentoring toggles stay side by side even on
-   narrow phones — the general onboarding-choice-row stacks to a column at
-   this width (right for the big full-page onboarding cards), but here they
+/* Profile's Current status toggle stays side by side even on narrow
+   phones — the general onboarding-choice-row stacks to a column at this
+   width (right for the big full-page onboarding cards), but here it
    should read as one connected row like the rest of the profile form. */
 @media (max-width: 560px) {
   .profile-choice-row {
@@ -3127,6 +3213,9 @@ button.delete-danger svg { flex-shrink: 0; }
   text-align: center;
   padding: 48px 20px;
   color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
 }
 .empty-state-icon {
   width: 56px; height: 56px;
@@ -3142,6 +3231,9 @@ button.delete-danger svg { flex-shrink: 0; }
   text-align: center;
   padding: 48px 20px;
   color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
 }
 .loading-spinner {
   display: inline-block;
@@ -3389,10 +3481,13 @@ button.delete-danger svg { flex-shrink: 0; }
 
 /* ---------- Responsive & motion ---------- */
 @media (max-width: 880px) {
-  .detail-row { grid-template-columns: 1fr; gap: 2px; }
-  .detail-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; }
   .event-card { grid-template-columns: 74px 1fr; }
   .event-card > .btn { grid-column: 1 / -1; justify-self: end; }
+}
+@media (max-width: 420px) {
+  .profile-card-header { gap: 12px; }
+  .modal-photo { width: 64px; height: 64px; }
+  .modal-photo .person-photo-initials { font-size: 22px; }
 }
 /* ---------- Alumni map ---------- */
 .map-shell { margin-top: 4px; }
@@ -3502,7 +3597,6 @@ button.delete-danger svg { flex-shrink: 0; }
   .person-name { font-size: 15px; }
   .person-industry, .person-occupation, .person-location { font-size: 11.5px; }
   .person-year-badge { font-size: 11.5px; }
-  .person-mentor-badge { font-size: 9px; padding: 2px 6px; top: 8px; left: 8px; }
   .person-action { padding: 6px; }
   .job-card, .event-card { grid-template-columns: 1fr; }
   .job-card > div:first-child { display: flex; flex-direction: column; }
@@ -3570,14 +3664,17 @@ button.delete-danger svg { flex-shrink: 0; }
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    padding: 8px 2px 6px;
+    margin: 6px 4px;
+    padding: 6px 2px;
     background: none;
     border: none;
+    border-radius: 14px;
     color: var(--ink-soft);
     font-size: 10.5px;
     font-weight: 600;
+    transition: background 0.18s var(--ease), color 0.18s ease;
   }
-  .mobile-tab.active { color: var(--orange); }
+  .mobile-tab.active { color: var(--orange); background: var(--orange-soft); }
 
   .calendar-month-label { min-width: 120px; font-size: 15px; }
   .calendar-day-num { font-size: 12px; }
@@ -3690,4 +3787,197 @@ button.delete-danger svg { flex-shrink: 0; }
 @media (max-width: 560px) {
   .admin-row { flex-wrap: wrap; }
   .admin-row-actions { width: 100%; justify-content: flex-start; }
+}
+
+/* =====================================================================
+   Eendragters page — bits unique to this page only
+   Everything below is scoped under `.eendragters-page` (set on the outer
+   <section> in People.jsx, which wraps both the Directory list view and
+   the Alumni map view). The browse-UI patterns this page introduced first
+   (pill search, filters-toggle-btn, view-switch, result-count chip,
+   frosted filter drawer, empty/loading-state framing) have since been
+   promoted into the base rules above, so Events/Jobs share them too —
+   what's left here is the hero header, the person-card grid, the
+   connection-suggestions row, and the alumni map, none of which any other
+   page uses.
+   ===================================================================== */
+
+/* ---------- Hero header: eyebrow + title + view switch ---------- */
+.eendragters-eyebrow {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--orange-dark);
+  background: var(--orange-soft);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+.eendragters-page .panel-header-row {
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  background: linear-gradient(150deg, #fff 0%, var(--paper) 75%);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 28px 30px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04), 0 20px 40px -24px rgba(90, 26, 43, 0.35);
+}
+.eendragters-page .panel-header-row::before,
+.eendragters-page .panel-header-row::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.eendragters-page .panel-header-row::before {
+  top: -70px;
+  right: -70px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(232, 97, 28, 0.16), transparent 70%);
+}
+.eendragters-page .panel-header-row::after {
+  bottom: -90px;
+  left: -50px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(90, 26, 43, 0.14), transparent 70%);
+}
+.eendragters-page .panel-header-row > div:first-child {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.eendragters-page .panel-header-row .panel-title {
+  font-size: 30px;
+  margin: 0 0 6px;
+  padding-bottom: 0;
+}
+/* The hero header already has its own eyebrow label + decorative glow —
+   the small accent bar every other page's title gets underneath would just
+   be clutter on top of that, so it's suppressed here only. */
+.eendragters-page .panel-header-row .panel-title::after { content: none; }
+.eendragters-page .panel-header-row .panel-sub {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  max-width: 46ch;
+}
+
+@media (max-width: 640px) {
+  .eendragters-page .panel-header-row { padding: 22px 20px; border-radius: 20px; }
+  .eendragters-page .panel-header-row .panel-title { font-size: 24px; }
+}
+
+/* ---------- Toolbar spacing tweak ---------- */
+.eendragters-page .directory-toolbar { gap: 12px; margin-bottom: 6px; }
+
+/* ---------- Connection suggestions row ---------- */
+.eendragters-page .similar-people {
+  background: linear-gradient(180deg, rgba(232, 97, 28, 0.06), rgba(232, 97, 28, 0));
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 16px 16px 6px;
+  margin: 4px 0 26px;
+}
+.eendragters-page .similar-people-row { scroll-snap-type: x proximity; padding: 2px 2px 10px; }
+.eendragters-page .similar-person-card {
+  scroll-snap-align: start;
+  border-radius: 16px;
+  border-color: transparent;
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04), 0 4px 10px rgba(26, 26, 26, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.eendragters-page .similar-person-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px -10px rgba(90, 26, 43, 0.28);
+}
+
+/* ---------- Card grid + person card ---------- */
+.eendragters-page .card-grid { gap: 18px; }
+@media (min-width: 480px) { .eendragters-page .card-grid { gap: 20px; } }
+@media (min-width: 560px) { .eendragters-page .card-grid { gap: 22px; } }
+@media (min-width: 900px) { .eendragters-page .card-grid { gap: 26px; } }
+
+.eendragters-page .person-card {
+  border-radius: 20px;
+  border-color: var(--line);
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04), 0 1px 3px rgba(26, 26, 26, 0.03);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+  animation: eendragters-card-in 0.4s ease both;
+}
+.eendragters-page .person-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 40px -20px rgba(90, 26, 43, 0.35), 0 4px 10px rgba(26, 26, 26, 0.06);
+  border-color: transparent;
+}
+@keyframes eendragters-card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.eendragters-page .card-grid > li:nth-child(1) .person-card { animation-delay: 0.02s; }
+.eendragters-page .card-grid > li:nth-child(2) .person-card { animation-delay: 0.05s; }
+.eendragters-page .card-grid > li:nth-child(3) .person-card { animation-delay: 0.08s; }
+.eendragters-page .card-grid > li:nth-child(4) .person-card { animation-delay: 0.11s; }
+.eendragters-page .card-grid > li:nth-child(5) .person-card { animation-delay: 0.14s; }
+.eendragters-page .card-grid > li:nth-child(6) .person-card { animation-delay: 0.17s; }
+.eendragters-page .card-grid > li:nth-child(n+7) .person-card { animation-delay: 0.2s; }
+
+.eendragters-page .person-photo {
+  border-radius: 20px 20px 0 0;
+  border-bottom: 3px solid transparent;
+  border-image: linear-gradient(90deg, var(--orange), var(--maroon-soft)) 1;
+}
+.eendragters-page .person-info { padding: 14px 16px 10px; gap: 1px; }
+.eendragters-page .person-name { font-size: 16.5px; }
+.eendragters-page .person-grad-badge {
+  box-shadow: 0 2px 6px rgba(26, 26, 26, 0.18);
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  background: rgba(26, 26, 26, 0.55);
+  backdrop-filter: blur(3px);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.eendragters-page .person-actions { padding: 8px; gap: 6px; }
+.eendragters-page .person-action {
+  border-radius: 999px;
+  background: var(--paper);
+}
+.eendragters-page .person-action:hover { background: var(--orange-soft); }
+.eendragters-page .person-action.primary { background: var(--orange); color: #fff; }
+.eendragters-page .person-action.primary:hover { background: var(--orange-dark); }
+.eendragters-page .person-action.linkedin-active { background: #E8F0FE; }
+.eendragters-page .person-action.linkedin-active:hover { background: #d5e6fd; }
+.eendragters-page .person-action:disabled { background: var(--paper); opacity: 0.5; }
+
+/* ---------- Alumni map view ---------- */
+.eendragters-page .map-shell { margin-top: 8px; }
+.eendragters-page .alumni-map {
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04), 0 20px 40px -24px rgba(90, 26, 43, 0.3);
+}
+.eendragters-page .map-hint {
+  display: inline-flex;
+  margin-top: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 12.5px;
+}
+.eendragters-page .alumni-pin {
+  box-shadow: 0 4px 14px rgba(90, 26, 43, 0.4);
+  border-width: 3px;
 }

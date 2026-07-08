@@ -3,6 +3,19 @@ import { PhotoBlock } from './Directory.jsx'
 
 const dash = '—'
 
+// A handful of structured facts read better as a compact strip (short label
+// above a short value) than as full-width rows once the header block above
+// already covers role, company and location — this only needs to carry
+// what's left: background and field.
+function Fact({ label, value }) {
+  return (
+    <div className="profile-fact">
+      <span className="profile-fact-label">{label}</span>
+      <span className={value === dash ? 'profile-fact-value muted' : 'profile-fact-value'}>{value}</span>
+    </div>
+  )
+}
+
 export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -15,34 +28,49 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
     }
   }, [onClose])
 
-  const rows = [
-    ['Status', p.is_current_resident ? 'Current Eendragter (in house)' : 'Alumnus'],
-    ['Year left / leaving Eendrag', p.grad_year || dash],
-    ['Degree studied', p.degree || dash],
-    ['Industry', p.industry || dash],
-    ['Job title / Position', p.occupation || dash],
-    ['Company', p.company || dash],
-    ['City', p.city || dash],
-    ['Country', p.country || dash],
-    ['Open to mentoring', renderMentorship(p)],
-    ['Bio', p.bio || dash],
-  ]
+  const roleLine = p.occupation && p.company
+    ? `${p.occupation} @ ${p.company}`
+    : (p.occupation || p.company || '')
+
+  const locationLine = p.city && p.country
+    ? `${p.city}, ${p.country}`
+    : (p.country || p.city || '')
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal profile-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 id="modal-title">{p.full_name || 'Alumnus'}</h2>
+          <h2 id="modal-title">{p.full_name || 'Alumnus'}{isMe && <span className="person-name-you">You</span>}</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className="modal-body">
-          <PhotoBlock url={p.avatar_url} name={p.full_name} className="modal-photo" />
-          {rows.map(([label, value]) => (
-            <div className="detail-row" key={label}>
-              <div className="detail-label">{label}</div>
-              <div className={value === dash ? 'detail-value muted' : 'detail-value'}>{value}</div>
+          <div className="profile-card-header">
+            <PhotoBlock url={p.avatar_url} name={p.full_name} className="modal-photo" />
+            <div className="profile-card-heading">
+              {roleLine && <p className="profile-card-role">{roleLine}</p>}
+              {locationLine && (
+                <p className="profile-card-location">
+                  <LocationIcon /> {locationLine}
+                </p>
+              )}
+              <span className="profile-status-pill">
+                {p.is_current_resident ? 'Current Eendragter · in house' : 'Alumnus'}
+              </span>
             </div>
-          ))}
+          </div>
+
+          <div className="profile-fact-strip">
+            <Fact label="Year left / leaving Eendrag" value={p.grad_year || dash} />
+            <Fact label="Degree studied" value={p.degree || dash} />
+            <Fact label="Industry" value={p.industry || dash} />
+          </div>
+
+          {p.bio && (
+            <div className="profile-card-section">
+              <h3 className="profile-card-section-title">About</h3>
+              <p className="profile-card-bio">{p.bio}</p>
+            </div>
+          )}
         </div>
         <div className="modal-footer">
           {p.linkedin_url && (
@@ -62,20 +90,19 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
   )
 }
 
-function renderMentorship(p) {
-  if (!p.available_for_mentorship) return <span className="detail-mentorship-no">Not currently</span>
-  return (
-    <span>
-      <span className="detail-mentorship-yes">Yes</span>
-      {p.mentorship_description ? ` — ${p.mentorship_description}` : ''}
-    </span>
-  )
-}
-
 function LinkedInIconSmall() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.13 1 2.5 1s2.48 1.13 2.48 2.5zM.24 8h4.52v14H.24V8zm7.5 0h4.34v1.92h.06c.6-1.14 2.07-2.34 4.26-2.34 4.56 0 5.4 3 5.4 6.9V22h-4.52v-6.14c0-1.46-.02-3.34-2.04-3.34-2.04 0-2.36 1.6-2.36 3.24V22H7.74V8z"/>
+    </svg>
+  )
+}
+
+function LocationIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.4" />
     </svg>
   )
 }

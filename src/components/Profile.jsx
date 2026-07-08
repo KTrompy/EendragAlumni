@@ -14,8 +14,6 @@ const EMPTY = {
   company: '', city: '', country: 'South Africa',
   bio: '',
   linkedin_url: '',
-  available_for_mentorship: false,
-  mentorship_description: '',
   is_current_resident: false,
 }
 
@@ -47,8 +45,6 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         country: profile.country || 'South Africa',
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
-        available_for_mentorship: !!profile.available_for_mentorship,
-        mentorship_description: profile.mentorship_description || '',
         is_current_resident: !!profile.is_current_resident,
       })
       if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
@@ -354,7 +350,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       </div>
 
       <div className="profile-section">
-        <h3 className="profile-section-title">Online &amp; mentorship</h3>
+        <h3 className="profile-section-title">Online</h3>
         <label className="field"><span>LinkedIn URL</span>
           <ClearableInput
             type="url"
@@ -364,36 +360,6 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             placeholder="https://linkedin.com/in/yourname"
           />
         </label>
-
-        <div className="field">
-          <span>Open to mentoring other Eendragters?</span>
-          <div className="onboarding-choice-row profile-choice-row">
-            <button
-              type="button"
-              className={!form.available_for_mentorship ? 'onboarding-choice on' : 'onboarding-choice'}
-              onClick={() => set('available_for_mentorship', false)}
-            >
-              Not right now
-            </button>
-            <button
-              type="button"
-              className={form.available_for_mentorship ? 'onboarding-choice on' : 'onboarding-choice'}
-              onClick={() => set('available_for_mentorship', true)}
-            >
-              🤝 Yes, happy to help
-            </button>
-          </div>
-        </div>
-        {form.available_for_mentorship && (
-          <label className="field"><span>What kind of mentorship?</span>
-            <ClearableInput
-              value={form.mentorship_description}
-              onChange={(e) => set('mentorship_description', e.target.value)}
-              onClear={() => set('mentorship_description', '')}
-              placeholder="e.g. Anybody in the tech space"
-            />
-          </label>
-        )}
       </div>
 
       <div className="profile-section">

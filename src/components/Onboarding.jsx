@@ -12,7 +12,7 @@ import CountryAutocomplete from './CountryAutocomplete.jsx'
 // no name on file yet — see App.jsx.
 const QUESTION_KEYS = [
   'name', 'status', 'year', 'degree', 'industry', 'occupation',
-  'company', 'country', 'city', 'linkedin', 'mentorship', 'bio', 'photo',
+  'company', 'country', 'city', 'linkedin', 'bio', 'photo',
 ]
 const STEPS = ['intro', ...QUESTION_KEYS, 'done']
 
@@ -29,8 +29,6 @@ export default function Onboarding({ session, profile, onDone }) {
     country: profile?.country || 'South Africa',
     city: profile?.city || '',
     linkedin_url: profile?.linkedin_url || '',
-    available_for_mentorship: !!profile?.available_for_mentorship,
-    mentorship_description: profile?.mentorship_description || '',
     bio: profile?.bio || '',
   })
   const [customIndustry, setCustomIndustry] = useState(
@@ -53,8 +51,8 @@ export default function Onboarding({ session, profile, onDone }) {
   function onEnter(e) { if (e.key === 'Enter') handleContinue() }
 
   // Whether the current question has nothing in it — only meaningful for
-  // free-text/select questions. Choice-style questions (status, mentorship)
-  // and country always have a default selected, so there's nothing to nudge.
+  // free-text/select questions. Choice-style questions (status) and country
+  // always have a default selected, so there's nothing to nudge.
   function isCurrentEmpty() {
     switch (currentKey) {
       case 'name': return !form.full_name.trim()
@@ -121,8 +119,6 @@ export default function Onboarding({ session, profile, onDone }) {
       country: form.country,
       city: form.city,
       linkedin_url: form.linkedin_url.trim(),
-      available_for_mentorship: form.available_for_mentorship,
-      mentorship_description: form.mentorship_description,
       bio: form.bio,
     }
     if (avatarUrl) payload.avatar_url = avatarUrl
@@ -336,36 +332,6 @@ export default function Onboarding({ session, profile, onDone }) {
               onKeyDown={onEnter}
               placeholder="https://linkedin.com/in/yourname"
             />
-          </>
-        )
-
-      case 'mentorship':
-        return (
-          <>
-            <h2 className="onboarding-question">Open to mentoring other Eendragters?</h2>
-            <div className="onboarding-choice-row">
-              <button
-                className={!form.available_for_mentorship ? 'onboarding-choice on' : 'onboarding-choice'}
-                onClick={() => set('available_for_mentorship', false)}
-              >
-                Not right now
-              </button>
-              <button
-                className={form.available_for_mentorship ? 'onboarding-choice on' : 'onboarding-choice'}
-                onClick={() => set('available_for_mentorship', true)}
-              >
-                🤝 Yes, happy to help
-              </button>
-            </div>
-            {form.available_for_mentorship && (
-              <input
-                className="onboarding-input"
-                style={{ marginTop: 12 }}
-                value={form.mentorship_description}
-                onChange={(e) => set('mentorship_description', e.target.value)}
-                placeholder="e.g. Anybody in the tech space"
-              />
-            )}
           </>
         )
 
