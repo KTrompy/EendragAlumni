@@ -1367,6 +1367,12 @@ button.delete-danger svg { flex-shrink: 0; }
    directory grid, so browsing doesn't require already knowing who you're
    looking for. */
 .similar-people { margin: 4px 0 22px; }
+.similar-people-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
 .similar-people-title {
   font-family: var(--display);
   font-weight: 800;
@@ -1374,7 +1380,30 @@ button.delete-danger svg { flex-shrink: 0; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--maroon);
-  margin: 0 0 10px;
+  margin: 0;
+}
+.similar-people-toggle {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--orange);
+  transition: transform 0.2s ease;
+}
+.similar-people-toggle:hover {
+  opacity: 0.8;
+}
+.toggle-chevron {
+  display: inline-block;
+  font-size: 14px;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+}
+.toggle-chevron.open {
+  transform: rotate(90deg);
 }
 .similar-people-row {
   list-style: none;

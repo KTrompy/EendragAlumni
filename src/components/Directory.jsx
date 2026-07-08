@@ -81,6 +81,7 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
   const [openProfile, setOpenProfile] = useState(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [suggestionsOpen, setSuggestionsOpen] = useState(true)
 
   useEffect(() => {
     supabase
@@ -248,25 +249,37 @@ export default function Directory({ session, onMessage, hideHeader = false }) {
 
       {!needle && activeFilterCount === 0 && similarPeople.length > 0 && (
         <div className="similar-people">
-          <h3 className="similar-people-title">Connection suggestions</h3>
-          <ul className="similar-people-row">
-            {similarPeople.map((p) => (
-              <li className="similar-person-card" key={p.id}>
-                <button className="similar-person-open" onClick={() => setOpenProfile(p)}>
-                  <Avatar url={p.avatar_url} name={p.full_name} size={48} />
-                  <span className="similar-person-name">{p.full_name || 'Alumnus'}</span>
-                  {matchReason(me, p) && <span className="similar-person-reason">{matchReason(me, p)}</span>}
-                </button>
-                <button
-                  className="similar-person-message"
-                  onClick={() => messageWithIcebreaker(p)}
-                  aria-label={`Message ${p.full_name || 'this Eendragter'}`}
-                >
-                  <EnvelopeIcon /> Message
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="similar-people-header">
+            <h3 className="similar-people-title">Connection suggestions</h3>
+            <button
+              className="similar-people-toggle"
+              onClick={() => setSuggestionsOpen(!suggestionsOpen)}
+              aria-expanded={suggestionsOpen}
+              aria-label={suggestionsOpen ? 'Collapse connection suggestions' : 'Expand connection suggestions'}
+            >
+              <span className={`toggle-chevron ${suggestionsOpen ? 'open' : ''}`}>▸</span>
+            </button>
+          </div>
+          {suggestionsOpen && (
+            <ul className="similar-people-row">
+              {similarPeople.map((p) => (
+                <li className="similar-person-card" key={p.id}>
+                  <button className="similar-person-open" onClick={() => setOpenProfile(p)}>
+                    <Avatar url={p.avatar_url} name={p.full_name} size={48} />
+                    <span className="similar-person-name">{p.full_name || 'Alumnus'}</span>
+                    {matchReason(me, p) && <span className="similar-person-reason">{matchReason(me, p)}</span>}
+                  </button>
+                  <button
+                    className="similar-person-message"
+                    onClick={() => messageWithIcebreaker(p)}
+                    aria-label={`Message ${p.full_name || 'this Eendragter'}`}
+                  >
+                    <EnvelopeIcon /> Message
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
