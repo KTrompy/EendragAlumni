@@ -26,6 +26,9 @@ import ConfirmDialog from './components/ConfirmDialog.jsx'
 // (see People.jsx) instead of splitting "find a person" across two nav
 // items. Support/Donate isn't a top-level tab while it's still a stub with
 // no real payment flow — it's reachable from the footer link instead.
+// My profile isn't in this list either — it lives as an avatar icon in the
+// top-right of the header (see .header-avatar-btn) on every screen size,
+// not in the sidebar/hamburger nav.
 //
 // Each tab carries its own sidebar icon now that navigation lives in the
 // left sidebar (see .sidebar in styles.css) rather than the old inline
@@ -40,7 +43,6 @@ const TABS = [
   { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
   { id: 'jobs', label: 'Jobs', path: '/jobs', icon: JobsIcon },
   { id: 'businesses', label: 'Business Directory', path: '/businesses', icon: BusinessIcon },
-  { id: 'profile', label: 'My profile', path: '/profile', icon: ProfileIcon },
 ]
 
 // Admin-only, appended to the nav when the signed-in profile has is_admin
@@ -258,8 +260,10 @@ export default function App() {
 
             <NotificationBell session={session} onNavigate={handleNotificationNavigate} />
 
+            {/* My profile lives here — top-right of the header — on every
+                screen size now, instead of as a sidebar/hamburger entry. */}
             <button
-              className="mobile-avatar-btn"
+              className="header-avatar-btn"
               onClick={() => goTo('/profile')}
               aria-label="My profile (click to open)"
               title="Click to open your profile"
@@ -597,14 +601,6 @@ function BusinessIcon() {
       <path d="M4 21h16" />
       <path d="M9.5 21v-6a2.5 2.5 0 0 1 5 0v6" />
       <path d="M8 12.5h.01M16 12.5h.01" />
-    </svg>
-  )
-}
-function ProfileIcon() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
   )
 }

@@ -76,6 +76,21 @@ input, textarea, select { font: inherit; }
 }
 .header-icon-btn:hover { background: rgba(255, 255, 255, 0.1); }
 .header-icon-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+/* My profile avatar, top-right of the header — visible at every screen
+   size (desktop and mobile alike), not just as a mobile fallback. */
+.header-avatar-btn {
+  display: inline-flex;
+  background: none;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  padding: 3px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease;
+  cursor: pointer;
+}
+.header-avatar-btn:hover { border-color: var(--orange); }
+.header-avatar-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 .header-icon-badge {
   position: absolute;
   top: 2px;
@@ -4774,17 +4789,6 @@ button.delete-danger svg { flex-shrink: 0; }
   }
   .brand { justify-content: flex-start; text-align: left; min-width: 0; }
   .brand-name, .brand-motto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mobile-avatar-btn {
-    display: inline-flex;
-    background: none;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    padding: 3px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    transition: border-color 0.2s ease;
-    cursor: pointer;
-  }
-  .mobile-avatar-btn:hover { border-color: var(--orange); }
   .mobile-support-btn {
     display: none;
   }
@@ -4831,8 +4835,10 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 @media (min-width: 721px) {
   /* These only exist for the mobile header/tab bar — keep them fully out
-     of the desktop layout rather than relying on the mobile query alone. */
-  .mobile-avatar-btn, .mobile-support-btn, .mobile-tabbar { display: none; }
+     of the desktop layout rather than relying on the mobile query alone.
+     (.header-avatar-btn is deliberately NOT in this list — it's the
+     always-visible profile icon, shown on both mobile and desktop.) */
+  .mobile-support-btn, .mobile-tabbar { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
