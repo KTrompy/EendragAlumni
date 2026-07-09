@@ -289,9 +289,9 @@ export default function App() {
       {/* Full-width photo banner, sitting above the sidebar/content row so
           the sidebar no longer runs flush from the header all the way down
           the page — same idea as the Lions Connect reference layout. Image
-          lives at /hero-banner.jpg in public/. */}
+          lives at /Courtyard.jpg in public/. */}
       <div className="hero-banner">
-        <img src="/hero-banner.jpg" alt="" className="hero-banner-img" />
+        <img src="/Courtyard.jpg" alt="" className="hero-banner-img" />
         <div className="hero-banner-overlay" />
         <div className="hero-banner-content">
           <span className="hero-banner-title">Eendrag Alumni</span>
