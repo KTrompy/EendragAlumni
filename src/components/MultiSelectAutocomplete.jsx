@@ -10,6 +10,10 @@ export default function MultiSelectAutocomplete({
   onChange,
   options,
   placeholder,
+  // When true, typing something that isn't in `options` shows an "Add"
+  // entry (and Enter adds it directly) so people can note something not
+  // on the list — used for Main areas of expertise's "Other".
+  allowCustom = false,
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -28,19 +32,33 @@ export default function MultiSelectAutocomplete({
   const suggestions = needle
     ? available.filter((o) => o.toLowerCase().includes(needle))
     : available
+  const hasExactMatch = options.some((o) => o.toLowerCase() === needle)
+  const alreadyAdded = values.some((v) => v.toLowerCase() === needle)
+  const showAddCustom = allowCustom && needle.length > 0 && !hasExactMatch && !alreadyAdded
 
   function pick(option) {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
-    onChange([...values, option])
+    if (!values.some((v) => v.toLowerCase() === option.toLowerCase())) onChange([...values, option])
     setQuery('') // cleared so the next pick starts from the full list again
     setOpen(false) // close dropdown after selection
+  }
+
+  function handleKeyDown(e) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const trimmed = query.trim()
+    if (!trimmed) return
+    // Prefer the option's canonical casing over whatever was typed.
+    const canonical = options.find((o) => o.toLowerCase() === trimmed.toLowerCase())
+    if (canonical) { pick(canonical); return }
+    if (allowCustom) pick(trimmed)
   }
 
   function remove(option) {
     onChange(values.filter((v) => v !== option))
   }
 
-  const showDropdown = open && suggestions.length > 0
+  const showDropdown = open && (suggestions.length > 0 || showAddCustom)
 
   return (
     <div className="multi-select-autocomplete">
@@ -60,6 +78,7 @@ export default function MultiSelectAutocomplete({
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           placeholder={values.length ? 'Add another…' : placeholder}
           autoComplete="off"
         />
@@ -72,6 +91,18 @@ export default function MultiSelectAutocomplete({
                 </button>
               </li>
             ))}
+            {showAddCustom && (
+              <li>
+                <button
+                  type="button"
+                  className="city-suggestion-add"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(query.trim())}
+                >
+                  Add "{query.trim()}"
+                </button>
+              </li>
+            )}
           </ul>
         )}
       </div>

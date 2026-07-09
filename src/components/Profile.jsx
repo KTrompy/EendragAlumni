@@ -89,13 +89,20 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false); setDirty(true) }
 
-  // Changing industry also drops any picked expertise tags that don't
-  // belong to the new industry's list, so switching from e.g. "Legal" to
-  // "Software Engineering & Development" doesn't leave "Litigation" behind.
+  // Changing industry also drops any picked expertise tags that came from
+  // the old industry's list but don't belong to the new one, so switching
+  // from e.g. "Legal" to "Software Engineering & Development" doesn't leave
+  // "Litigation" behind. Free-typed ("Other") tags aren't tied to any
+  // industry's list, so they're always kept.
   function setIndustry(value) {
     setForm((f) => {
+      const prevOptions = EXPERTISE_BY_INDUSTRY[f.industry] || EXPERTISE_OPTIONS
       const nextOptions = EXPERTISE_BY_INDUSTRY[value] || EXPERTISE_OPTIONS
-      return { ...f, industry: value, expertise: f.expertise.filter((e) => nextOptions.includes(e)) }
+      return {
+        ...f,
+        industry: value,
+        expertise: f.expertise.filter((e) => nextOptions.includes(e) || !prevOptions.includes(e)),
+      }
     })
     setSaved(false)
     setDirty(true)
@@ -490,7 +497,8 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                 values={form.expertise}
                 onChange={(value) => set('expertise', value)}
                 options={EXPERTISE_BY_INDUSTRY[form.industry] || EXPERTISE_OPTIONS}
-                placeholder={form.industry ? 'Search your expertise' : 'Pick an industry above to see relevant options'}
+                placeholder={form.industry ? 'Search your expertise, or type your own' : 'Pick an industry above to see relevant options'}
+                allowCustom
               />
             </label>
 
