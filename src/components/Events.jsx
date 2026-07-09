@@ -833,6 +833,17 @@ function EventForm({ session, onCancel, onCreated, initial = null }) {
   const [error, setError] = useState(null)
   const [isClosing, setIsClosing] = useState(false)
 
+  // Lock body scroll while the "Add an event" panel floats over its
+  // backdrop — same fix as Jobs' "Post a role" panel. Skipped for inline
+  // edits, which aren't a floating overlay in the first place.
+  useEffect(() => {
+    if (isEdit) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function handleCancel() {
     setIsClosing(true)
     setTimeout(onCancel, 200)

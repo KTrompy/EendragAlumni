@@ -610,6 +610,18 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
 
+  // Lock body scroll while the "Post a role" panel floats over its
+  // backdrop — without this, the job list behind it keeps scrolling along
+  // with the page. Skipped for inline edits, which aren't a floating
+  // overlay in the first place.
+  useEffect(() => {
+    if (isEdit) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prevOverflow }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Draft autosave — new-listing flow only. An edit-in-progress isn't
   // persisted here, so it can't later bleed into (or get overwritten by) an
   // unrelated new-post draft.
