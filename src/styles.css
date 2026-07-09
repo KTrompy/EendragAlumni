@@ -679,7 +679,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .city-autocomplete { position: relative; }
 .city-suggestions {
   position: absolute;
-  z-index: 60;
+  z-index: 1000;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
