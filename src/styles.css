@@ -251,13 +251,18 @@ input, textarea, select { font: inherit; }
 }
 
 /* ---------- Hero banner ---------- */
-/* Full-width photo strip above the sidebar/content row. Replaces the old
-   look where .sidebar ran flush from right under the header all the way
-   down — now there's a photo band first, sidebar starts below it. */
+/* Pill-shaped photo banner, same max-width and centering as .app-body so
+   it lines up exactly with the sidebar on the left and the content/right
+   column on the right, instead of bleeding edge-to-edge across the
+   viewport. Replaces the old look where .sidebar ran flush from right
+   under the header all the way down — now there's a rounded photo band
+   first, sidebar starts below it. */
 .hero-banner {
   position: relative;
-  width: 100%;
+  max-width: 1360px;
+  margin: 20px auto 0;
   height: 240px;
+  border-radius: 120px;
   overflow: hidden;
   background: var(--maroon);
 }
@@ -284,9 +289,7 @@ input, textarea, select { font: inherit; }
   position: relative;
   z-index: 1;
   height: 100%;
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 0 24px 18px;
+  padding: 0 56px 22px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -310,9 +313,13 @@ input, textarea, select { font: inherit; }
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 @media (max-width: 720px) {
-  .hero-banner { height: 150px; }
+  .hero-banner { height: 150px; border-radius: 75px; margin: 12px auto 0; }
+  .hero-banner-content { padding: 0 34px 16px; }
   .hero-banner-title { font-size: 22px; }
   .hero-banner-motto { font-size: 10.5px; }
+}
+@media (max-width: 1360px) {
+  .hero-banner { margin-left: 16px; margin-right: 16px; }
 }
 
 /* ---------- Layout ---------- */
