@@ -248,77 +248,84 @@ export default function Directory({ session, onMessage, hideHeader = false, refe
         </button>
       </div>
 
-      {!needle && activeFilterCount === 0 && similarPeople.length > 0 && (
-        <div className="similar-people">
-          <div className="similar-people-header">
-            <h3 className="similar-people-title">Connection suggestions</h3>
-            <button
-              className="similar-people-toggle"
-              onClick={() => setSuggestionsOpen(!suggestionsOpen)}
-              aria-expanded={suggestionsOpen}
-              aria-label={suggestionsOpen ? 'Collapse connection suggestions' : 'Expand connection suggestions'}
-            >
-              <span className={`toggle-chevron ${suggestionsOpen ? 'open' : ''}`}>›</span>
+      <div className="directory-content-wrapper">
+        <div className="directory-main">
+
+        <p className="result-count">
+          Showing {shown.length} of {filtered.length} Eendragters
+        </p>
+
+        {loading ? (
+          <LoadingState message="Loading Eendragters…" />
+        ) : filtered.length === 0 && (
+          <EmptyState
+            icon="search"
+            message="No matching Eendragters found."
+            subMessage="Try widening a filter or clearing them all."
+            actionLabel="Clear filters"
+            onAction={clearAllFilters}
+          />
+        )}
+
+        <ul className="card-grid">
+          {shown.map((p) => (
+            <PersonCard
+              key={p.id}
+              person={p}
+              isMe={p.id === session.user.id}
+              onOpen={() => setOpenProfile(p)}
+              onMessage={() => messageWithIcebreaker(p)}
+            />
+          ))}
+        </ul>
+
+        {hasMore && (
+          <div className="load-more-row">
+            <button className="btn ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+              Load more ({filtered.length - shown.length} remaining)
             </button>
           </div>
-          {suggestionsOpen && (
-            <ul className="similar-people-row">
-              {similarPeople.map((p) => (
-                <li className="similar-person-card" key={p.id}>
-                  <button className="similar-person-open" onClick={() => setOpenProfile(p)}>
-                    <Avatar url={p.avatar_url} name={p.full_name} size={48} />
-                    <span className="similar-person-name">{p.full_name || 'Alumnus'}</span>
-                    {matchReason(me, p) && <span className="similar-person-reason">{matchReason(me, p)}</span>}
-                  </button>
-                  <button
-                    className="similar-person-message"
-                    onClick={() => messageWithIcebreaker(p)}
-                    aria-label={`Message ${p.full_name || 'this Eendragter'}`}
-                  >
-                    <EnvelopeIcon /> Message
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+        )}
         </div>
-      )}
 
-      <p className="result-count">
-        Showing {shown.length} of {filtered.length} Eendragters
-      </p>
-
-      {loading ? (
-        <LoadingState message="Loading Eendragters…" />
-      ) : filtered.length === 0 && (
-        <EmptyState
-          icon="search"
-          message="No matching Eendragters found."
-          subMessage="Try widening a filter or clearing them all."
-          actionLabel="Clear filters"
-          onAction={clearAllFilters}
-        />
-      )}
-
-      <ul className="card-grid">
-        {shown.map((p) => (
-          <PersonCard
-            key={p.id}
-            person={p}
-            isMe={p.id === session.user.id}
-            onOpen={() => setOpenProfile(p)}
-            onMessage={() => messageWithIcebreaker(p)}
-          />
-        ))}
-      </ul>
-
-      {hasMore && (
-        <div className="load-more-row">
-          <button className="btn ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
-            Load more ({filtered.length - shown.length} remaining)
-          </button>
-        </div>
-      )}
+        {!needle && activeFilterCount === 0 && similarPeople.length > 0 && (
+          <aside className="similar-people-sidebar">
+            <div className="similar-people-header">
+              <h3 className="similar-people-title">Your Industry</h3>
+              <button
+                className="similar-people-toggle"
+                onClick={() => setSuggestionsOpen(!suggestionsOpen)}
+                aria-expanded={suggestionsOpen}
+                aria-label={suggestionsOpen ? 'Collapse connection suggestions' : 'Expand connection suggestions'}
+              >
+                <span className={`toggle-chevron ${suggestionsOpen ? 'open' : ''}`}>‸</span>
+              </button>
+            </div>
+            {suggestionsOpen && (
+              <ul className="similar-people-column">
+                {similarPeople.map((p) => (
+                  <li className="similar-person-compact" key={p.id}>
+                    <button className="similar-person-open" onClick={() => setOpenProfile(p)}>
+                      <Avatar url={p.avatar_url} name={p.full_name} size={32} />
+                      <div className="similar-person-info">
+                        <span className="similar-person-name">{p.full_name || 'Alumnus'}</span>
+                        {p.company && <span className="similar-person-company">{p.company}</span>}
+                      </div>
+                    </button>
+                    <button
+                      className="similar-person-message-compact"
+                      onClick={() => messageWithIcebreaker(p)}
+                      aria-label={`Message ${p.full_name || 'this Eendragter'}`}
+                    >
+                      <EnvelopeIcon />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </aside>
+        )}
+      </div>
 
       {filterOpen && (
         <>

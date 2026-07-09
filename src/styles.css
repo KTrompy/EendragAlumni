@@ -4352,25 +4352,140 @@ button.delete-danger svg { flex-shrink: 0; }
 /* ---------- Toolbar spacing tweak ---------- */
 .eendragters-page .directory-toolbar { gap: 12px; margin-bottom: 6px; }
 
-/* ---------- Connection suggestions row ---------- */
-.eendragters-page .similar-people {
+/* ---------- Directory content wrapper (main grid + sidebar) ---------- */
+.eendragters-page .directory-content-wrapper {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.eendragters-page .directory-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- Connection suggestions sidebar ---------- */
+.eendragters-page .similar-people-sidebar {
+  flex-shrink: 0;
+  width: 220px;
   background: linear-gradient(180deg, rgba(232, 97, 28, 0.06), rgba(232, 97, 28, 0));
   border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 16px 16px 6px;
-  margin: 4px 0 26px;
-}
-.eendragters-page .similar-people-row { scroll-snap-type: x proximity; padding: 2px 2px 10px; }
-.eendragters-page .similar-person-card {
-  scroll-snap-align: start;
   border-radius: 16px;
-  border-color: transparent;
-  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04), 0 4px 10px rgba(26, 26, 26, 0.03);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 12px;
 }
-.eendragters-page .similar-person-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 28px -10px rgba(90, 26, 43, 0.28);
+
+.eendragters-page .similar-people-sidebar .similar-people-header {
+  margin-bottom: 8px;
+}
+
+.eendragters-page .similar-people-sidebar .similar-people-title {
+  font-size: 11px;
+  margin-bottom: 0;
+}
+
+.eendragters-page .similar-people-sidebar .similar-people-toggle {
+  padding: 4px 8px;
+}
+
+.eendragters-page .similar-people-column {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eendragters-page .similar-person-compact {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(232, 97, 28, 0.04);
+  transition: background 0.2s ease;
+}
+
+.eendragters-page .similar-person-compact:hover {
+  background: rgba(232, 97, 28, 0.1);
+}
+
+.eendragters-page .similar-person-compact .similar-person-open {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.eendragters-page .similar-person-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.eendragters-page .similar-person-info .similar-person-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eendragters-page .similar-person-info .similar-person-company {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eendragters-page .similar-person-message-compact {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.eendragters-page .similar-person-message-compact:hover {
+  color: var(--orange-dark);
+}
+
+.eendragters-page .similar-person-message-compact svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 1200px) {
+  .eendragters-page .directory-content-wrapper {
+    gap: 12px;
+  }
+  .eendragters-page .similar-people-sidebar {
+    width: 180px;
+  }
+}
+
+@media (max-width: 768px) {
+  .eendragters-page .directory-content-wrapper {
+    flex-direction: column;
+  }
+  .eendragters-page .similar-people-sidebar {
+    width: 100%;
+  }
 }
 
 /* ---------- Card grid + person card ---------- */
