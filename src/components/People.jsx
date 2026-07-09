@@ -22,7 +22,6 @@ export default function People({ session, onMessage, onGoToProfile, refetchTrigg
     <section className="panel eendragters-page">
       <div className="panel-header-row">
         <div>
-          <span className="eendragters-eyebrow">Community directory</span>
           <h2 className="panel-title">Eendragters</h2>
           <p className="panel-sub">
             {view === 'list' ? 'The house, out in the world — and still in it.' : 'Where are we all now?'}
