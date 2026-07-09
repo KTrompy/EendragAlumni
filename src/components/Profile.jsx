@@ -6,6 +6,7 @@ import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
+import ListAutocomplete from './ListAutocomplete.jsx'
 import ClearableInput from './ClearableInput.jsx'
 
 const EMPTY = {
@@ -335,25 +336,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <h3 className="profile-section-title">Career</h3>
 
         <label className="field"><span>Industry</span>
-          <div className="select-wrap">
-            <select value={form.industry} onChange={(e) => set('industry', e.target.value)}>
-              <option value="">Select your industry</option>
-              {INDUSTRIES.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
-              <option value="Other">Other (type your own)</option>
-            </select>
-          </div>
+          <ListAutocomplete
+            value={form.industry}
+            onChange={(value) => set('industry', value)}
+            options={INDUSTRIES}
+            placeholder="Search or type your industry"
+            clearable
+          />
         </label>
-
-        {form.industry === 'Other' && (
-          <label className="field"><span>Your industry</span>
-            <ClearableInput
-              value={customIndustry}
-              onChange={(e) => { setCustomIndustry(e.target.value); setSaved(false); setDirty(true) }}
-              onClear={() => { setCustomIndustry(''); setSaved(false); setDirty(true) }}
-              placeholder="e.g. Technology, Healthcare, Finance"
-            />
-          </label>
-        )}
 
         <div className="field-row">
           <label className="field"><span>Job title</span>
@@ -450,12 +440,13 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
             <div className="field-row">
               <label className="field"><span>Availability</span>
-                <div className="select-wrap">
-                  <select value={form.availability} onChange={(e) => set('availability', e.target.value)}>
-                    <option value="">Select your availability</option>
-                    {AVAILABILITY_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
-                </div>
+                <ListAutocomplete
+                  value={form.availability}
+                  onChange={(value) => set('availability', value)}
+                  options={AVAILABILITY_OPTIONS}
+                  placeholder="Search your availability"
+                  clearable
+                />
               </label>
 
               <div className="field">
@@ -477,12 +468,13 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
             {/* Main expertise */}
             <label className="field"><span>Main area of expertise</span>
-              <div className="select-wrap">
-                <select value={form.expertise} onChange={(e) => set('expertise', e.target.value)}>
-                  <option value="">Select your expertise</option>
-                  {EXPERTISE_OPTIONS.map((exp) => <option key={exp} value={exp}>{exp}</option>)}
-                </select>
-              </div>
+              <ListAutocomplete
+                value={form.expertise}
+                onChange={(value) => set('expertise', value)}
+                options={EXPERTISE_OPTIONS}
+                placeholder="Search your expertise"
+                clearable
+              />
             </label>
 
             {/* Services & opportunities offered */}

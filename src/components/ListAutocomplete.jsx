@@ -11,7 +11,6 @@ export default function ListAutocomplete({
   options,
   placeholder,
   inputClassName,
-  limit = 8,
   clearable = false,
 }) {
   const [open, setOpen] = useState(false)
@@ -29,7 +28,7 @@ export default function ListAutocomplete({
 
   const needle = value.trim().toLowerCase()
   const suggestions = needle
-    ? options.filter((o) => o.toLowerCase().includes(needle)).slice(0, limit)
+    ? options.filter((o) => o.toLowerCase().includes(needle))
     : options
 
   function pick(option) {
