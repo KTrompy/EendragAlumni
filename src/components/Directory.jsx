@@ -6,6 +6,7 @@ import EmptyState from './EmptyState.jsx'
 import { buildIcebreaker, matchReason } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
 import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
+import { normalizeExpertise } from '../utils.js'
 
 const PAGE_SIZE = 12
 
@@ -428,9 +429,7 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
           <p className="person-location">{locationLine || ' '}</p>
           <p className="person-industry">{p.industry || ' '}</p>
           {(() => {
-            // Legacy profiles may still have expertise saved as a single
-            // string rather than an array — handle both.
-            const expertise = Array.isArray(p.expertise) ? p.expertise : (p.expertise ? [p.expertise] : [])
+            const expertise = normalizeExpertise(p.expertise)
             return expertise.length > 0 && <p className="person-expertise">{expertise.join(' • ')}</p>
           })()}
           {p.business_categories && p.business_categories.length > 0 && (

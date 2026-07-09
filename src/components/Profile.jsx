@@ -9,6 +9,7 @@ import CountryAutocomplete from './CountryAutocomplete.jsx'
 import ListAutocomplete from './ListAutocomplete.jsx'
 import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import ClearableInput from './ClearableInput.jsx'
+import { normalizeExpertise } from '../utils.js'
 
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
@@ -58,12 +59,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
         is_current_resident: !!profile.is_current_resident,
-        // Legacy profiles may still have a single string value saved from
-        // before "expertise" became multi-select — wrap it in an array so
-        // the chip UI and save payload always deal with a list.
-        expertise: Array.isArray(profile.expertise)
-          ? profile.expertise
-          : (profile.expertise ? [profile.expertise] : []),
+        expertise: normalizeExpertise(profile.expertise),
         services_offered: Array.isArray(profile.services_offered) ? profile.services_offered : [],
         business_website: profile.business_website || '',
         business_categories: Array.isArray(profile.business_categories) ? profile.business_categories : [],
