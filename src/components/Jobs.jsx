@@ -542,19 +542,11 @@ export default function Jobs({ session, profile, onMessage }) {
         </p>
       )}
 
-      {openProfile && (
-        <ProfileModal
-          person={openProfile}
-          isMe={openProfile.id === session.user.id}
-          onClose={() => setOpenProfile(null)}
-          onMessage={() => {
-            const p = openProfile
-            setOpenProfile(null)
-            onMessage({ id: p.id, full_name: p.full_name }, buildIcebreaker(profile, p))
-          }}
-        />
-      )}
-
+      {/* JobModal is rendered before ProfileModal on purpose — clicking the
+          poster's name from inside the job modal opens ProfileModal on top
+          of it (both stay mounted), and with matching z-index, whichever
+          one is later in the DOM paints on top. Keeping ProfileModal last
+          guarantees it's always the one you see, however it was opened. */}
       {openJob && (
         <JobModal
           entry={openJob}
@@ -575,6 +567,19 @@ export default function Jobs({ session, profile, onMessage }) {
           onEdit={() => { setEditingId(openJob.job.id); setOpenJob(null) }}
           onDelete={() => { removeJob(openJob.job.id); setOpenJob(null) }}
           onClose={() => setOpenJob(null)}
+        />
+      )}
+
+      {openProfile && (
+        <ProfileModal
+          person={openProfile}
+          isMe={openProfile.id === session.user.id}
+          onClose={() => setOpenProfile(null)}
+          onMessage={() => {
+            const p = openProfile
+            setOpenProfile(null)
+            onMessage({ id: p.id, full_name: p.full_name }, buildIcebreaker(profile, p))
+          }}
         />
       )}
     </section>
