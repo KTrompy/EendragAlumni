@@ -4389,12 +4389,6 @@ button.delete-danger svg { flex-shrink: 0; }
   flex: 1;
 }
 
-.eendragters-page .toolbar-buttons {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
 /* ---------- Suggestions button ---------- */
 .eendragters-page .suggestions-btn {
   display: inline-flex;
@@ -4427,17 +4421,18 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--orange-dark);
 }
 
-/* On narrow screens the search box (flex: 1) and the two toolbar buttons
+/* On narrow screens the search box (flex: 1) and the toolbar buttons
    (natural width) end up fighting for the same row — since the buttons'
    width is content-based, not much room is left for the search box, so
-   all three end up roughly the same, cramped width. Keep Search + Filters
-   together on the top row (search still gets the lion's share of the
-   width), and drop "Your Industry" to its own row below — `display:
-   contents` unwraps .toolbar-buttons so its two children can be
-   reordered independently instead of moving as one block. */
+   everything ends up roughly the same, cramped width. Keep Search +
+   Filters together on the top row (search still gets the lion's share of
+   the width) and drop "Your Industry" to its own row below. Your Industry
+   and Filters are plain siblings of search-wrap in the markup (no wrapper
+   div), so `order` here applies directly — no `display: contents`
+   involved, which iOS Safari has handled unreliably for `order`/
+   `flex-shrink` on the children of a `contents` box. */
 @media (max-width: 640px) {
   .eendragters-page .directory-toolbar { flex-wrap: wrap; }
-  .eendragters-page .toolbar-buttons { display: contents; }
   /* Filters stays a normal, flexible flex item (no width locked in) —
      min-width: 0 on the search box is what actually does the work: it
      lets the search box give up as much of its own space as needed, so

@@ -241,32 +241,39 @@ export default function Directory({ session, onMessage, hideHeader = false, refe
             <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>
           )}
         </div>
-        <div className="toolbar-buttons">
-          {!needle && similarPeople.length > 0 && me?.industry && (
-            <button
-              className={`suggestions-btn ${filters.industries.includes(me.industry) ? 'on' : ''}`}
-              onClick={() => {
-                if (filters.industries.includes(me.industry)) {
-                  // Clear the industry filter
-                  setFilters(EMPTY_FILTERS)
-                } else {
-                  // Apply the industry filter
-                  setFilters({ ...EMPTY_FILTERS, industries: [me.industry] })
-                }
-                setVisibleCount(PAGE_SIZE)
-                setQ('')
-              }}
-              aria-label={filters.industries.includes(me.industry) ? 'Clear industry filter' : 'Filter by your industry'}
-            >
-              <span>👥 Your Industry</span>
-            </button>
-          )}
-          <button className="filters-toggle-btn" onClick={openFilterPanel}>
-            <FilterIcon />
-            Filters
-            {activeFilterCount > 0 && <span className="filters-toggle-badge">{activeFilterCount}</span>}
+        {/* Your Industry and Filters are direct siblings of search-wrap
+            (no wrapper div around them) so the mobile layout can pin
+            Filters to the search row using plain flex `order` — no
+            `display: contents` involved, which iOS Safari has
+            historically handled unreliably for `order`/`flex-shrink` on
+            the children of a `contents` box. Document order matches the
+            original desktop layout (Your Industry, then Filters); the
+            mobile media query's `order` values are what actually move
+            Filters up next to search on small screens. */}
+        {!needle && similarPeople.length > 0 && me?.industry && (
+          <button
+            className={`suggestions-btn ${filters.industries.includes(me.industry) ? 'on' : ''}`}
+            onClick={() => {
+              if (filters.industries.includes(me.industry)) {
+                // Clear the industry filter
+                setFilters(EMPTY_FILTERS)
+              } else {
+                // Apply the industry filter
+                setFilters({ ...EMPTY_FILTERS, industries: [me.industry] })
+              }
+              setVisibleCount(PAGE_SIZE)
+              setQ('')
+            }}
+            aria-label={filters.industries.includes(me.industry) ? 'Clear industry filter' : 'Filter by your industry'}
+          >
+            <span>👥 Your Industry</span>
           </button>
-        </div>
+        )}
+        <button className="filters-toggle-btn" onClick={openFilterPanel}>
+          <FilterIcon />
+          Filters
+          {activeFilterCount > 0 && <span className="filters-toggle-badge">{activeFilterCount}</span>}
+        </button>
       </div>
 
       <p className="result-count">
