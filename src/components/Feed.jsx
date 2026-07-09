@@ -5,8 +5,18 @@ import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
+import ProfileModal from './ProfileModal.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
+
+// Full profile shape needed for the "click a name → open their profile"
+// modal — same fields Directory/Jobs pull for the same purpose, so a post
+// author or commenter's popup looks exactly as complete as it does
+// everywhere else in the app, not a stripped-down version.
+const POSTER_FIELDS =
+  'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
+  'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
+  'business_categories, availability, geographic_focus, is_open_to_opportunities'
 
 const MAX_IMAGES = 4
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -71,7 +81,7 @@ function videoEmbedUrl(raw) {
 
 const POSTS_SELECT = `
   id, title, content, image_urls, video_url, created_at, author_id,
-  profiles!posts_author_id_fkey ( full_name, grad_year, occupation, avatar_url ),
+  profiles!posts_author_id_fkey ( ${POSTER_FIELDS} ),
   likes:post_likes(count),
   comments:post_comments(count)
 `
@@ -84,6 +94,7 @@ export default function Feed({ session, profile, onMessage }) {
   const [myLikes, setMyLikes] = useState(new Set())
   const [lightbox, setLightbox] = useState(null)
   const [query, setQuery] = useState('')
+  const [openProfile, setOpenProfile] = useState(null)
   const composerOpenRef = useRef(null)
   const showToast = useToast()
 
@@ -244,6 +255,7 @@ export default function Feed({ session, profile, onMessage }) {
               { id: p.author_id, full_name: p.profiles?.full_name },
               'Hi! I saw your post on the feed and wanted to reach out.'
             )}
+            onOpenProfile={setOpenProfile}
           />
         ))}
       </ul>
@@ -263,6 +275,19 @@ export default function Feed({ session, profile, onMessage }) {
         <div className="lightbox-backdrop" onClick={() => setLightbox(null)}>
           <img src={lightbox} alt="" />
         </div>
+      )}
+
+      {openProfile && (
+        <ProfileModal
+          person={openProfile}
+          isMe={openProfile.id === session.user.id}
+          onClose={() => setOpenProfile(null)}
+          onMessage={() => {
+            const p = openProfile
+            setOpenProfile(null)
+            onMessage?.({ id: p.id, full_name: p.full_name }, 'Hi! I saw your post on the feed and wanted to reach out.')
+          }}
+        />
       )}
     </section>
   )
@@ -595,7 +620,7 @@ function Composer({ session, profile, onPosted, openRef }) {
 }
 
 /* ---------- Post item ---------- */
-function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, onImageClick, onMessage }) {
+function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, onImageClick, onMessage, onOpenProfile }) {
   const [showComments, setShowComments] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -647,12 +672,22 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, 
   return (
     <li className="post">
       <div className="post-head">
-        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={48} />
-        <div className="post-head-info">
-          <span className="post-author">{p.profiles?.full_name || 'Alumnus'}</span>
-          {headline && <span className="post-headline">{headline}</span>}
-          <span className="post-time">{timeAgo(p.created_at)}</span>
-        </div>
+        <button
+          type="button"
+          className="post-author-link"
+          onClick={() => onOpenProfile?.(p.profiles)}
+          aria-label={`Open profile for ${p.profiles?.full_name || 'this alumnus'}`}
+        >
+          <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={48} />
+          <div className="post-head-info">
+            <span className="post-author">{p.profiles?.full_name || 'Alumnus'}</span>
+            <span className="post-meta-line">
+              {headline && <span className="post-headline">{headline}</span>}
+              {headline && <span className="post-meta-dot">·</span>}
+              <span className="post-time">{timeAgo(p.created_at)}</span>
+            </span>
+          </div>
+        </button>
         {isMine && !editing && (
           <div className="post-owner-actions">
             <button type="button" className="icon-btn-delete post-delete-btn" onClick={startEdit} aria-label="Edit post" title="Edit post">
@@ -766,14 +801,14 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, 
       </div>
 
       {showComments && (
-        <Comments postId={p.id} session={session} profile={profile} />
+        <Comments postId={p.id} session={session} profile={profile} onOpenProfile={onOpenProfile} />
       )}
     </li>
   )
 }
 
 /* ---------- Comments ---------- */
-function Comments({ postId, session, profile }) {
+function Comments({ postId, session, profile, onOpenProfile }) {
   const [items, setItems] = useState([])
   const [draft, setDraft] = useState('')
   const [error, setError] = useState(null)
@@ -782,7 +817,7 @@ function Comments({ postId, session, profile }) {
   async function load() {
     const { data } = await supabase
       .from('post_comments')
-      .select('id, content, created_at, author_id, profiles!post_comments_author_id_fkey ( full_name, avatar_url )')
+      .select(`id, content, created_at, author_id, profiles!post_comments_author_id_fkey ( ${POSTER_FIELDS} )`)
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
     setItems(data || [])
@@ -816,9 +851,22 @@ function Comments({ postId, session, profile }) {
       <ul className="comment-list">
         {items.map((c) => (
           <li className="comment" key={c.id}>
-            <Avatar url={c.profiles?.avatar_url} name={c.profiles?.full_name} size={30} />
+            <button
+              type="button"
+              className="comment-avatar-link"
+              onClick={() => onOpenProfile?.(c.profiles)}
+              aria-label={`Open profile for ${c.profiles?.full_name || 'this alumnus'}`}
+            >
+              <Avatar url={c.profiles?.avatar_url} name={c.profiles?.full_name} size={30} />
+            </button>
             <div className="comment-body">
-              <span className="comment-author">{c.profiles?.full_name || 'Alumnus'}</span>
+              <button
+                type="button"
+                className="comment-author"
+                onClick={() => onOpenProfile?.(c.profiles)}
+              >
+                {c.profiles?.full_name || 'Alumnus'}
+              </button>
               <span className="comment-meta">{timeAgo(c.created_at)}</span>
               {c.author_id === session.user.id && (
                 <DeleteButton
