@@ -4427,6 +4427,17 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--orange-dark);
 }
 
+/* On narrow screens the search box (flex: 1) and the two toolbar buttons
+   (natural width) end up fighting for the same row — since the buttons'
+   width is content-based, not much room is left for the search box, so
+   all three end up roughly the same, cramped width. Give the search box
+   its own full-width row instead, so it stays long and readable, and let
+   "Your Industry" / "Filters" wrap onto a second row below it. */
+@media (max-width: 640px) {
+  .eendragters-page .directory-toolbar { flex-wrap: wrap; }
+  .eendragters-page .directory-toolbar .search-wrap { flex: 1 1 100%; }
+  .eendragters-page .toolbar-buttons { flex: 1 1 100%; }
+}
 
 /* ---------- Card grid + person card ---------- */
 .eendragters-page .card-grid { gap: 18px; }
