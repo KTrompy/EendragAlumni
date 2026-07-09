@@ -676,10 +676,10 @@ button.delete-danger svg { flex-shrink: 0; }
 .form-warning { color: var(--orange-dark); font-size: 13.5px; margin: 6px 0; }
 
 /* ---------- City autocomplete ---------- */
-.city-autocomplete { position: relative; }
+.city-autocomplete { position: relative; overflow: visible; }
 .city-suggestions {
   position: absolute;
-  z-index: 1000;
+  z-index: 10000;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
@@ -3162,6 +3162,7 @@ button.delete-danger svg { flex-shrink: 0; }
   margin-bottom: 16px;
   animation: profile-section-in 0.35s ease both;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  overflow: visible;
 }
 .profile-section:hover { border-color: var(--line-strong); }
 /* Every .profile-section is its own stacking context (the entrance
@@ -3169,15 +3170,7 @@ button.delete-danger svg { flex-shrink: 0; }
    inside one — the city autocomplete list — can't out-rank a later section
    just by having a high z-index; the whole section it lives in needs to
    out-rank its siblings. */
-.profile-section { position: relative; }
 .profile-section-location { position: relative; z-index: 5; }
-.profile-section:nth-of-type(1) { z-index: 100; }
-.profile-section:nth-of-type(2) { z-index: 99; }
-.profile-section:nth-of-type(3) { z-index: 98; }
-.profile-section:nth-of-type(4) { z-index: 97; }
-.profile-section:nth-of-type(5) { z-index: 96; }
-.profile-section:nth-of-type(6) { z-index: 95; }
-.profile-section:nth-of-type(7) { z-index: 94; }
 /* Stagger each card's entrance slightly so the page feels like it's
    settling into place rather than popping in all at once. */
 .profile-section:nth-of-type(1) { animation-delay: 0.02s; }
@@ -3346,6 +3339,7 @@ button.delete-danger svg { flex-shrink: 0; }
   animation: profile-section-in 0.35s ease both;
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(26, 26, 26, 0.03);
+  overflow: visible;
 }
 
 .profile-section:hover {
