@@ -79,6 +79,7 @@ export default function MultiSelectAutocomplete({
           value={query}
           onChange={(e) => { setQuery(e.target.value) }}
           onFocus={handleFocus}
+          onClick={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={values.length ? 'Add another…' : placeholder}
