@@ -3170,6 +3170,7 @@ button.delete-danger svg { flex-shrink: 0; }
    just by having a high z-index; the whole section it lives in needs to
    out-rank its siblings. */
 .profile-section-location { position: relative; z-index: 5; }
+.profile-section:nth-of-type(1) { position: relative; z-index: 10; }
 /* Stagger each card's entrance slightly so the page feels like it's
    settling into place rather than popping in all at once. */
 .profile-section:nth-of-type(1) { animation-delay: 0.02s; }
