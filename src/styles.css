@@ -3169,8 +3169,15 @@ button.delete-danger svg { flex-shrink: 0; }
    inside one — the city autocomplete list — can't out-rank a later section
    just by having a high z-index; the whole section it lives in needs to
    out-rank its siblings. */
+.profile-section { position: relative; }
 .profile-section-location { position: relative; z-index: 5; }
-.profile-section:nth-of-type(1) { position: relative; z-index: 10; }
+.profile-section:nth-of-type(1) { z-index: 100; }
+.profile-section:nth-of-type(2) { z-index: 99; }
+.profile-section:nth-of-type(3) { z-index: 98; }
+.profile-section:nth-of-type(4) { z-index: 97; }
+.profile-section:nth-of-type(5) { z-index: 96; }
+.profile-section:nth-of-type(6) { z-index: 95; }
+.profile-section:nth-of-type(7) { z-index: 94; }
 /* Stagger each card's entrance slightly so the page feels like it's
    settling into place rather than popping in all at once. */
 .profile-section:nth-of-type(1) { animation-delay: 0.02s; }
