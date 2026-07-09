@@ -81,7 +81,6 @@ export default function Directory({ session, onMessage, hideHeader = false, refe
   const [openProfile, setOpenProfile] = useState(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [filterOpen, setFilterOpen] = useState(false)
-  const [suggestionsDrawerOpen, setSuggestionsDrawerOpen] = useState(false)
 
   async function fetchPeople() {
     setLoading(true)
@@ -242,8 +241,16 @@ export default function Directory({ session, onMessage, hideHeader = false, refe
           )}
         </div>
         <div className="toolbar-buttons">
-          {!needle && activeFilterCount === 0 && similarPeople.length > 0 && (
-            <button className="suggestions-btn" onClick={() => setSuggestionsDrawerOpen(true)} aria-label="View connection suggestions">
+          {!needle && activeFilterCount === 0 && similarPeople.length > 0 && me?.industry && (
+            <button
+              className="suggestions-btn"
+              onClick={() => {
+                setFilters({ ...EMPTY_FILTERS, industries: [me.industry] })
+                setVisibleCount(PAGE_SIZE)
+                setQ('')
+              }}
+              aria-label="Filter by your industry"
+            >
               <span>👥 Your Industry</span>
             </button>
           )}
@@ -289,39 +296,6 @@ export default function Directory({ session, onMessage, hideHeader = false, refe
             Load more ({filtered.length - shown.length} remaining)
           </button>
         </div>
-      )}
-
-      {suggestionsDrawerOpen && (
-        <>
-          <div className="suggestions-drawer-backdrop" onClick={() => setSuggestionsDrawerOpen(false)} />
-          <aside className="suggestions-drawer">
-            <div className="suggestions-drawer-header">
-              <h3>Your Industry</h3>
-              <button className="modal-close" onClick={() => setSuggestionsDrawerOpen(false)} aria-label="Close suggestions">×</button>
-            </div>
-            <ul className="suggestions-drawer-list">
-              {similarPeople.map((p) => (
-                <li className="suggestion-item" key={p.id}>
-                  <button className="suggestion-profile" onClick={() => { setOpenProfile(p); setSuggestionsDrawerOpen(false); }}>
-                    <Avatar url={p.avatar_url} name={p.full_name} size={40} />
-                    <div className="suggestion-info">
-                      <span className="suggestion-name">{p.full_name || 'Alumnus'}</span>
-                      {p.company && <span className="suggestion-company">{p.company}</span>}
-                      {p.occupation && <span className="suggestion-occupation">{p.occupation}</span>}
-                    </div>
-                  </button>
-                  <button
-                    className="suggestion-message"
-                    onClick={() => messageWithIcebreaker(p)}
-                    aria-label={`Message ${p.full_name || 'this Eendragter'}`}
-                  >
-                    <EnvelopeIcon />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        </>
       )}
 
       {filterOpen && (
