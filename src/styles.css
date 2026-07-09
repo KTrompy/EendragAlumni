@@ -331,17 +331,24 @@ input, textarea, select { font: inherit; }
   margin: 0 auto;
   display: flex;
   align-items: flex-start;
+  gap: 20px;
 }
+/* Rounded card, same border-radius and left edge as .hero-banner so the two
+   line up visually — floats with a gap top/bottom/right instead of running
+   flush from the header all the way down with a plain divider line. */
 .sidebar {
   width: 216px;
   flex-shrink: 0;
   position: sticky;
-  top: 65px;
-  height: calc(100vh - 65px);
+  top: 85px;
+  height: calc(100vh - 105px);
   display: flex;
   flex-direction: column;
   background: var(--card);
-  border-right: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: var(--shadow-card);
+  margin: 20px 0;
   padding: 18px 12px;
   overflow-y: auto;
 }
