@@ -10,7 +10,6 @@ export default function MultiSelectAutocomplete({
   onChange,
   options,
   placeholder,
-  limit = 8,
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -26,10 +25,9 @@ export default function MultiSelectAutocomplete({
 
   const needle = query.trim().toLowerCase()
   const available = options.filter((o) => !values.includes(o))
-  const suggestions = (needle
+  const suggestions = needle
     ? available.filter((o) => o.toLowerCase().includes(needle))
     : available
-  ).slice(0, limit)
 
   function pick(option) {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
