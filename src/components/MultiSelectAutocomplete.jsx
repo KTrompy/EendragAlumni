@@ -24,6 +24,8 @@ export default function MultiSelectAutocomplete({
   }
   function handleFocus() {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
+    // Open the dropdown to show suggestions; if query is empty,
+    // it will show all available options
     setOpen(true)
   }
 
@@ -75,7 +77,7 @@ export default function MultiSelectAutocomplete({
       <div className="city-autocomplete">
         <input
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onChange={(e) => { setQuery(e.target.value) }}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
