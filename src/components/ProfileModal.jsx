@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { PhotoBlock } from './Directory.jsx'
+import { normalizeExpertise } from '../utils.js'
 
 const dash = '—'
 
@@ -13,6 +14,20 @@ function Fact({ label, value }) {
       <span className="profile-fact-label">{label}</span>
       <span className={value === dash ? 'profile-fact-value muted' : 'profile-fact-value'}>{value}</span>
     </div>
+  )
+}
+
+// Read-only tag list — same look as the card grid's expertise/category
+// chips, reused here so a business profile section reads consistently
+// whether you're scanning the grid or looking at the full modal.
+function Chips({ items }) {
+  if (!items || items.length === 0) return null
+  return (
+    <ul className="person-tags modal-chips">
+      {items.map((item) => (
+        <li key={item} className="person-tag">{item}</li>
+      ))}
+    </ul>
   )
 }
 
@@ -35,6 +50,17 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
   const locationLine = p.city && p.country
     ? `${p.city}, ${p.country}`
     : (p.country || p.city || '')
+
+  const expertise = normalizeExpertise(p.expertise)
+  const servicesOffered = Array.isArray(p.services_offered) ? p.services_offered : []
+  const businessCategories = Array.isArray(p.business_categories) ? p.business_categories : []
+  const geographicFocus = Array.isArray(p.geographic_focus) ? p.geographic_focus : []
+  // Only show the business section at all if there's something in it —
+  // most fields here default to blank/true and shouldn't clutter the
+  // profile of someone who never opened that part of the form.
+  const hasBusinessProfile = expertise.length > 0 || servicesOffered.length > 0
+    || businessCategories.length > 0 || geographicFocus.length > 0
+    || !!p.business_website || !!p.availability
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -69,6 +95,58 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
             <div className="profile-card-section">
               <h3 className="profile-card-section-title">About</h3>
               <p className="profile-card-bio">{p.bio}</p>
+            </div>
+          )}
+
+          {hasBusinessProfile && (
+            <div className="profile-card-section">
+              <h3 className="profile-card-section-title">Business profile</h3>
+
+              <div className="profile-fact-strip">
+                <Fact label="Open to opportunities" value={p.is_open_to_opportunities ? 'Yes' : 'Not right now'} />
+                {p.availability && <Fact label="Availability" value={p.availability} />}
+                {p.business_website && (
+                  <div className="profile-fact">
+                    <span className="profile-fact-label">Website</span>
+                    <a
+                      className="profile-fact-value"
+                      href={p.business_website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {p.business_website.replace(/^https?:\/\//, '')}
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {expertise.length > 0 && (
+                <div className="profile-card-subsection">
+                  <span className="profile-fact-label">Main areas of expertise</span>
+                  <Chips items={expertise} />
+                </div>
+              )}
+
+              {servicesOffered.length > 0 && (
+                <div className="profile-card-subsection">
+                  <span className="profile-fact-label">Can offer other Eendragters</span>
+                  <Chips items={servicesOffered} />
+                </div>
+              )}
+
+              {businessCategories.length > 0 && (
+                <div className="profile-card-subsection">
+                  <span className="profile-fact-label">Business categories</span>
+                  <Chips items={businessCategories} />
+                </div>
+              )}
+
+              {geographicFocus.length > 0 && (
+                <div className="profile-card-subsection">
+                  <span className="profile-fact-label">Geographic focus</span>
+                  <Chips items={geographicFocus} />
+                </div>
+              )}
             </div>
           )}
         </div>

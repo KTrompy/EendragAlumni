@@ -1844,6 +1844,16 @@ button.delete-danger svg { flex-shrink: 0; }
   white-space: pre-wrap;
   margin: 0;
 }
+.profile-card-subsection { margin-top: 14px; }
+.profile-card-subsection .modal-chips { margin-top: 6px; }
+.modal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+}
+.modal-chips .person-tag { font-size: 12px; padding: 4px 10px; }
 
 .modal-footer {
   padding: 14px 20px;

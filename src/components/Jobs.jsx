@@ -17,7 +17,8 @@ const PAGE_SIZE = 20
 // same shape Directory/Events already pull for the same purpose.
 const POSTER_FIELDS =
   'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
-  'is_current_resident, linkedin_url, bio'
+  'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
+  'business_categories, availability, geographic_focus, is_open_to_opportunities'
 
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
 const MAX_LOGO_SIZE = 3 * 1024 * 1024
