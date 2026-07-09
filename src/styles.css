@@ -3171,6 +3171,10 @@ button.delete-danger svg { flex-shrink: 0; }
    just by having a high z-index; the whole section it lives in needs to
    out-rank its siblings. */
 .profile-section-location { position: relative; z-index: 5; }
+/* Career sits above Location in the DOM but its Industry suggestions
+   list still needs to float over the Location card below it, so it
+   needs an even higher stacking order than .profile-section-location. */
+.profile-section-career { position: relative; z-index: 6; }
 /* Stagger each card's entrance slightly so the page feels like it's
    settling into place rather than popping in all at once. */
 .profile-section:nth-of-type(1) { animation-delay: 0.02s; }

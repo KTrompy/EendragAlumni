@@ -332,7 +332,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       </div>
 
       {/* Career Section */}
-      <div className="profile-section">
+      <div className="profile-section profile-section-career">
         <h3 className="profile-section-title">Career</h3>
 
         <label className="field"><span>Industry</span>
