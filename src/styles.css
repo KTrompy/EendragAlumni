@@ -380,7 +380,7 @@ input, textarea, select { font: inherit; }
 .sidebar-link.signout:hover { background: var(--orange-soft); color: var(--danger); }
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 65px); }
 
-.content { flex: 1; padding: 28px 24px 60px; }
+.content { flex: 1; padding: 18px 24px 60px; }
 .panel.narrow { max-width: 620px; margin: 0 auto; }
 .panel-title {
   position: relative;
@@ -2275,14 +2275,14 @@ button.delete-danger svg { flex-shrink: 0; }
 .feed-layout {
   display: grid;
   grid-template-columns: 1fr 280px;
-  gap: 24px;
+  gap: 18px;
   align-items: start;
 }
 .feed-main { min-width: 0; }
 .feed-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   position: sticky;
   top: 85px;
 }
@@ -5329,7 +5329,7 @@ button.delete-danger svg { flex-shrink: 0; }
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 18px 22px;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 .home-banner-body { flex: 1 1 220px; min-width: 0; }
 .home-banner-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }

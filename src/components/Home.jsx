@@ -169,7 +169,7 @@ export default function Home({ session, profile }) {
             </ul>
           )}
 
-          <div className="home-section-head" style={{ marginTop: 26 }}>
+          <div className="home-section-head" style={{ marginTop: 16 }}>
             <h3 className="feed-section-label">My Groups</h3>
             <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/groups')}>See all groups</button>
           </div>
