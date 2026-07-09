@@ -39,7 +39,16 @@ export function useIsWide(breakpoint = 900) {
 // and unwrap that case so the UI never shows raw brackets/quotes, on top
 // of the older legacy case where expertise was a single plain string.
 export function normalizeExpertise(value) {
-  if (Array.isArray(value)) return value
+  if (Array.isArray(value)) {
+    // A real text[] column can still end up holding a single element that's
+    // itself the JSON-stringified array (saved back before the column was
+    // migrated, then re-saved as one text[] entry instead of several) —
+    // e.g. ['["Financial Accounting & Reporting","Personal Tax"]'] instead
+    // of ['Financial Accounting & Reporting', 'Personal Tax']. Unwrap that
+    // one level so the UI never shows raw brackets/quotes in a single chip.
+    if (value.length === 1 && typeof value[0] === 'string') return normalizeExpertise(value[0])
+    return value.filter((v) => typeof v === 'string' && v)
+  }
   if (!value) return []
   if (typeof value === 'string') {
     const trimmed = value.trim()
