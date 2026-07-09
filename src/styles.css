@@ -4430,13 +4430,17 @@ button.delete-danger svg { flex-shrink: 0; }
 /* On narrow screens the search box (flex: 1) and the two toolbar buttons
    (natural width) end up fighting for the same row — since the buttons'
    width is content-based, not much room is left for the search box, so
-   all three end up roughly the same, cramped width. Give the search box
-   its own full-width row instead, so it stays long and readable, and let
-   "Your Industry" / "Filters" wrap onto a second row below it. */
+   all three end up roughly the same, cramped width. Keep Search + Filters
+   together on the top row (search still gets the lion's share of the
+   width), and drop "Your Industry" to its own row below — `display:
+   contents` unwraps .toolbar-buttons so its two children can be
+   reordered independently instead of moving as one block. */
 @media (max-width: 640px) {
   .eendragters-page .directory-toolbar { flex-wrap: wrap; }
-  .eendragters-page .directory-toolbar .search-wrap { flex: 1 1 100%; }
-  .eendragters-page .toolbar-buttons { flex: 1 1 100%; }
+  .eendragters-page .toolbar-buttons { display: contents; }
+  .eendragters-page .directory-toolbar .search-wrap { flex: 1 1 auto; order: 1; }
+  .eendragters-page .filters-toggle-btn { order: 2; }
+  .eendragters-page .suggestions-btn { order: 3; flex: 1 1 100%; justify-content: center; }
 }
 
 /* ---------- Card grid + person card ---------- */
