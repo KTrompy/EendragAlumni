@@ -1,18 +1,28 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { INDUSTRIES } from '../constants.js'
+import {
+  INDUSTRIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED,
+  AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS,
+} from '../constants.js'
 import { geocodeCity } from '../geocode.js'
+import { normalizeExpertise } from '../utils.js'
 import { Avatar } from './Directory.jsx'
 import PhotoCropper from './PhotoCropper.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
+import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 
 // One question per screen, skip-friendly, saved in a single write at the
 // end. Shown full-screen (like Auth) the first time a member logs in with
-// no name on file yet — see App.jsx.
+// no name on file yet — see App.jsx. Mirrors every question the Profile
+// page can ask, including its collapsible "Business profile" section
+// (opportunities/availability/expertise/services/geography/website), so
+// nothing is left for someone to discover only by opening My Profile later.
 const QUESTION_KEYS = [
   'name', 'status', 'year', 'degree', 'industry', 'occupation',
-  'company', 'country', 'city', 'linkedin', 'bio', 'photo',
+  'company', 'country', 'city', 'linkedin', 'bio',
+  'opportunities', 'availability', 'expertise', 'services', 'geography', 'website',
+  'photo',
 ]
 const STEPS = ['intro', ...QUESTION_KEYS, 'done']
 
@@ -30,6 +40,12 @@ export default function Onboarding({ session, profile, onDone }) {
     city: profile?.city || '',
     linkedin_url: profile?.linkedin_url || '',
     bio: profile?.bio || '',
+    is_open_to_opportunities: profile?.is_open_to_opportunities !== false,
+    availability: profile?.availability || '',
+    expertise: normalizeExpertise(profile?.expertise),
+    services_offered: Array.isArray(profile?.services_offered) ? profile.services_offered : [],
+    geographic_focus: Array.isArray(profile?.geographic_focus) ? profile.geographic_focus : [],
+    business_website: profile?.business_website || '',
   })
   const [customIndustry, setCustomIndustry] = useState(
     profile?.industry && !INDUSTRIES.includes(profile.industry) ? profile.industry : ''
@@ -50,6 +66,17 @@ export default function Onboarding({ session, profile, onDone }) {
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setEmptyNotice(false) }
   function onEnter(e) { if (e.key === 'Enter') handleContinue() }
 
+  // Same toggle-a-tag-in-an-array behaviour as Profile's Business profile
+  // section (Services offered / Geographic focus tag grids).
+  function toggleTag(field, tag) {
+    setForm((f) => {
+      const arr = f[field] || []
+      const newArr = arr.includes(tag) ? arr.filter((t) => t !== tag) : [...arr, tag]
+      return { ...f, [field]: newArr }
+    })
+    setEmptyNotice(false)
+  }
+
   // Whether the current question has nothing in it — only meaningful for
   // free-text/select questions. Choice-style questions (status) and country
   // always have a default selected, so there's nothing to nudge.
@@ -64,7 +91,14 @@ export default function Onboarding({ session, profile, onDone }) {
       case 'city': return !form.city.trim()
       case 'linkedin': return !form.linkedin_url.trim()
       case 'bio': return !form.bio.trim()
+      case 'availability': return !form.availability
+      case 'expertise': return form.expertise.length === 0
+      case 'services': return form.services_offered.length === 0
+      case 'geography': return form.geographic_focus.length === 0
+      case 'website': return !form.business_website.trim()
       case 'photo': return !avatarUrl
+      // "opportunities" is a choice with an always-on default (like
+      // "status"), so there's never actually nothing selected to nudge.
       default: return false
     }
   }
@@ -120,6 +154,12 @@ export default function Onboarding({ session, profile, onDone }) {
       city: form.city,
       linkedin_url: form.linkedin_url.trim(),
       bio: form.bio,
+      is_open_to_opportunities: form.is_open_to_opportunities,
+      availability: form.availability,
+      expertise: form.expertise,
+      services_offered: form.services_offered,
+      geographic_focus: form.geographic_focus,
+      business_website: form.business_website.trim(),
     }
     if (avatarUrl) payload.avatar_url = avatarUrl
     if (cityCoords) {
@@ -345,6 +385,108 @@ export default function Onboarding({ session, profile, onDone }) {
               value={form.bio}
               onChange={(e) => set('bio', e.target.value)}
               placeholder="What you've been up to since Eendrag…"
+            />
+          </>
+        )
+
+      case 'opportunities':
+        return (
+          <>
+            <h2 className="onboarding-question">Are you open to business opportunities?</h2>
+            <div className="onboarding-choice-row">
+              <button
+                className={form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
+                onClick={() => set('is_open_to_opportunities', true)}
+              >
+                Yes, reach out
+              </button>
+              <button
+                className={!form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
+                onClick={() => set('is_open_to_opportunities', false)}
+              >
+                Not right now
+              </button>
+            </div>
+          </>
+        )
+
+      case 'availability':
+        return (
+          <>
+            <h2 className="onboarding-question">What's your current availability?</h2>
+            <div className="select-wrap onboarding-select">
+              <select value={form.availability} onChange={(e) => set('availability', e.target.value)}>
+                <option value="">Select your availability</option>
+                {AVAILABILITY_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            </div>
+          </>
+        )
+
+      case 'expertise':
+        return (
+          <>
+            <h2 className="onboarding-question">What are your main areas of expertise?</h2>
+            <p className="onboarding-hint">Pick as many as apply — or type your own</p>
+            <MultiSelectAutocomplete
+              values={form.expertise}
+              onChange={(value) => set('expertise', value)}
+              options={EXPERTISE_BY_INDUSTRY[form.industry] || EXPERTISE_OPTIONS}
+              placeholder={form.industry ? 'Search your expertise, or type your own' : 'Pick an industry above to see relevant options'}
+              allowCustom
+            />
+          </>
+        )
+
+      case 'services':
+        return (
+          <>
+            <h2 className="onboarding-question">What can you offer other Eendragters?</h2>
+            <div className="tags-grid compact">
+              {SERVICES_OFFERED.map((service) => (
+                <button
+                  key={service}
+                  type="button"
+                  className={`tag-btn ${form.services_offered.includes(service) ? 'selected' : ''}`}
+                  onClick={() => toggleTag('services_offered', service)}
+                >
+                  {service}
+                </button>
+              ))}
+            </div>
+          </>
+        )
+
+      case 'geography':
+        return (
+          <>
+            <h2 className="onboarding-question">What's your geographic focus?</h2>
+            <div className="tags-grid compact">
+              {GEOGRAPHIC_FOCUS.map((geo) => (
+                <button
+                  key={geo}
+                  type="button"
+                  className={`tag-btn ${form.geographic_focus.includes(geo) ? 'selected' : ''}`}
+                  onClick={() => toggleTag('geographic_focus', geo)}
+                >
+                  {geo}
+                </button>
+              ))}
+            </div>
+          </>
+        )
+
+      case 'website':
+        return (
+          <>
+            <h2 className="onboarding-question">Got a business website or portfolio?</h2>
+            <input
+              className="onboarding-input"
+              type="url"
+              value={form.business_website}
+              onChange={(e) => set('business_website', e.target.value)}
+              onKeyDown={onEnter}
+              placeholder="https://yourwebsite.com"
             />
           </>
         )
