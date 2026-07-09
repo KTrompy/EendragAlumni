@@ -1041,7 +1041,8 @@ button.delete-danger svg { flex-shrink: 0; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 18px;
+  padding: 10px 18px;
+  height: 40px;
   background: var(--card);
   border: 1px solid var(--line-strong);
   border-radius: 999px;
@@ -4372,7 +4373,8 @@ button.delete-danger svg { flex-shrink: 0; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 18px;
+  padding: 10px 18px;
+  height: 40px;
   background: var(--card);
   border: 1px solid var(--line-strong);
   border-radius: 999px;
