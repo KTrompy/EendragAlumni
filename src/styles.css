@@ -4394,6 +4394,12 @@ button.delete-danger svg { flex-shrink: 0; }
   box-shadow: 0 8px 18px rgba(26, 26, 26, 0.1);
 }
 
+.eendragters-page .suggestions-btn.on {
+  background: var(--orange-soft);
+  border-color: var(--orange);
+  color: var(--orange-dark);
+}
+
 
 /* ---------- Card grid + person card ---------- */
 .eendragters-page .card-grid { gap: 18px; }

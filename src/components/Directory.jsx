@@ -241,15 +241,21 @@ export default function Directory({ session, onMessage, hideHeader = false, refe
           )}
         </div>
         <div className="toolbar-buttons">
-          {!needle && activeFilterCount === 0 && similarPeople.length > 0 && me?.industry && (
+          {!needle && similarPeople.length > 0 && me?.industry && (
             <button
-              className="suggestions-btn"
+              className={`suggestions-btn ${filters.industries.includes(me.industry) ? 'on' : ''}`}
               onClick={() => {
-                setFilters({ ...EMPTY_FILTERS, industries: [me.industry] })
+                if (filters.industries.includes(me.industry)) {
+                  // Clear the industry filter
+                  setFilters(EMPTY_FILTERS)
+                } else {
+                  // Apply the industry filter
+                  setFilters({ ...EMPTY_FILTERS, industries: [me.industry] })
+                }
                 setVisibleCount(PAGE_SIZE)
                 setQ('')
               }}
-              aria-label="Filter by your industry"
+              aria-label={filters.industries.includes(me.industry) ? 'Clear industry filter' : 'Filter by your industry'}
             >
               <span>👥 Your Industry</span>
             </button>
