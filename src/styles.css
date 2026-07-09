@@ -268,14 +268,16 @@ input, textarea, select { font: inherit; }
   height: 100%;
   object-fit: cover;
 }
+/* Photo is shown clean/unfiltered — this is just a bottom scrim so the
+   overlaid title text stays legible, not a color wash over the image. */
 .hero-banner-overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    115deg,
-    rgba(58, 15, 27, 0.88) 0%,
-    rgba(90, 26, 43, 0.65) 45%,
-    rgba(232, 97, 28, 0.35) 100%
+    to top,
+    rgba(0, 0, 0, 0.62) 0%,
+    rgba(0, 0, 0, 0.22) 42%,
+    rgba(0, 0, 0, 0) 68%
   );
 }
 .hero-banner-content {
@@ -284,27 +286,28 @@ input, textarea, select { font: inherit; }
   height: 100%;
   max-width: 1360px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 24px 18px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-end;
   color: #fff;
 }
 .hero-banner-title {
   font-family: var(--display);
   font-weight: 900;
-  font-size: 36px;
+  font-size: 34px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 .hero-banner-motto {
-  margin-top: 8px;
+  margin-top: 6px;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--orange-soft);
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 @media (max-width: 720px) {
   .hero-banner { height: 150px; }
