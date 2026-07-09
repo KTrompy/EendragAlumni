@@ -214,20 +214,10 @@ export default function Directory({ session, onMessage, hideHeader = false, refe
   // to discover even without a search term. Only shown on the default,
   // unfiltered view so it doesn't compete with an active search.
   const similarPeople = useMemo(() => {
-    if (!me) return []
+    if (!me || !me.industry) return []
     return people
-      .filter((p) => p.id !== me.id)
-      .map((p) => {
-        let score = 0
-        if (me.grad_year && p.grad_year && p.grad_year === me.grad_year) score += 2
-        if (me.city && p.city && p.city.trim().toLowerCase() === me.city.trim().toLowerCase()) score += 2
-        if (me.industry && p.industry && p.industry === me.industry) score += 1
-        return { p, score }
-      })
-      .filter((row) => row.score > 0)
-      .sort((a, b) => b.score - a.score)
+      .filter((p) => p.id !== me.id && p.industry && p.industry === me.industry)
       .slice(0, 6)
-      .map((row) => row.p)
   }, [people, me])
 
   return (

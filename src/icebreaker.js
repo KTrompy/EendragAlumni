@@ -10,12 +10,6 @@ export function buildIcebreaker(me, them) {
 
   if (!me) return `Hi ${firstName}!`
 
-  if (me.grad_year && them.grad_year && me.grad_year === them.grad_year) {
-    return `Hi ${firstName}! Saw we're both Class of ${them.grad_year} — how's it going?`
-  }
-  if (me.city && them.city && me.city.trim().toLowerCase() === them.city.trim().toLowerCase()) {
-    return `Hi ${firstName}! Saw we're both in ${them.city} — good to connect with a fellow Eendragter nearby.`
-  }
   if (me.industry && them.industry && me.industry === them.industry) {
     return `Hi ${firstName}! Saw we're both in ${them.industry} — would love to connect.`
   }
@@ -23,22 +17,13 @@ export function buildIcebreaker(me, them) {
 }
 
 // A short label describing *why* two profiles were matched for the
-// "People like you" row — same fields the similarity score in Directory.jsx
-// is built from (grad year, city, industry). Returns every criterion that
-// matched (not just the first) so the badge reflects the full overlap.
+// "People like you" row — now based on industry match only.
 export function matchReason(me, them) {
   if (!me || !them) return null
-  const reasons = []
-  if (me.grad_year && them.grad_year && me.grad_year === them.grad_year) {
-    reasons.push(`Class of ${them.grad_year}`)
-  }
-  if (me.city && them.city && me.city.trim().toLowerCase() === them.city.trim().toLowerCase()) {
-    reasons.push(them.city)
-  }
   if (me.industry && them.industry && me.industry === them.industry) {
-    reasons.push(them.industry)
+    return them.industry
   }
-  return reasons.length ? reasons.join(' · ') : null
+  return null
 }
 
 // Event-specific opener — once you've both RSVP'd "going" to the same
