@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, SERVICES_OFFERED, BUSINESS_CATEGORIES, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
+import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, BUSINESS_CATEGORIES, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
 import ListAutocomplete from './ListAutocomplete.jsx'
+import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import ClearableInput from './ClearableInput.jsx'
 
 const EMPTY = {
@@ -16,7 +17,7 @@ const EMPTY = {
   bio: '',
   linkedin_url: '',
   is_current_resident: false,
-  expertise: '',
+  expertise: [],
   services_offered: [],
   business_website: '',
   business_categories: [],
@@ -57,7 +58,12 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
         is_current_resident: !!profile.is_current_resident,
-        expertise: profile.expertise || '',
+        // Legacy profiles may still have a single string value saved from
+        // before "expertise" became multi-select — wrap it in an array so
+        // the chip UI and save payload always deal with a list.
+        expertise: Array.isArray(profile.expertise)
+          ? profile.expertise
+          : (profile.expertise ? [profile.expertise] : []),
         services_offered: Array.isArray(profile.services_offered) ? profile.services_offered : [],
         business_website: profile.business_website || '',
         business_categories: Array.isArray(profile.business_categories) ? profile.business_categories : [],
@@ -82,6 +88,18 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   useEffect(() => { if (saveRef) saveRef.current = save }) // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false); setDirty(true) }
+
+  // Changing industry also drops any picked expertise tags that don't
+  // belong to the new industry's list, so switching from e.g. "Legal" to
+  // "Software Engineering & Development" doesn't leave "Litigation" behind.
+  function setIndustry(value) {
+    setForm((f) => {
+      const nextOptions = EXPERTISE_BY_INDUSTRY[value] || EXPERTISE_OPTIONS
+      return { ...f, industry: value, expertise: f.expertise.filter((e) => nextOptions.includes(e)) }
+    })
+    setSaved(false)
+    setDirty(true)
+  }
 
   function toggleTag(field, tag) {
     setForm((f) => {
@@ -338,7 +356,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <label className="field"><span>Industry</span>
           <ListAutocomplete
             value={form.industry}
-            onChange={(value) => set('industry', value)}
+            onChange={setIndustry}
             options={INDUSTRIES}
             placeholder="Search or type your industry"
             clearable
@@ -466,14 +484,13 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               </div>
             </div>
 
-            {/* Main expertise */}
-            <label className="field"><span>Main area of expertise</span>
-              <ListAutocomplete
-                value={form.expertise}
+            {/* Main expertise — options are scoped to whichever industry is selected above */}
+            <label className="field"><span>Main areas of expertise</span>
+              <MultiSelectAutocomplete
+                values={form.expertise}
                 onChange={(value) => set('expertise', value)}
-                options={EXPERTISE_OPTIONS}
-                placeholder="Search your expertise"
-                clearable
+                options={EXPERTISE_BY_INDUSTRY[form.industry] || EXPERTISE_OPTIONS}
+                placeholder={form.industry ? 'Search your expertise' : 'Pick an industry above to see relevant options'}
               />
             </label>
 

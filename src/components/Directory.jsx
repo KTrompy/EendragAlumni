@@ -427,7 +427,12 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
           <p className="person-occupation">{roleLine || ' '}</p>
           <p className="person-location">{locationLine || ' '}</p>
           <p className="person-industry">{p.industry || ' '}</p>
-          {p.expertise && <p className="person-expertise">{p.expertise}</p>}
+          {(() => {
+            // Legacy profiles may still have expertise saved as a single
+            // string rather than an array — handle both.
+            const expertise = Array.isArray(p.expertise) ? p.expertise : (p.expertise ? [p.expertise] : [])
+            return expertise.length > 0 && <p className="person-expertise">{expertise.join(' • ')}</p>
+          })()}
           {p.business_categories && p.business_categories.length > 0 && (
             <div className="person-tags">
               {p.business_categories.slice(0, 2).map((cat) => (
