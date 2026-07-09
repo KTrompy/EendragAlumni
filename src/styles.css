@@ -4438,13 +4438,13 @@ button.delete-danger svg { flex-shrink: 0; }
 @media (max-width: 640px) {
   .eendragters-page .directory-toolbar { flex-wrap: wrap; }
   .eendragters-page .toolbar-buttons { display: contents; }
-  /* Filters keeps its natural width no matter how wide its "N filters
-     applied" badge gets (flex-shrink: 0) — the search box absorbs
-     whatever space is left (min-width: 0 lets it shrink all the way down
-     instead of pushing Filters into the wrap), so the two never fight
-     over the row and Filters can't get bumped onto Your Industry's line. */
+  /* Filters stays a normal, flexible flex item (no width locked in) —
+     min-width: 0 on the search box is what actually does the work: it
+     lets the search box give up as much of its own space as needed, so
+     Filters always gets to keep its full content (including a wider
+     badge) without ever being squeezed onto Your Industry's line. */
   .eendragters-page .directory-toolbar .search-wrap { flex: 1 1 auto; min-width: 0; order: 1; }
-  .eendragters-page .filters-toggle-btn { order: 2; flex-shrink: 0; }
+  .eendragters-page .filters-toggle-btn { order: 2; }
   .eendragters-page .suggestions-btn { order: 3; flex: 1 1 100%; justify-content: center; }
 }
 
