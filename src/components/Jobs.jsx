@@ -10,6 +10,7 @@ import JobModal from './JobModal.jsx'
 import { useToast } from './Toast.jsx'
 import { buildIcebreaker, matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
+import { useIsWide } from '../utils.js'
 
 const NEW_WINDOW_MS = 48 * 60 * 60 * 1000 // how recent counts as "New"
 const PAGE_SIZE = 20
@@ -75,6 +76,7 @@ export default function Jobs({ session, profile, onMessage }) {
   const [savedJobs, setSavedJobs] = useState([])
   const [savedLoading, setSavedLoading] = useState(false)
   const showToast = useToast()
+  const isWide = useIsWide(900)
 
   async function loadSavedIds() {
     const { data } = await supabase.from('saved_jobs').select('job_id').eq('user_id', session.user.id)
@@ -166,7 +168,7 @@ export default function Jobs({ session, profile, onMessage }) {
 
   // Lock body scroll while the filter drawer is open, and let Escape close it.
   useEffect(() => {
-    if (!filterOpen) return
+    if (!filterOpen || isWide) return
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     function onKey(e) { if (e.key === 'Escape') setFilterOpen(false) }
@@ -175,7 +177,7 @@ export default function Jobs({ session, profile, onMessage }) {
       document.body.style.overflow = prevOverflow
       document.removeEventListener('keydown', onKey)
     }
-  }, [filterOpen])
+  }, [filterOpen, isWide])
 
   async function removeJob(id) {
     const { error } = await supabase.from('jobs').delete().eq('id', id)
@@ -244,13 +246,66 @@ export default function Jobs({ session, profile, onMessage }) {
 
   const activeFilterCount = Object.values(filters).filter((v) => v !== '' && v !== false).length
 
+  // Shared between the persistent "Filter by" sidebar (wide screens) and the
+  // slide-in drawer (narrow) — same fields either way, just a different shell.
+  const filterFields = (
+    <>
+      <div className="filter-section filter-section-primary">
+        <div className="filter-section-body">
+          <div className="filter-radio-row">
+            <button className={filters.type === '' ? 'on' : ''} onClick={() => set('type', '')}>All</button>
+            {TYPES.map((t) => (
+              <button key={t} className={filters.type === t ? 'on' : ''} onClick={() => set('type', t)}>{t}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <FilterSection title="Remote">
+        <div className="filter-radio-row">
+          <button className={!filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', false)}>All</button>
+          <button className={filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', true)}>🌍 Remote-friendly</button>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Posted">
+        <div className="filter-radio-row">
+          <button className={filters.postedWithin === '' ? 'on' : ''} onClick={() => set('postedWithin', '')}>Any time</button>
+          <button className={filters.postedWithin === '7' ? 'on' : ''} onClick={() => set('postedWithin', '7')}>Past week</button>
+          <button className={filters.postedWithin === '30' ? 'on' : ''} onClick={() => set('postedWithin', '30')}>Past month</button>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Company">
+        <div className="select-wrap">
+          <select value={filters.company} onChange={(e) => set('company', e.target.value)}>
+            <option value="">All companies</option>
+            {companyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Location">
+        <div className="select-wrap">
+          <select value={filters.location} onChange={(e) => set('location', e.target.value)}>
+            <option value="">All locations</option>
+            {locationOptions.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+      </FilterSection>
+    </>
+  )
+
   return (
     <section className="panel">
       <div className="panel-header-row">
         <div>
-          <h2 className="panel-title">Job board</h2>
+          <h2 className="panel-title">Career &amp; Volunteer Opportunities</h2>
           <p className="panel-sub">Roles and internships posted by Eendragters, for Eendragters.</p>
         </div>
+        {canPost && !showForm && isWide && (
+          <button className="btn primary" onClick={() => setShowForm(true)}>Post a job</button>
+        )}
       </div>
 
       {showForm && (
@@ -278,6 +333,8 @@ export default function Jobs({ session, profile, onMessage }) {
         </div>
       )}
 
+      <div className="directory-layout">
+      <div className="directory-main">
       <div className="directory-toolbar">
         <div className="search-wrap">
           <input
@@ -299,11 +356,13 @@ export default function Jobs({ session, profile, onMessage }) {
           Saved
           {savedIds.size > 0 && <span className="filters-toggle-badge">{savedIds.size}</span>}
         </button>
-        <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
-          <FilterIcon />
-          Filters
-          {activeFilterCount > 0 && <span className="filters-toggle-badge">{activeFilterCount}</span>}
-        </button>
+        {!isWide && (
+          <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
+            <FilterIcon />
+            Filters
+            {activeFilterCount > 0 && <span className="filters-toggle-badge">{activeFilterCount}</span>}
+          </button>
+        )}
       </div>
 
       {!savedOnly && (
@@ -326,69 +385,6 @@ export default function Jobs({ session, profile, onMessage }) {
             onAction={jobs.length === 0 ? () => setShowForm(true) : clearFilters}
           />
         )
-      )}
-
-      {filterOpen && (
-        <>
-          <div className="filter-backdrop" onClick={() => setFilterOpen(false)} />
-          <aside className="filter-panel open" aria-label="Filter roles">
-            <div className="filter-panel-header">
-              <h3>Filter · {activeFilterCount || 'none'}</h3>
-              <button className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
-            </div>
-
-            <div className="filter-section filter-section-primary">
-              <div className="filter-section-body">
-                <div className="filter-radio-row">
-                  <button className={filters.type === '' ? 'on' : ''} onClick={() => set('type', '')}>All</button>
-                  {TYPES.map((t) => (
-                    <button key={t} className={filters.type === t ? 'on' : ''} onClick={() => set('type', t)}>{t}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <FilterSection title="Remote">
-              <div className="filter-radio-row">
-                <button className={!filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', false)}>All</button>
-                <button className={filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', true)}>🌍 Remote-friendly</button>
-              </div>
-            </FilterSection>
-
-            <FilterSection title="Posted">
-              <div className="filter-radio-row">
-                <button className={filters.postedWithin === '' ? 'on' : ''} onClick={() => set('postedWithin', '')}>Any time</button>
-                <button className={filters.postedWithin === '7' ? 'on' : ''} onClick={() => set('postedWithin', '7')}>Past week</button>
-                <button className={filters.postedWithin === '30' ? 'on' : ''} onClick={() => set('postedWithin', '30')}>Past month</button>
-              </div>
-            </FilterSection>
-
-            <FilterSection title="Company">
-              <div className="select-wrap">
-                <select value={filters.company} onChange={(e) => set('company', e.target.value)}>
-                  <option value="">All companies</option>
-                  {companyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            </FilterSection>
-
-            <FilterSection title="Location">
-              <div className="select-wrap">
-                <select value={filters.location} onChange={(e) => set('location', e.target.value)}>
-                  <option value="">All locations</option>
-                  {locationOptions.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-            </FilterSection>
-
-            <div className="filter-panel-footer">
-              <button className="filter-clear" onClick={clearFilters}>Clear all filters</button>
-              <button className="btn primary wide" onClick={() => setFilterOpen(false)}>
-                Show {shown.length} {shown.length === 1 ? 'result' : 'results'}
-              </button>
-            </div>
-          </aside>
-        </>
       )}
 
       <ul className="job-list">
@@ -540,6 +536,42 @@ export default function Jobs({ session, profile, onMessage }) {
             ? <button className="link-btn" onClick={() => setShowForm(true)}>Post one</button>
             : 'Check back soon for more.'}
         </p>
+      )}
+      </div>
+
+      {isWide && (
+        <aside className="filter-panel persistent" aria-label="Filter roles">
+          <div className="filter-panel-header"><h3><FilterIcon /> Filter by</h3></div>
+          {filterFields}
+          <div className="filter-panel-footer static">
+            <button className="filter-clear" onClick={clearFilters}>Reset</button>
+          </div>
+          {canPost && (
+            <div className="jobs-panel-post-cta">
+              <button className="btn primary wide" onClick={() => setShowForm(true)}>Post a job</button>
+            </div>
+          )}
+        </aside>
+      )}
+      </div>
+
+      {!isWide && filterOpen && (
+        <>
+          <div className="filter-backdrop" onClick={() => setFilterOpen(false)} />
+          <aside className="filter-panel open" aria-label="Filter roles">
+            <div className="filter-panel-header">
+              <h3>Filter · {activeFilterCount || 'none'}</h3>
+              <button className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
+            </div>
+            {filterFields}
+            <div className="filter-panel-footer">
+              <button className="filter-clear" onClick={clearFilters}>Clear all filters</button>
+              <button className="btn primary wide" onClick={() => setFilterOpen(false)}>
+                Show {shown.length} {shown.length === 1 ? 'result' : 'results'}
+              </button>
+            </div>
+          </aside>
+        </>
       )}
 
       {/* JobModal is rendered before ProfileModal on purpose — clicking the

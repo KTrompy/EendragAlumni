@@ -1,4 +1,33 @@
 // Small shared helpers used across components.
+import { useEffect, useState } from 'react'
+
+// Tracks whether the viewport is at/above `breakpoint` (default: the
+// desktop breakpoint the app already uses elsewhere, e.g. .sidebar /
+// .mobile-tabbar switch at 720px). Used to switch a filter panel between
+// "persistent sidebar column" (wide) and "slide-in drawer" (narrow)
+// without duplicating the panel's markup for each layout.
+// "Online" for the Directory's green dot / "Recently online" sort means
+// "had a heartbeat in the last few minutes" (see the App.jsx interval that
+// writes profiles.last_seen) — a deliberately loose window since the
+// heartbeat itself only fires every couple of minutes, not on every click.
+const ONLINE_WINDOW_MS = 5 * 60 * 1000
+export function isRecentlyOnline(lastSeen) {
+  if (!lastSeen) return false
+  return Date.now() - new Date(lastSeen).getTime() < ONLINE_WINDOW_MS
+}
+
+export function useIsWide(breakpoint = 900) {
+  const [isWide, setIsWide] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= breakpoint : true
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${breakpoint}px)`)
+    const handler = (e) => setIsWide(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [breakpoint])
+  return isWide
+}
 
 // Normalizes a profile's "expertise" value into a clean string array.
 //

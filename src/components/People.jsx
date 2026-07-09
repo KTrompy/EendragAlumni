@@ -1,15 +1,21 @@
 import { useSearchParams } from 'react-router-dom'
 import Directory from './Directory.jsx'
 import AlumniMap from './AlumniMap.jsx'
+import { useDirectoryFilters, DirectoryToolbar, DirectoryFilterPanel } from './DirectoryFilters.jsx'
 
 // Directory and the alumni map both answer the same question — "find an
 // Eendragter" — so they live under one nav item with a view toggle instead
 // of splitting "search for a person" and "browse a map of people" into two
 // separate places to check. The chosen view is kept in the URL (?view=map)
 // so a link to it is shareable and survives a refresh.
+//
+// Search/filters live here (one `useDirectoryFilters` instance) rather than
+// inside Directory or AlumniMap individually, so toggling List ↔ Map keeps
+// whatever you'd searched or filtered for instead of resetting it.
 export default function People({ session, onMessage, onGoToProfile, refetchTrigger }) {
   const [params, setParams] = useSearchParams()
   const view = params.get('view') === 'map' ? 'map' : 'list'
+  const f = useDirectoryFilters(session, refetchTrigger)
 
   function setView(next) {
     const p = new URLSearchParams(params)
@@ -37,9 +43,16 @@ export default function People({ session, onMessage, onGoToProfile, refetchTrigg
         </div>
       </div>
 
-      {view === 'list'
-        ? <Directory session={session} onMessage={onMessage} hideHeader refetchTrigger={refetchTrigger} />
-        : <AlumniMap session={session} onMessage={onMessage} onGoToProfile={onGoToProfile} hideHeader />}
+      <DirectoryToolbar f={f} />
+
+      <div className="directory-layout">
+        <div className="directory-main">
+          {view === 'list'
+            ? <Directory session={session} people={f.filtered} loading={f.loading} me={f.me} onMessage={onMessage} hideHeader />
+            : <AlumniMap session={session} people={f.filtered} loading={f.loading} onMessage={onMessage} onGoToProfile={onGoToProfile} hideHeader />}
+        </div>
+        <DirectoryFilterPanel f={f} />
+      </div>
     </section>
   )
 }

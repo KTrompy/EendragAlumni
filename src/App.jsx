@@ -3,13 +3,20 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import Onboarding from './components/Onboarding.jsx'
+import Home from './components/Home.jsx'
 import Feed from './components/Feed.jsx'
+import Groups from './components/Groups.jsx'
+import GroupDetail from './components/GroupDetail.jsx'
+import Photos from './components/Photos.jsx'
+import AlbumDetail from './components/AlbumDetail.jsx'
+import Mentoring from './components/Mentoring.jsx'
 import People from './components/People.jsx'
 import { Avatar } from './components/Directory.jsx'
 import FloatingMessages from './components/FloatingMessages.jsx'
 import Profile from './components/Profile.jsx'
 import Events from './components/Events.jsx'
 import Jobs from './components/Jobs.jsx'
+import BusinessDirectory from './components/BusinessDirectory.jsx'
 import Donate from './components/Donate.jsx'
 import Admin from './components/Admin.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
@@ -19,25 +26,35 @@ import ConfirmDialog from './components/ConfirmDialog.jsx'
 // (see People.jsx) instead of splitting "find a person" across two nav
 // items. Support/Donate isn't a top-level tab while it's still a stub with
 // no real payment flow — it's reachable from the footer link instead.
+//
+// Each tab carries its own sidebar icon now that navigation lives in the
+// left sidebar (see .sidebar in styles.css) rather than the old inline
+// header tab strip.
 const TABS = [
-  { id: 'directory', label: 'Eendragters', path: '/directory' },
-  { id: 'feed', label: 'Feed', path: '/feed' },
-  { id: 'events', label: 'Events', path: '/events' },
-  { id: 'jobs', label: 'Jobs', path: '/jobs' },
-  { id: 'profile', label: 'My profile', path: '/profile' },
+  { id: 'feed', label: 'Feed', path: '/feed', icon: FeedIcon },
+  { id: 'home', label: 'Home', path: '/home', icon: HomeIcon },
+  { id: 'directory', label: 'Eendragters', path: '/directory', icon: PeopleIcon },
+  { id: 'mentoring', label: 'Mentoring', path: '/mentoring', icon: MentoringIcon },
+  { id: 'groups', label: 'Groups', path: '/groups', icon: GroupsIcon },
+  { id: 'photos', label: 'Photos', path: '/photos', icon: PhotosIcon },
+  { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
+  { id: 'jobs', label: 'Jobs', path: '/jobs', icon: JobsIcon },
+  { id: 'businesses', label: 'Business Directory', path: '/businesses', icon: BusinessIcon },
+  { id: 'profile', label: 'My profile', path: '/profile', icon: ProfileIcon },
 ]
 
 // Admin-only, appended to the nav when the signed-in profile has is_admin
 // set — kept out of the base TABS list so it never flashes for regular
 // members before the profile loads.
-const ADMIN_TAB = { id: 'admin', label: 'Admin', path: '/admin' }
+const ADMIN_TAB = { id: 'admin', label: 'Admin', path: '/admin', icon: AdminIcon }
 
 // The mobile bottom tab bar — a smaller subset of TABS (My profile and Sign
 // out move to the mobile header/avatar instead, so the bar stays to four
 // core sections now that Map lives inside Eendragters).
 const MOBILE_TABS = [
-  { id: 'directory', label: 'Eendragters', path: '/directory', icon: PeopleIcon },
+  { id: 'home', label: 'Home', path: '/home', icon: HomeIcon },
   { id: 'feed', label: 'Feed', path: '/feed', icon: FeedIcon },
+  { id: 'directory', label: 'Eendragters', path: '/directory', icon: PeopleIcon },
   { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
   { id: 'jobs', label: 'Jobs', path: '/jobs', icon: JobsIcon },
 ]
@@ -69,6 +86,21 @@ export default function App() {
   const [leaveError, setLeaveError] = useState(null)
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
   const [directoryRefetchTrigger, setDirectoryRefetchTrigger] = useState(0) // increment to trigger refetch
+
+  // Lock body scroll while the mobile nav drawer is open, and let Escape
+  // close it — same pattern as the filter drawers (DirectoryFilters.jsx,
+  // Jobs.jsx, BusinessDirectory.jsx).
+  useEffect(() => {
+    if (!navOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    function onKey(e) { if (e.key === 'Escape') setNavOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [navOpen])
 
   // Warn on an actual browser navigation/refresh/close too, not just
   // switching tabs inside the app.
@@ -137,6 +169,28 @@ export default function App() {
       .then(({ data }) => setProfile(data))
   }, [session])
 
+  // Heartbeat: writes last_seen every few minutes while the app is open (and
+  // once immediately on load/tab-refocus) — this is what powers the
+  // "Recently online" sort and the green dot in the Eendragters directory.
+  // Deliberately not realtime presence (that only knows who's connected
+  // *right now* and forgets everyone the instant they close the tab) — a
+  // persisted timestamp is what lets "recently online" mean something for
+  // someone who was here 10 minutes ago too.
+  useEffect(() => {
+    if (!session) return
+    function beat() {
+      supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then(() => {})
+    }
+    beat()
+    const interval = setInterval(beat, 2 * 60 * 1000)
+    function onVisible() { if (document.visibilityState === 'visible') beat() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [session])
+
   // First time a brand-new profile loads (no name filled in yet), walk them
   // through the onboarding wizard question-by-question. Only checked once
   // per session so it doesn't yank people back into it on every visit.
@@ -193,6 +247,15 @@ export default function App() {
           </div>
 
           <div className="masthead-actions">
+            <button
+              className="header-icon-btn"
+              onClick={() => setMessagesOpen((o) => !o)}
+              aria-label="Messages"
+              title="Messages"
+            >
+              <MessagesIcon />
+            </button>
+
             <NotificationBell session={session} onNavigate={handleNotificationNavigate} />
 
             <button
@@ -213,24 +276,6 @@ export default function App() {
               {navOpen ? <CloseIcon /> : <BurgerIcon />}
             </button>
           </div>
-
-          <nav className={navOpen ? 'tabs open' : 'tabs'} aria-label="Main">
-            {navTabs.map((t) => (
-              <button
-                key={t.id}
-                className={activeTabId === t.id ? 'tab active' : 'tab'}
-                onClick={() => goTo(t.path)}
-              >
-                {t.label}
-              </button>
-            ))}
-            <button
-              className="tab signout"
-              onClick={() => attemptNavigate(() => { setNavOpen(false); setConfirmingSignOut(true) })}
-            >
-              Sign out
-            </button>
-          </nav>
         </div>
       </header>
 
@@ -241,51 +286,91 @@ export default function App() {
         </div>
       )}
 
-      <main className="content">
-        <Routes>
-          <Route path="/" element={<Navigate to="/directory" replace />} />
-          <Route path="/directory" element={<People session={session} onMessage={openMessage} onGoToProfile={() => goTo('/profile')} refetchTrigger={directoryRefetchTrigger} />} />
-          <Route path="/feed" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
-          <Route path="/events" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
-          <Route path="/events/:eventId" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
-          <Route path="/jobs" element={<Jobs session={session} profile={profile} onMessage={openMessage} />} />
-          <Route path="/donate" element={<Donate />} />
-          <Route
-            path="/admin"
-            element={profile?.is_admin ? <Admin session={session} /> : <Navigate to="/directory" replace />}
-          />
-          <Route
-            path="/profile"
-            element={
-              <Profile
-                session={session}
-                profile={profile}
-                onSaved={(updated) => {
-                  setProfile(updated)
-                  setDirectoryRefetchTrigger((t) => t + 1)
-                }}
-                onDirtyChange={setProfileDirty}
-                saveRef={profileSaveRef}
-                onNavigateHome={() => goTo('/directory')}
-              />
-            }
-          />
-          <Route path="*" element={<Navigate to="/directory" replace />} />
-        </Routes>
-      </main>
+      <div className="app-body">
+        {/* Persistent left sidebar on desktop (see .sidebar in styles.css).
+            Hidden on mobile in favour of the existing bottom tab bar —
+            navOpen/hamburger are currently unused on mobile (kept as-is
+            from before this rework, harmless if never toggled there). */}
+        <aside className="sidebar" aria-label="Main">
+          <nav className="sidebar-nav">
+            {navTabs.map((t) => {
+              const Icon = t.icon
+              return (
+                <button
+                  key={t.id}
+                  className={activeTabId === t.id ? 'sidebar-link active' : 'sidebar-link'}
+                  onClick={() => goTo(t.path)}
+                >
+                  <Icon /> {t.label}
+                </button>
+              )
+            })}
+          </nav>
+          <div className="sidebar-footer">
+            <button
+              className="sidebar-link signout"
+              onClick={() => attemptNavigate(() => { setNavOpen(false); setConfirmingSignOut(true) })}
+            >
+              <SignOutIcon /> Sign out
+            </button>
+          </div>
+        </aside>
 
-      <footer className="footer">
-        <img src="/eendrag-logo.png" alt="Eendrag logo" className="footer-logo" />
-        <div className="footer-text">
-          <span>Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.</span>
-          <span className="footer-credit">
-            Initiated and built by Kyle Trompeter —{' '}
-            <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>
-            {' · '}
-            <button className="footer-link footer-link-btn" onClick={() => goTo('/donate')}>Support the house</button>.
-          </span>
+        <div className="app-main">
+          <main className="content">
+            <Routes>
+              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/home" element={<Home session={session} profile={profile} />} />
+              <Route path="/directory" element={<People session={session} onMessage={openMessage} onGoToProfile={() => goTo('/profile')} refetchTrigger={directoryRefetchTrigger} />} />
+              <Route path="/feed" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/groups" element={<Groups session={session} />} />
+              <Route path="/groups/:groupId" element={<GroupDetail session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/photos" element={<Photos session={session} />} />
+              <Route path="/photos/:albumId" element={<AlbumDetail session={session} profile={profile} />} />
+              <Route path="/mentoring" element={<Mentoring session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/events" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/events/:eventId" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/jobs" element={<Jobs session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/businesses" element={<BusinessDirectory session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/donate" element={<Donate />} />
+              <Route
+                path="/admin"
+                element={profile?.is_admin ? <Admin session={session} /> : <Navigate to="/home" replace />}
+              />
+              <Route
+                path="/profile"
+                element={
+                  <Profile
+                    session={session}
+                    profile={profile}
+                    onSaved={(updated) => {
+                      setProfile(updated)
+                      setDirectoryRefetchTrigger((t) => t + 1)
+                    }}
+                    onDirtyChange={setProfileDirty}
+                    saveRef={profileSaveRef}
+                    onNavigateHome={() => goTo('/home')}
+                  />
+                }
+              />
+              <Route path="*" element={<Navigate to="/home" replace />} />
+            </Routes>
+          </main>
+
+          <footer className="footer">
+            <img src="/eendrag-logo.png" alt="Eendrag logo" className="footer-logo" />
+            <div className="footer-text">
+              <span>Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.</span>
+              <span className="footer-credit">
+                Initiated and built by Kyle Trompeter —{' '}
+                <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>
+                {' · '}
+                <button className="footer-link footer-link-btn" onClick={() => goTo('/donate')}>Support the house</button>.
+              </span>
+            </div>
+          </footer>
         </div>
-      </footer>
+      </div>
 
       <nav className="mobile-tabbar" aria-label="Main">
         {MOBILE_TABS.map((t) => {
@@ -302,6 +387,45 @@ export default function App() {
           )
         })}
       </nav>
+
+      {/* Mobile-only "everything else" menu — the bottom tab bar only has
+          room for five core sections, so Groups/Mentoring/Photos/Business
+          Directory (and Admin, when relevant) live behind the header
+          hamburger instead. Same navTabs/activeTabId/goTo the desktop
+          sidebar uses, just in a slide-in drawer (see .mobile-nav-panel). */}
+      {navOpen && (
+        <>
+          <div className="mobile-nav-backdrop" onClick={() => setNavOpen(false)} />
+          <aside className="mobile-nav-panel" aria-label="Main menu">
+            <div className="mobile-nav-panel-header">
+              <h3>Menu</h3>
+              <button className="modal-close" onClick={() => setNavOpen(false)} aria-label="Close menu">×</button>
+            </div>
+            <nav className="sidebar-nav">
+              {navTabs.map((t) => {
+                const Icon = t.icon
+                return (
+                  <button
+                    key={t.id}
+                    className={activeTabId === t.id ? 'sidebar-link active' : 'sidebar-link'}
+                    onClick={() => goTo(t.path)}
+                  >
+                    <Icon /> {t.label}
+                  </button>
+                )
+              })}
+            </nav>
+            <div className="sidebar-footer">
+              <button
+                className="sidebar-link signout"
+                onClick={() => attemptNavigate(() => { setNavOpen(false); setConfirmingSignOut(true) })}
+              >
+                <SignOutIcon /> Sign out
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
 
       <FloatingMessages
         session={session}
@@ -414,6 +538,84 @@ function EventsIcon() {
       <circle cx="8.3" cy="14.5" r="1" fill="currentColor" stroke="none" />
       <circle cx="12" cy="14.5" r="1" fill="currentColor" stroke="none" />
       <circle cx="15.7" cy="14.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+/* ---------- Sidebar-only icons ---------- */
+function HomeIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 11.5L12 4l9 7.5" />
+      <path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9" />
+    </svg>
+  )
+}
+function MentoringIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 10a5 5 0 1 1 3.5 4.77L8 17v-2.5H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h2" />
+      <path d="M14 14a5 5 0 0 0 4.9-4H21a2 2 0 0 1 2 2v2.5a2 2 0 0 1-2 2h-1v2.5l-3-2.34" />
+    </svg>
+  )
+}
+function GroupsIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M2.5 20c0-3.5 2.9-6 6.5-6s6.5 2.5 6.5 6" />
+      <circle cx="17" cy="8.5" r="2.4" />
+      <path d="M15.7 14c2.6.4 4.3 2.3 4.3 6" />
+    </svg>
+  )
+}
+function PhotosIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  )
+}
+function BusinessIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 21V9.5l8-5 8 5V21" />
+      <path d="M4 21h16" />
+      <path d="M9.5 21v-6a2.5 2.5 0 0 1 5 0v6" />
+      <path d="M8 12.5h.01M16 12.5h.01" />
+    </svg>
+  )
+}
+function ProfileIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  )
+}
+function AdminIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z" />
+      <path d="M9.5 12l1.8 1.8L15 10" />
+    </svg>
+  )
+}
+function SignOutIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  )
+}
+function MessagesIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   )
 }

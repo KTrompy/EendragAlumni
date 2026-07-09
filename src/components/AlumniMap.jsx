@@ -2,18 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { supabase } from '../supabaseClient'
-import { PhotoBlock } from './Directory.jsx'
+import { PhotoBlock, OnlineDot } from './Directory.jsx'
 import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
-
-const PROFILE_FIELDS =
-  'id, full_name, grad_year, degree, occupation, industry, company, city, country, ' +
-  'is_current_resident, bio, avatar_url, linkedin_url, approved, lat, lng, ' +
-  'expertise, services_offered, business_website, business_categories, ' +
-  'availability, geographic_focus, is_open_to_opportunities'
 
 // People sharing a city/country cluster onto one pin, so a city with 40
 // Eendragters doesn't paint 40 overlapping markers on top of each other —
@@ -41,7 +34,7 @@ function pinIcon(count) {
 }
 
 // Re-fits the view to show every pin whenever the set of clusters changes
-// (first load, or a filter you might add later).
+// (first load, or the shared filters up in People.jsx narrowing the list).
 function FitToMarkers({ points }) {
   const map = useMap()
   const fingerprint = points.map((p) => p.key).join('|')
@@ -60,17 +53,11 @@ function FitToMarkers({ points }) {
   return null
 }
 
-export default function AlumniMap({ session, onMessage, onGoToProfile, hideHeader = false }) {
-  const [people, setPeople] = useState([])
-  const [loaded, setLoaded] = useState(false)
+// Alumni map — the List/Map toggle's other view. Filtering/search now live
+// one level up in People.jsx (see DirectoryFilters.jsx) so this just plots
+// whatever `people` it's handed; it no longer fetches its own copy.
+export default function AlumniMap({ session, people, loading, onMessage, onGoToProfile, hideHeader = false }) {
   const [openProfile, setOpenProfile] = useState(null)
-
-  useEffect(() => {
-    supabase
-      .from('profiles')
-      .select(PROFILE_FIELDS)
-      .then(({ data }) => { setPeople(data || []); setLoaded(true) })
-  }, [])
 
   const pinned = useMemo(
     () => people.filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number'),
@@ -108,7 +95,7 @@ export default function AlumniMap({ session, onMessage, onGoToProfile, hideHeade
   )
 
   return (
-    <section className={hideHeader ? '' : 'panel'}>
+    <div className={hideHeader ? '' : 'panel'}>
       {!hideHeader && (
         <>
           <h2 className="panel-title">Alumni map</h2>
@@ -122,13 +109,13 @@ export default function AlumniMap({ session, onMessage, onGoToProfile, hideHeade
         </p>
       )}
 
-      {!loaded && <LoadingState message="Loading alumni map…" />}
+      {loading && <LoadingState message="Loading alumni map…" />}
 
-      {loaded && pinned.length === 0 && (
+      {!loading && pinned.length === 0 && (
         <EmptyState
           icon="search"
           message="No one's on the map yet."
-          subMessage="A pin appears automatically once an alumnus saves a city on their profile."
+          subMessage="A pin appears automatically once an alumnus saves a city on their profile — or try widening/clearing your filters."
           actionLabel={onGoToProfile ? 'Update your profile location' : undefined}
           onAction={onGoToProfile}
         />
@@ -153,7 +140,10 @@ export default function AlumniMap({ session, onMessage, onGoToProfile, hideHeade
                         {c.people.map((p) => (
                           <li key={p.id}>
                             <button className="map-popup-person" onClick={() => setOpenProfile(p)}>
-                              <PhotoBlock url={p.avatar_url} name={p.full_name} className="map-popup-photo" />
+                              <span className="map-popup-photo-wrap">
+                                <PhotoBlock url={p.avatar_url} name={p.full_name} className="map-popup-photo" />
+                                <OnlineDot lastSeen={p.last_seen} />
+                              </span>
                               <span className="map-popup-info">
                                 <strong>
                                   {p.full_name || 'Alumnus'}
@@ -187,6 +177,6 @@ export default function AlumniMap({ session, onMessage, onGoToProfile, hideHeade
           onMessage={() => { const p = openProfile; setOpenProfile(null); messageWithIcebreaker(p) }}
         />
       )}
-    </section>
+    </div>
   )
 }

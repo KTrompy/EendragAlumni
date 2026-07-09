@@ -50,4 +50,20 @@ const ICONS = {
       <path d="M39 39l14 14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   ),
+  groups: (
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="9" stroke="currentColor" strokeWidth="2.5" />
+      <path d="M9 52c0-9 6.7-15.5 15-15.5S39 43 39 52" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="44" cy="26" r="7" stroke="currentColor" strokeWidth="2.5" />
+      <path d="M40 37c7 .8 12 6 12 13" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  ),
+  business: (
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 26L32 10l24 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="13" y="26" width="38" height="28" rx="2" stroke="currentColor" strokeWidth="2.5" />
+      <path d="M27 54V40a5 5 0 0 1 10 0v14" stroke="currentColor" strokeWidth="2.5" />
+      <path d="M20 33h4M40 33h4M20 41h4M40 41h4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  ),
 }

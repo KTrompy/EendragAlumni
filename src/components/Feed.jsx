@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
@@ -80,7 +81,7 @@ function videoEmbedUrl(raw) {
 }
 
 const POSTS_SELECT = `
-  id, title, content, image_urls, video_url, created_at, author_id,
+  id, title, content, image_urls, video_url, created_at, author_id, pinned,
   profiles!posts_author_id_fkey ( ${POSTER_FIELDS} ),
   likes:post_likes(count),
   comments:post_comments(count)
@@ -88,6 +89,7 @@ const POSTS_SELECT = `
 
 export default function Feed({ session, profile, onMessage }) {
   const [posts, setPosts] = useState([])
+  const [pinnedPosts, setPinnedPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
@@ -97,17 +99,36 @@ export default function Feed({ session, profile, onMessage }) {
   const [openProfile, setOpenProfile] = useState(null)
   const composerOpenRef = useRef(null)
   const showToast = useToast()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isAdmin = !!profile?.is_admin
+
+  // Home's "Start sharing" button deep-links here with { openComposer: true }
+  // in nav state, so landing on Feed from there opens the composer straight
+  // away instead of making someone click "Start a post" a second time.
+  // Cleared from history state immediately so navigating back to Feed later
+  // (or refreshing) doesn't keep re-popping it open.
+  useEffect(() => {
+    if (location.state?.openComposer) {
+      composerOpenRef.current?.()
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   // Fetches one PAGE_SIZE page of posts, replacing the list (first load, or
   // a realtime insert/delete elsewhere resetting to the top) or appending to
   // it ("Load more"). Real server-side paging — not just revealing more of
   // an already-capped batch — so the feed no longer has a hard ceiling on
-  // how far back you can scroll.
+  // how far back you can scroll. Pinned posts are excluded here (and shown
+  // in their own section above, see loadPinned) so a pinned post doesn't
+  // also take up a slot in the regular chronological stream.
   async function loadPage({ replace = false } = {}) {
     const offset = replace ? 0 : posts.length
     const { data, error } = await supabase
       .from('posts')
       .select(POSTS_SELECT)
+      .eq('pinned', false)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1)
     if (error) { console.error(error); return }
@@ -115,9 +136,23 @@ export default function Feed({ session, profile, onMessage }) {
     setHasMore((data || []).length === PAGE_SIZE)
   }
 
+  // Pinned posts are rare and never paginated — fetched once, independent
+  // of whatever page of the regular stream is loaded, so a pinned post from
+  // months ago still shows up top without needing "Load more" clicked all
+  // the way back to it.
+  async function loadPinned() {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(POSTS_SELECT)
+      .eq('pinned', true)
+      .order('created_at', { ascending: false })
+    if (error) { console.error(error); return }
+    setPinnedPosts(data || [])
+  }
+
   async function loadFirstPage() {
     setLoading(true)
-    await loadPage({ replace: true })
+    await Promise.all([loadPage({ replace: true }), loadPinned()])
     const { data: mine } = await supabase
       .from('post_likes')
       .select('post_id')
@@ -133,8 +168,9 @@ export default function Feed({ session, profile, onMessage }) {
     // to — simplest way to stay consistent without refetching every page.
     const channel = supabase
       .channel('feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => loadPage({ replace: true }))
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, () => loadPage({ replace: true }))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => { loadPage({ replace: true }); loadPinned() })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, () => { loadPage({ replace: true }); loadPinned() })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, () => loadPinned())
       .subscribe()
     return () => supabase.removeChannel(channel)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,6 +180,24 @@ export default function Feed({ session, profile, onMessage }) {
     setLoadingMore(true)
     await loadPage()
     setLoadingMore(false)
+  }
+
+  // Admin-only: pin a post to the top of the feed (or unpin it). Both
+  // `posts` and `pinnedPosts` need to reshuffle together since pinning
+  // moves a post between the two lists.
+  async function togglePin(id, next) {
+    const { error } = await supabase.from('posts').update({ pinned: next }).eq('id', id)
+    if (error) {
+      showToast('Could not update pinned post.', { type: 'error' })
+      return
+    }
+    if (next) {
+      setPosts((prev) => prev.filter((p) => p.id !== id))
+    } else {
+      loadPage({ replace: true })
+    }
+    loadPinned()
+    showToast(next ? 'Post pinned' : 'Post unpinned')
   }
 
   async function removePost(id) {
@@ -202,74 +256,108 @@ export default function Feed({ session, profile, onMessage }) {
     ? posts.filter((p) => postMatches(p, needle))
     : posts
 
+  // "Who's online" and "Recent members" only fetch a handful of light
+  // fields for their own rendering (see WhosOnline/RecentMembersWidget) —
+  // clicking through still opens the same full profile modal as everywhere
+  // else in the app (author names, comment authors), so this re-fetches the
+  // complete POSTER_FIELDS set by id rather than passing the trimmed row
+  // straight into ProfileModal.
+  async function openMemberProfile(id) {
+    const { data } = await supabase.from('profiles').select(POSTER_FIELDS).eq('id', id).single()
+    if (data) setOpenProfile(data)
+  }
+
+  function postItemProps(p) {
+    return {
+      post: p,
+      session,
+      profile,
+      isAdmin,
+      liked: myLikes.has(p.id),
+      onLike: () => toggleLike(p.id),
+      onDelete: () => removePost(p.id),
+      onEdit: (fields) => editPost(p.id, fields),
+      onTogglePin: () => togglePin(p.id, !p.pinned),
+      onImageClick: (src) => setLightbox(src),
+      onMessage: () => onMessage?.(
+        { id: p.author_id, full_name: p.profiles?.full_name },
+        'Hi! I saw your post on the feed and wanted to reach out.'
+      ),
+      onOpenProfile: setOpenProfile,
+    }
+  }
+
   return (
     <section className="panel">
       <h2 className="panel-title">Feed</h2>
       <p className="panel-sub">Photos, updates, shoutouts — what the house is up to.</p>
 
-      <Composer session={session} profile={profile} onPosted={() => { loadFirstPage(); showToast('Post created') }} openRef={composerOpenRef} />
+      <div className="feed-layout">
+        <div className="feed-main">
+          <Composer session={session} profile={profile} onPosted={() => { loadFirstPage(); showToast('Post created') }} openRef={composerOpenRef} />
 
-      {posts.length > 0 && (
-        <div className="search-wrap feed-search-wrap">
-          <input
-            className="search directory-search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search posts…"
-          />
-          {query && (
-            <button className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+          <WhosOnline session={session} onOpenProfile={openMemberProfile} />
+
+          {(posts.length > 0 || pinnedPosts.length > 0) && (
+            <div className="search-wrap feed-search-wrap">
+              <input
+                className="search directory-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search posts…"
+              />
+              {query && (
+                <button className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+              )}
+            </div>
+          )}
+
+          {!needle && !loading && pinnedPosts.length > 0 && (
+            <div className="pinned-posts-section">
+              <h3 className="feed-section-label"><PinIcon /> Pinned {pinnedPosts.length === 1 ? 'Post' : 'Posts'}</h3>
+              <ul className="post-list">
+                {pinnedPosts.map((p) => <PostItem key={p.id} {...postItemProps(p)} />)}
+              </ul>
+            </div>
+          )}
+
+          {loading ? (
+            <LoadingState message="Loading feed…" />
+          ) : posts.length === 0 && pinnedPosts.length === 0 && (
+            <EmptyState
+              icon="feed"
+              message="No posts yet."
+              subMessage="Be the first Eendragter to break the silence."
+              actionLabel={profile?.approved ? 'Write the first post' : undefined}
+              onAction={() => composerOpenRef.current?.()}
+            />
+          )}
+
+          {!loading && posts.length > 0 && shown.length === 0 && (
+            <p className="empty small">No posts match "{query}".</p>
+          )}
+
+          <ul className="post-list">
+            {shown.map((p) => <PostItem key={p.id} {...postItemProps(p)} />)}
+          </ul>
+
+          {/* Search only filters what's already loaded — hide the pager while
+              searching rather than implying "load more" would surface more
+              matches (it fetches by date, not by relevance to the query). */}
+          {!needle && hasMore && (
+            <div className="load-more-row">
+              <button className="btn ghost" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </button>
+            </div>
           )}
         </div>
-      )}
 
-      {loading ? (
-        <LoadingState message="Loading feed…" />
-      ) : posts.length === 0 && (
-        <EmptyState
-          icon="feed"
-          message="No posts yet."
-          subMessage="Be the first Eendragter to break the silence."
-          actionLabel={profile?.approved ? 'Write the first post' : undefined}
-          onAction={() => composerOpenRef.current?.()}
-        />
-      )}
-
-      {!loading && posts.length > 0 && shown.length === 0 && (
-        <p className="empty small">No posts match "{query}".</p>
-      )}
-
-      <ul className="post-list">
-        {shown.map((p) => (
-          <PostItem
-            key={p.id}
-            post={p}
-            session={session}
-            profile={profile}
-            liked={myLikes.has(p.id)}
-            onLike={() => toggleLike(p.id)}
-            onDelete={() => removePost(p.id)}
-            onEdit={(fields) => editPost(p.id, fields)}
-            onImageClick={(src) => setLightbox(src)}
-            onMessage={() => onMessage?.(
-              { id: p.author_id, full_name: p.profiles?.full_name },
-              'Hi! I saw your post on the feed and wanted to reach out.'
-            )}
-            onOpenProfile={setOpenProfile}
-          />
-        ))}
-      </ul>
-
-      {/* Search only filters what's already loaded — hide the pager while
-          searching rather than implying "load more" would surface more
-          matches (it fetches by date, not by relevance to the query). */}
-      {!needle && hasMore && (
-        <div className="load-more-row">
-          <button className="btn ghost" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? 'Loading…' : 'Load more'}
-          </button>
-        </div>
-      )}
+        <aside className="feed-sidebar">
+          <TopJobsWidget onViewAll={() => navigate('/jobs')} />
+          <RecentMembersWidget onOpenProfile={openMemberProfile} onViewAll={() => navigate('/directory')} />
+        </aside>
+      </div>
 
       {lightbox && (
         <div className="lightbox-backdrop" onClick={() => setLightbox(null)}>
@@ -620,7 +708,7 @@ function Composer({ session, profile, onPosted, openRef }) {
 }
 
 /* ---------- Post item ---------- */
-function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, onImageClick, onMessage, onOpenProfile }) {
+function PostItem({ post: p, session, profile, isAdmin, liked, onLike, onDelete, onEdit, onTogglePin, onImageClick, onMessage, onOpenProfile }) {
   const [showComments, setShowComments] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -670,7 +758,8 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, 
   ].filter(Boolean).join(' · ')
 
   return (
-    <li className="post">
+    <li className={p.pinned ? 'post post-pinned' : 'post'}>
+      {p.pinned && <span className="post-pinned-tag"><PinIcon /> Pinned Post</span>}
       <div className="post-head">
         <button
           type="button"
@@ -688,19 +777,32 @@ function PostItem({ post: p, session, profile, liked, onLike, onDelete, onEdit, 
             </span>
           </div>
         </button>
-        {isMine && !editing && (
-          <div className="post-owner-actions">
-            <button type="button" className="icon-btn-delete post-delete-btn" onClick={startEdit} aria-label="Edit post" title="Edit post">
-              <EditIcon />
+        <div className="post-owner-actions">
+          {isAdmin && !editing && (
+            <button
+              type="button"
+              className="icon-btn-delete post-delete-btn"
+              onClick={onTogglePin}
+              aria-label={p.pinned ? 'Unpin post' : 'Pin post'}
+              title={p.pinned ? 'Unpin post' : 'Pin post to top of feed'}
+            >
+              <PinIcon />
             </button>
-            <DeleteButton
-              onConfirm={onDelete}
-              label="Delete post"
-              message="This can't be undone."
-              className="icon-btn-delete post-delete-btn delete-danger"
-            />
-          </div>
-        )}
+          )}
+          {isMine && !editing && (
+            <>
+              <button type="button" className="icon-btn-delete post-delete-btn" onClick={startEdit} aria-label="Edit post" title="Edit post">
+                <EditIcon />
+              </button>
+              <DeleteButton
+                onConfirm={onDelete}
+                label="Delete post"
+                message="This can't be undone."
+                className="icon-btn-delete post-delete-btn delete-danger"
+              />
+            </>
+          )}
+        </div>
       </div>
 
       {editing ? (
@@ -899,6 +1001,188 @@ function Comments({ postId, session, profile, onOpenProfile }) {
   )
 }
 
+/* ---------- Who's online ---------- */
+// Live presence strip using Supabase Realtime Presence — tracked only while
+// the Feed page is mounted (joining/leaving the shared "online-members"
+// channel), so "online" here means "currently on the Feed", not "logged in
+// somewhere in the app". Simpler to reason about than app-wide presence,
+// and it's the page this actually shows on in the reference.
+function WhosOnline({ session, onOpenProfile }) {
+  const [members, setMembers] = useState([])
+  const [showAll, setShowAll] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    async function join() {
+      const { data: me } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .eq('id', session.user.id)
+        .single()
+      if (cancelled) return
+
+      const channel = supabase.channel('online-members', {
+        config: { presence: { key: session.user.id } },
+      })
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          const state = channel.presenceState()
+          const list = Object.values(state)
+            .map((entries) => entries[0])
+            .filter(Boolean)
+          setMembers(list)
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.track({
+              id: session.user.id,
+              full_name: me?.full_name || 'Alumnus',
+              avatar_url: me?.avatar_url || null,
+              online_at: new Date().toISOString(),
+            })
+          }
+        })
+
+      return () => supabase.removeChannel(channel)
+    }
+    const cleanupPromise = join()
+    return () => { cancelled = true; cleanupPromise.then((fn) => fn?.()) }
+  }, [session.user.id])
+
+  if (members.length === 0) return null
+
+  const others = members.filter((m) => m.id !== session.user.id)
+  const shown = members.slice(0, 9)
+
+  return (
+    <div className="whos-online">
+      <div className="whos-online-head">
+        <span className="whos-online-title">
+          <span className="whos-online-dot" /> Who's online · See who's been online recently
+        </span>
+        {members.length > shown.length && (
+          <button className="whos-online-seeall" onClick={() => setShowAll(true)}>See all live members ›</button>
+        )}
+      </div>
+      <div className="whos-online-strip">
+        {shown.map((m) => (
+          <button
+            key={m.id}
+            className="whos-online-avatar"
+            onClick={() => onOpenProfile?.(m.id)}
+            title={m.full_name}
+            aria-label={`Open profile for ${m.full_name}`}
+          >
+            <Avatar url={m.avatar_url} name={m.full_name} size={44} />
+          </button>
+        ))}
+      </div>
+
+      {showAll && (
+        <div className="modal-backdrop" onClick={() => setShowAll(false)} role="dialog" aria-modal="true" aria-label="Live members">
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <h2>Live members ({members.length})</h2>
+              <button className="modal-close" onClick={() => setShowAll(false)} aria-label="Close">×</button>
+            </div>
+            <div className="modal-body">
+              <ul className="whos-online-list">
+                {members.map((m) => (
+                  <li key={m.id}>
+                    <button className="whos-online-list-row" onClick={() => { setShowAll(false); onOpenProfile?.(m.id) }}>
+                      <Avatar url={m.avatar_url} name={m.full_name} size={36} />
+                      <span>{m.full_name}{m.id === session.user.id ? ' (you)' : ''}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ---------- Feed sidebar widgets ---------- */
+function TopJobsWidget({ onViewAll }) {
+  const [jobs, setJobs] = useState([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    supabase
+      .from('jobs')
+      .select('id, title, company, location, logo_url')
+      .order('created_at', { ascending: false })
+      .limit(4)
+      .then(({ data }) => { setJobs(data || []); setLoaded(true) })
+  }, [])
+
+  if (loaded && jobs.length === 0) return null
+
+  return (
+    <div className="feed-widget">
+      <div className="feed-widget-head">
+        <h3>Top jobs for you</h3>
+      </div>
+      <ul className="feed-widget-list">
+        {jobs.map((j) => (
+          <li key={j.id}>
+            <button className="feed-widget-row" onClick={onViewAll}>
+              {j.logo_url
+                ? <img className="feed-widget-logo" src={j.logo_url} alt="" />
+                : <span className="feed-widget-logo feed-widget-logo-fallback">{(j.company || '?')[0]}</span>}
+              <span className="feed-widget-row-text">
+                <strong>{j.title}</strong>
+                <span>{j.company}{j.location ? ` · ${j.location}` : ''}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button className="feed-widget-viewall" onClick={onViewAll}>View jobs</button>
+    </div>
+  )
+}
+
+function RecentMembersWidget({ onOpenProfile, onViewAll }) {
+  const [members, setMembers] = useState([])
+
+  useEffect(() => {
+    supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, occupation, company, approved')
+      .eq('approved', true)
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => setMembers(data || []))
+  }, [])
+
+  if (members.length === 0) return null
+
+  return (
+    <div className="feed-widget">
+      <div className="feed-widget-head">
+        <h3>Recent members</h3>
+      </div>
+      <ul className="feed-widget-list">
+        {members.map((m) => (
+          <li key={m.id}>
+            <button className="feed-widget-row" onClick={() => onOpenProfile?.(m.id)}>
+              <Avatar url={m.avatar_url} name={m.full_name} size={32} />
+              <span className="feed-widget-row-text">
+                <strong>{m.full_name || 'Alumnus'}</strong>
+                {(m.occupation || m.company) && <span>{[m.occupation, m.company].filter(Boolean).join(' @ ')}</span>}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button className="feed-widget-viewall" onClick={onViewAll}>View directory</button>
+    </div>
+  )
+}
+
 /* ---------- Icons ---------- */
 function HeartIcon({ filled }) {
   return (
@@ -943,6 +1227,13 @@ function VideoIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2.5" y="6" width="14" height="12" rx="2" />
       <path d="M16.5 10.5l5-3v9l-5-3z" />
+    </svg>
+  )
+}
+function PinIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l1.5 5.5L19 9l-4 3.5L16 18l-4-3-4 3 1-5.5-4-3.5 5.5-1.5z" />
     </svg>
   )
 }
