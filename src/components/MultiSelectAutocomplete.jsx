@@ -33,6 +33,7 @@ export default function MultiSelectAutocomplete({
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
     onChange([...values, option])
     setQuery('') // cleared so the next pick starts from the full list again
+    setOpen(false) // close dropdown after selection
   }
 
   function remove(option) {
