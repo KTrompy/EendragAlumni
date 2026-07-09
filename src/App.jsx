@@ -286,6 +286,19 @@ export default function App() {
         </div>
       )}
 
+      {/* Full-width photo banner, sitting above the sidebar/content row so
+          the sidebar no longer runs flush from the header all the way down
+          the page — same idea as the Lions Connect reference layout. Image
+          lives at /hero-banner.jpg in public/. */}
+      <div className="hero-banner">
+        <img src="/hero-banner.jpg" alt="" className="hero-banner-img" />
+        <div className="hero-banner-overlay" />
+        <div className="hero-banner-content">
+          <span className="hero-banner-title">Eendrag Alumni</span>
+          <span className="hero-banner-motto">Character · Style · Pride · Since 1961</span>
+        </div>
+      </div>
+
       <div className="app-body">
         {/* Persistent left sidebar on desktop (see .sidebar in styles.css).
             Hidden on mobile in favour of the existing bottom tab bar —

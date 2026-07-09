@@ -250,6 +250,68 @@ input, textarea, select { font: inherit; }
   font-size: 14px;
 }
 
+/* ---------- Hero banner ---------- */
+/* Full-width photo strip above the sidebar/content row. Replaces the old
+   look where .sidebar ran flush from right under the header all the way
+   down — now there's a photo band first, sidebar starts below it. */
+.hero-banner {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  background: var(--maroon);
+}
+.hero-banner-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    rgba(58, 15, 27, 0.88) 0%,
+    rgba(90, 26, 43, 0.65) 45%,
+    rgba(232, 97, 28, 0.35) 100%
+  );
+}
+.hero-banner-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #fff;
+}
+.hero-banner-title {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 36px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+.hero-banner-motto {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--orange-soft);
+}
+@media (max-width: 720px) {
+  .hero-banner { height: 150px; }
+  .hero-banner-title { font-size: 22px; }
+  .hero-banner-motto { font-size: 10.5px; }
+}
+
 /* ---------- Layout ---------- */
 /* App body = persistent left sidebar (desktop) + main column. Mobile drops
    the sidebar entirely in favour of the existing bottom tab bar — see the
