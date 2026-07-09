@@ -4438,8 +4438,13 @@ button.delete-danger svg { flex-shrink: 0; }
 @media (max-width: 640px) {
   .eendragters-page .directory-toolbar { flex-wrap: wrap; }
   .eendragters-page .toolbar-buttons { display: contents; }
-  .eendragters-page .directory-toolbar .search-wrap { flex: 1 1 auto; order: 1; }
-  .eendragters-page .filters-toggle-btn { order: 2; }
+  /* Filters keeps its natural width no matter how wide its "N filters
+     applied" badge gets (flex-shrink: 0) — the search box absorbs
+     whatever space is left (min-width: 0 lets it shrink all the way down
+     instead of pushing Filters into the wrap), so the two never fight
+     over the row and Filters can't get bumped onto Your Industry's line. */
+  .eendragters-page .directory-toolbar .search-wrap { flex: 1 1 auto; min-width: 0; order: 1; }
+  .eendragters-page .filters-toggle-btn { order: 2; flex-shrink: 0; }
   .eendragters-page .suggestions-btn { order: 3; flex: 1 1 100%; justify-content: center; }
 }
 
