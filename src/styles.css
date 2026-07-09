@@ -4350,141 +4350,219 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 
 /* ---------- Toolbar spacing tweak ---------- */
-.eendragters-page .directory-toolbar { gap: 12px; margin-bottom: 6px; }
-
-/* ---------- Directory content wrapper (main grid + sidebar) ---------- */
-.eendragters-page .directory-content-wrapper {
+.eendragters-page .directory-toolbar {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 6px;
+  align-items: center;
 }
 
-.eendragters-page .directory-main {
+.eendragters-page .directory-toolbar .search-wrap {
   flex: 1;
-  min-width: 0;
 }
 
-/* ---------- Connection suggestions sidebar ---------- */
-.eendragters-page .similar-people-sidebar {
-  flex-shrink: 0;
-  width: 220px;
-  background: linear-gradient(180deg, rgba(232, 97, 28, 0.06), rgba(232, 97, 28, 0));
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 12px;
+.eendragters-page .toolbar-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.eendragters-page .similar-people-sidebar .similar-people-header {
-  margin-bottom: 8px;
+/* ---------- Suggestions button ---------- */
+.eendragters-page .suggestions-btn {
+  background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
 }
 
-.eendragters-page .similar-people-sidebar .similar-people-title {
-  font-size: 11px;
-  margin-bottom: 0;
+.eendragters-page .suggestions-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
-.eendragters-page .similar-people-sidebar .similar-people-toggle {
-  padding: 4px 8px;
+.eendragters-page .suggestions-btn:active {
+  transform: translateY(0);
 }
 
-.eendragters-page .similar-people-column {
+/* ---------- Suggestions drawer (modal) ---------- */
+.suggestions-drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+  animation: fadeIn 0.2s ease;
+}
+
+.suggestions-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.suggestions-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.suggestions-drawer-header h3 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: var(--maroon);
+  margin: 0;
+}
+
+.suggestions-drawer-header .modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.suggestions-drawer-header .modal-close:hover {
+  color: var(--text);
+}
+
+.suggestions-drawer-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
 }
 
-.eendragters-page .similar-person-compact {
+.suggestion-item {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: rgba(232, 97, 28, 0.04);
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(232, 97, 28, 0.1);
   transition: background 0.2s ease;
 }
 
-.eendragters-page .similar-person-compact:hover {
-  background: rgba(232, 97, 28, 0.1);
+.suggestion-item:hover {
+  background: rgba(232, 97, 28, 0.05);
 }
 
-.eendragters-page .similar-person-compact .similar-person-open {
+.suggestion-profile {
   flex: 1;
   display: flex;
-  gap: 6px;
-  align-items: center;
+  gap: 10px;
+  align-items: flex-start;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
+  text-align: left;
   min-width: 0;
 }
 
-.eendragters-page .similar-person-info {
+.suggestion-info {
   display: flex;
   flex-direction: column;
-  min-width: 0;
   gap: 2px;
+  min-width: 0;
 }
 
-.eendragters-page .similar-person-info .similar-person-name {
-  font-size: 12px;
+.suggestion-name {
   font-weight: 600;
+  font-size: 14px;
   color: var(--text);
-  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.eendragters-page .similar-person-info .similar-person-company {
-  font-size: 10px;
+.suggestion-company {
+  font-size: 12px;
   color: var(--text-muted);
-  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.eendragters-page .similar-person-message-compact {
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
+.suggestion-occupation {
+  font-size: 12px;
   color: var(--orange);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-message {
+  background: rgba(232, 97, 28, 0.1);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: var(--orange);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.eendragters-page .similar-person-message-compact:hover {
-  color: var(--orange-dark);
+.suggestion-message:hover {
+  background: var(--orange);
+  color: white;
 }
 
-.eendragters-page .similar-person-message-compact svg {
-  width: 14px;
-  height: 14px;
+.suggestion-message svg {
+  width: 16px;
+  height: 16px;
 }
 
-@media (max-width: 1200px) {
-  .eendragters-page .directory-content-wrapper {
-    gap: 12px;
+@media (max-width: 640px) {
+  .suggestions-drawer {
+    max-width: 100%;
   }
-  .eendragters-page .similar-people-sidebar {
-    width: 180px;
-  }
-}
 
-@media (max-width: 768px) {
-  .eendragters-page .directory-content-wrapper {
-    flex-direction: column;
-  }
-  .eendragters-page .similar-people-sidebar {
-    width: 100%;
+  .eendragters-page .suggestions-btn {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 }
 
