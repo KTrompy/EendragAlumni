@@ -1855,6 +1855,11 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .modal-chips .person-tag { font-size: 12px; padding: 4px 10px; }
 
+/* ---------- Job modal (JobModal.jsx) ---------- */
+.job-modal-badges { display: flex; align-items: center; gap: 6px; margin: 4px 0 10px; }
+.job-modal-badges .job-badge { margin-left: 0; }
+.job-modal-save.on { border-color: var(--orange); color: var(--orange-dark); background: var(--orange-soft); }
+
 .modal-footer {
   padding: 14px 20px;
   border-top: 1px solid var(--line);
@@ -2901,6 +2906,14 @@ button.delete-danger svg { flex-shrink: 0; }
 .attendee-message svg { width: 14px; height: 14px; }
 
 .job-card { grid-template-columns: 1fr; }
+/* .job-card-main is the actual click surface that opens the job's detail
+   modal — everything inside that's already its own control (poster,
+   apply/message/share/edit/delete) stops the click from bubbling up to
+   it, same pattern as Directory's person-card. The save button sits
+   outside this element entirely (an absolutely-positioned sibling), so
+   it needs no special handling at all. */
+.job-card-clickable { cursor: pointer; border-radius: var(--radius-sm, 8px); }
+.job-card-clickable:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 .job-card-main { display: flex; gap: 14px; align-items: flex-start; min-width: 0; }
 .job-card-content { min-width: 0; flex: 1; }
 .job-logo {

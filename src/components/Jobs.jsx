@@ -6,6 +6,7 @@ import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { Avatar } from './Directory.jsx'
 import ProfileModal from './ProfileModal.jsx'
+import JobModal from './JobModal.jsx'
 import { useToast } from './Toast.jsx'
 import { buildIcebreaker, matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
@@ -64,6 +65,7 @@ export default function Jobs({ session, profile, onMessage }) {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [filterOpen, setFilterOpen] = useState(false)
   const [openProfile, setOpenProfile] = useState(null)
+  const [openJob, setOpenJob] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -420,7 +422,21 @@ export default function Jobs({ session, profile, onMessage }) {
               >
                 <BookmarkIcon filled={savedIds.has(j.id)} />
               </button>
-              <div className="job-card-main">
+              {/* This is the actual click surface, not the <li> — keeps the
+                  save button (an absolutely-positioned sibling) outside of
+                  it entirely, and matches the pattern Directory's
+                  PersonCard uses for the same "click card to open a modal,
+                  except its own buttons" behaviour. */}
+              <div
+                className="job-card-main job-card-clickable"
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpenJob({ job: j, isMine, isNew, reason })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenJob({ job: j, isMine, isNew, reason }) }
+                }}
+                aria-label={`Open details for ${j.title} at ${j.company}`}
+              >
                 <JobLogo url={j.logo_url} company={j.company} />
                 <div className="job-card-content">
                   <h3 className="job-title">
@@ -433,7 +449,7 @@ export default function Jobs({ session, profile, onMessage }) {
                     <strong>{j.company}</strong>
                     {j.location && ` · ${j.location}`}
                   </p>
-                <div className="job-poster-row">
+                <div className="job-poster-row" onClick={(e) => e.stopPropagation()}>
                   <button className="job-poster" onClick={() => setOpenProfile(j.profiles)}>
                     <Avatar url={j.profiles?.avatar_url} name={j.profiles?.full_name} size={22} />
                     <span>Posted by {j.profiles?.full_name || 'a member'} · {timeAgo(j.created_at)}</span>
@@ -448,7 +464,10 @@ export default function Jobs({ session, profile, onMessage }) {
                   className="job-desc rendered-html"
                   dangerouslySetInnerHTML={{ __html: trimTrailingHtml(sanitizeHtml(j.description)) }}
                 />
-                <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div
+                  style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {j.apply_url && (
                     <a className="btn primary small" href={j.apply_url} target="_blank" rel="noopener noreferrer">
                       Apply now
@@ -533,6 +552,29 @@ export default function Jobs({ session, profile, onMessage }) {
             setOpenProfile(null)
             onMessage({ id: p.id, full_name: p.full_name }, buildIcebreaker(profile, p))
           }}
+        />
+      )}
+
+      {openJob && (
+        <JobModal
+          entry={openJob}
+          isSaved={savedIds.has(openJob.job.id)}
+          onToggleSave={() => toggleSave(openJob.job.id)}
+          onOpenPoster={() => setOpenProfile(openJob.job.profiles)}
+          onApplyEmail={() => openMailto(openJob.job.contact_email, `Application: ${openJob.job.title}`)}
+          onMessage={() => {
+            const j = openJob.job
+            setOpenJob(null)
+            onMessage(
+              { id: j.posted_by, full_name: j.profiles?.full_name },
+              `Hi! I saw your "${j.title}" post on the job board and wanted to reach out.`
+            )
+          }}
+          onShare={() => shareJob(openJob.job)}
+          copied={copiedId === openJob.job.id}
+          onEdit={() => { setEditingId(openJob.job.id); setOpenJob(null) }}
+          onDelete={() => { removeJob(openJob.job.id); setOpenJob(null) }}
+          onClose={() => setOpenJob(null)}
         />
       )}
     </section>
