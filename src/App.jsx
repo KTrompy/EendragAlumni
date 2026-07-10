@@ -14,6 +14,7 @@ import People from './components/People.jsx'
 import { Avatar } from './components/Directory.jsx'
 import FloatingMessages from './components/FloatingMessages.jsx'
 import Profile from './components/Profile.jsx'
+import PersonProfile from './components/PersonProfile.jsx'
 import Events from './components/Events.jsx'
 import Jobs from './components/Jobs.jsx'
 import BusinessDirectory from './components/BusinessDirectory.jsx'
@@ -414,6 +415,10 @@ export default function App() {
               <Route
                 path="/settings"
                 element={<Settings session={session} profile={profile} onSaved={setProfile} />}
+              />
+              <Route
+                path="/people/:personId"
+                element={<PersonProfile session={session} me={profile} onMessage={openMessage} />}
               />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>

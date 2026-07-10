@@ -6,12 +6,10 @@ import 'leaflet/dist/leaflet.css'
 import { supabase } from '../supabaseClient'
 import { geocodeCity } from '../geocode.js'
 import { Avatar } from './Directory.jsx'
-import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { useToast } from './Toast.jsx'
-import { buildIcebreaker } from '../icebreaker.js'
 import { useIsWide } from '../utils.js'
 import { COUNTRIES } from '../constants.js'
 import BusinessDescriptionEditor from './BusinessDescriptionEditor.jsx'
@@ -99,7 +97,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const [filterOpen, setFilterOpen] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [openOwner, setOpenOwner] = useState(null)
   const isWide = useIsWide(900)
   const showToast = useToast()
 
@@ -385,7 +382,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                         editingId={editingId}
                         setEditingId={setEditingId}
                         onOpen={() => navigate(`/businesses/${b.id}`)}
-                        onOpenOwner={() => setOpenOwner(b.profiles)}
+                        onOpenOwner={() => b.profiles?.id && navigate(`/people/${b.profiles.id}`)}
                         onMessage={() => openMessageWithOwner(b)}
                         onDelete={() => removeBusiness(b.id)}
                         onTogglePromote={() => togglePromote(b)}
@@ -409,7 +406,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                         editingId={editingId}
                         setEditingId={setEditingId}
                         onOpen={() => navigate(`/businesses/${b.id}`)}
-                        onOpenOwner={() => setOpenOwner(b.profiles)}
+                        onOpenOwner={() => b.profiles?.id && navigate(`/people/${b.profiles.id}`)}
                         onMessage={() => openMessageWithOwner(b)}
                         onDelete={() => removeBusiness(b.id)}
                         onTogglePromote={() => togglePromote(b)}
@@ -458,18 +455,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
         </>
       )}
 
-      {openOwner && (
-        <ProfileModal
-          person={openOwner}
-          isMe={openOwner.id === session.user.id}
-          onClose={() => setOpenOwner(null)}
-          onMessage={() => {
-            const p = openOwner
-            setOpenOwner(null)
-            onMessage({ id: p.id, full_name: p.full_name }, buildIcebreaker(profile, p))
-          }}
-        />
-      )}
     </section>
   )
 }

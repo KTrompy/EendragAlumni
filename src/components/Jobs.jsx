@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { Avatar } from './Directory.jsx'
-import ProfileModal from './ProfileModal.jsx'
 import JobModal from './JobModal.jsx'
 import { useToast } from './Toast.jsx'
-import { buildIcebreaker, matchReason } from '../icebreaker.js'
+import { matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
 import { useIsWide } from '../utils.js'
 
@@ -65,7 +65,6 @@ export default function Jobs({ session, profile, onMessage }) {
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [filterOpen, setFilterOpen] = useState(false)
-  const [openProfile, setOpenProfile] = useState(null)
   const [openJob, setOpenJob] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
   const [editingId, setEditingId] = useState(null)
@@ -77,6 +76,13 @@ export default function Jobs({ session, profile, onMessage }) {
   const [savedLoading, setSavedLoading] = useState(false)
   const showToast = useToast()
   const isWide = useIsWide(900)
+  const navigate = useNavigate()
+
+  // Clicking a job poster's name goes to their standalone profile page
+  // rather than popping a modal over the job board.
+  function goToProfile(person) {
+    if (person?.id) navigate(`/people/${person.id}`)
+  }
 
   async function loadSavedIds() {
     const { data } = await supabase.from('saved_jobs').select('job_id').eq('user_id', session.user.id)
@@ -446,7 +452,7 @@ export default function Jobs({ session, profile, onMessage }) {
                     {j.location && ` · ${j.location}`}
                   </p>
                 <div className="job-poster-row" onClick={(e) => e.stopPropagation()}>
-                  <button className="job-poster" onClick={() => setOpenProfile(j.profiles)}>
+                  <button className="job-poster" onClick={() => goToProfile(j.profiles)}>
                     <Avatar url={j.profiles?.avatar_url} name={j.profiles?.full_name} size={22} />
                     <span>Posted by {j.profiles?.full_name || 'a member'} · {timeAgo(j.created_at)}</span>
                   </button>
@@ -574,17 +580,12 @@ export default function Jobs({ session, profile, onMessage }) {
         </>
       )}
 
-      {/* JobModal is rendered before ProfileModal on purpose — clicking the
-          poster's name from inside the job modal opens ProfileModal on top
-          of it (both stay mounted), and with matching z-index, whichever
-          one is later in the DOM paints on top. Keeping ProfileModal last
-          guarantees it's always the one you see, however it was opened. */}
       {openJob && (
         <JobModal
           entry={openJob}
           isSaved={savedIds.has(openJob.job.id)}
           onToggleSave={() => toggleSave(openJob.job.id)}
-          onOpenPoster={() => setOpenProfile(openJob.job.profiles)}
+          onOpenPoster={() => { const j = openJob; setOpenJob(null); goToProfile(j.job.profiles) }}
           onApplyEmail={() => openMailto(openJob.job.contact_email, `Application: ${openJob.job.title}`)}
           onMessage={() => {
             const j = openJob.job
@@ -599,19 +600,6 @@ export default function Jobs({ session, profile, onMessage }) {
           onEdit={() => { setEditingId(openJob.job.id); setOpenJob(null) }}
           onDelete={() => { removeJob(openJob.job.id); setOpenJob(null) }}
           onClose={() => setOpenJob(null)}
-        />
-      )}
-
-      {openProfile && (
-        <ProfileModal
-          person={openProfile}
-          isMe={openProfile.id === session.user.id}
-          onClose={() => setOpenProfile(null)}
-          onMessage={() => {
-            const p = openProfile
-            setOpenProfile(null)
-            onMessage({ id: p.id, full_name: p.full_name }, buildIcebreaker(profile, p))
-          }}
         />
       )}
     </section>

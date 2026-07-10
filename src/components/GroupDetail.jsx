@@ -8,7 +8,6 @@ import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
-import ProfileModal from './ProfileModal.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
@@ -54,10 +53,15 @@ export default function GroupDetail({ session, profile, onMessage }) {
   const [tab, setTab] = useState('feed')
   const [myRole, setMyRole] = useState(null) // null = not a member, 'member' | 'admin'
   const [memberCount, setMemberCount] = useState(0)
-  const [openProfile, setOpenProfile] = useState(null)
   const [editingGroup, setEditingGroup] = useState(false)
   const [leavingConfirm, setLeavingConfirm] = useState(false)
   const isSiteAdmin = !!profile?.is_admin
+
+  // Clicking a member/author/commenter anywhere on this page goes to their
+  // standalone profile page rather than popping a modal over the group.
+  function goToProfile(person) {
+    if (person?.id) navigate(`/people/${person.id}`)
+  }
 
   async function loadGroup() {
     setLoading(true)
@@ -157,7 +161,7 @@ export default function GroupDetail({ session, profile, onMessage }) {
           profile={profile}
           isMember={isMember}
           isGroupAdmin={isGroupAdmin}
-          onOpenProfile={setOpenProfile}
+          onOpenProfile={goToProfile}
           onMessage={onMessage}
         />
       )}
@@ -166,7 +170,7 @@ export default function GroupDetail({ session, profile, onMessage }) {
           groupId={groupId}
           session={session}
           isGroupAdmin={isGroupAdmin}
-          onOpenProfile={setOpenProfile}
+          onOpenProfile={goToProfile}
         />
       )}
 
@@ -188,18 +192,6 @@ export default function GroupDetail({ session, profile, onMessage }) {
         />
       )}
 
-      {openProfile && (
-        <ProfileModal
-          person={openProfile}
-          isMe={openProfile.id === session.user.id}
-          onClose={() => setOpenProfile(null)}
-          onMessage={() => {
-            const p = openProfile
-            setOpenProfile(null)
-            onMessage?.({ id: p.id, full_name: p.full_name }, `Hi! I saw you in ${group.name} and wanted to reach out.`)
-          }}
-        />
-      )}
     </section>
   )
 }

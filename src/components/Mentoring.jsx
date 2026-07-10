@@ -5,7 +5,6 @@ import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
-import ProfileModal from './ProfileModal.jsx'
 import { useToast } from './Toast.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 
@@ -33,9 +32,15 @@ export default function Mentoring({ session, profile, onMessage }) {
   const [participants, setParticipants] = useState([]) // every program's participants (role is public info)
   const [myMatches, setMyMatches] = useState([]) // matches where I'm mentor or mentee
   const [loading, setLoading] = useState(true)
-  const [openProfile, setOpenProfile] = useState(null)
   const [creatingProgram, setCreatingProgram] = useState(false)
   const showToast = useToast()
+  const navigate = useNavigate()
+
+  // Clicking a person anywhere in Mentoring goes to their standalone
+  // profile page rather than popping a modal.
+  function goToProfile(person) {
+    if (person?.id) navigate(`/people/${person.id}`)
+  }
 
   function setTab(id) {
     const p = new URLSearchParams(params)
@@ -144,7 +149,7 @@ export default function Mentoring({ session, profile, onMessage }) {
               participants={participants}
               myMatches={myMatches}
               onRequest={requestMentor}
-              onOpenProfile={setOpenProfile}
+              onOpenProfile={goToProfile}
               onJoinAsMentee={(programId) => joinProgram(programId, 'mentee')}
             />
           )}
@@ -156,7 +161,7 @@ export default function Mentoring({ session, profile, onMessage }) {
               participants={participants}
               onRespond={respondToMatch}
               onRemove={removeMatch}
-              onOpenProfile={setOpenProfile}
+              onOpenProfile={goToProfile}
               onMessage={messageAbout}
             />
           )}
@@ -168,7 +173,7 @@ export default function Mentoring({ session, profile, onMessage }) {
               onJoin={joinProgram}
               onLeave={leaveProgram}
               onCreate={() => setCreatingProgram(true)}
-              onOpenProfile={setOpenProfile}
+              onOpenProfile={goToProfile}
             />
           )}
           {tab === 'settings' && (
@@ -186,14 +191,6 @@ export default function Mentoring({ session, profile, onMessage }) {
         <CreateProgramModal session={session} onClose={() => setCreatingProgram(false)} onCreated={() => { setCreatingProgram(false); load() }} />
       )}
 
-      {openProfile && (
-        <ProfileModal
-          person={openProfile}
-          isMe={openProfile.id === session.user.id}
-          onClose={() => setOpenProfile(null)}
-          onMessage={() => { const p = openProfile; setOpenProfile(null); messageAbout(p, 'mentoring') }}
-        />
-      )}
     </section>
   )
 }

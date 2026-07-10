@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { PhotoBlock, OnlineDot } from './Directory.jsx'
-import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
-import { buildIcebreaker } from '../icebreaker.js'
 
 // People sharing a city/country cluster onto one pin, so a city with 40
 // Eendragters doesn't paint 40 overlapping markers on top of each other —
@@ -56,18 +55,13 @@ function FitToMarkers({ points }) {
 // Alumni map — the List/Map toggle's other view. Filtering/search now live
 // one level up in People.jsx (see DirectoryFilters.jsx) so this just plots
 // whatever `people` it's handed; it no longer fetches its own copy.
-export default function AlumniMap({ session, people, loading, onMessage, onGoToProfile, hideHeader = false }) {
-  const [openProfile, setOpenProfile] = useState(null)
+export default function AlumniMap({ session, people, loading, onGoToProfile, hideHeader = false }) {
+  const navigate = useNavigate()
 
   const pinned = useMemo(
     () => people.filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number'),
     [people]
   )
-
-  const me = useMemo(() => people.find((p) => p.id === session.user.id), [people, session.user.id])
-  function messageWithIcebreaker(p) {
-    onMessage(p, buildIcebreaker(me, p))
-  }
 
   const clusters = useMemo(() => {
     const map = new Map()
@@ -139,7 +133,7 @@ export default function AlumniMap({ session, people, loading, onMessage, onGoToP
                       <ul className="map-popup-list">
                         {c.people.map((p) => (
                           <li key={p.id}>
-                            <button className="map-popup-person" onClick={() => setOpenProfile(p)}>
+                            <button className="map-popup-person" onClick={() => navigate(`/people/${p.id}`)}>
                               <span className="map-popup-photo-wrap">
                                 <PhotoBlock url={p.avatar_url} name={p.full_name} className="map-popup-photo" />
                                 <OnlineDot lastSeen={p.last_seen} />
@@ -167,15 +161,6 @@ export default function AlumniMap({ session, people, loading, onMessage, onGoToP
           </MapContainer>
           <p className="map-hint">Tap a pin to see who's there, view their profile, or send a message.</p>
         </div>
-      )}
-
-      {openProfile && (
-        <ProfileModal
-          person={openProfile}
-          isMe={openProfile.id === session.user.id}
-          onClose={() => setOpenProfile(null)}
-          onMessage={() => { const p = openProfile; setOpenProfile(null); messageWithIcebreaker(p) }}
-        />
       )}
     </div>
   )

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import ProfileModal from './ProfileModal.jsx'
+import { useNavigate } from 'react-router-dom'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
@@ -51,7 +51,7 @@ export function OnlineDot({ lastSeen }) {
 // and back doesn't lose them. This component only owns what's specific to
 // the *list* itself: sort order and how many rows are revealed so far.
 export default function Directory({ session, people, loading, me, onMessage, hideHeader = false }) {
-  const [openProfile, setOpenProfile] = useState(null)
+  const navigate = useNavigate()
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [sort, setSort] = useState('alpha') // alpha | recent | online
 
@@ -99,7 +99,7 @@ export default function Directory({ session, people, loading, me, onMessage, hid
             key={p.id}
             person={p}
             isMe={p.id === session.user.id}
-            onOpen={() => setOpenProfile(p)}
+            onOpen={() => navigate(`/people/${p.id}`)}
             onMessage={() => messageWithIcebreaker(p)}
           />
         ))}
@@ -111,15 +111,6 @@ export default function Directory({ session, people, loading, me, onMessage, hid
             Load more ({sorted.length - shown.length} remaining)
           </button>
         </div>
-      )}
-
-      {openProfile && (
-        <ProfileModal
-          person={openProfile}
-          isMe={openProfile.id === session.user.id}
-          onClose={() => setOpenProfile(null)}
-          onMessage={() => { const p = openProfile; setOpenProfile(null); messageWithIcebreaker(p) }}
-        />
       )}
     </div>
   )

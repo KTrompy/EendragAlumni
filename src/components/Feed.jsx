@@ -6,7 +6,6 @@ import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
-import ProfileModal from './ProfileModal.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
@@ -96,7 +95,6 @@ export default function Feed({ session, profile, onMessage }) {
   const [myLikes, setMyLikes] = useState(new Set())
   const [lightbox, setLightbox] = useState(null)
   const [query, setQuery] = useState('')
-  const [openProfile, setOpenProfile] = useState(null)
   const composerOpenRef = useRef(null)
   const showToast = useToast()
   const navigate = useNavigate()
@@ -256,15 +254,14 @@ export default function Feed({ session, profile, onMessage }) {
     ? posts.filter((p) => postMatches(p, needle))
     : posts
 
-  // "Who's online" and "Recent members" only fetch a handful of light
-  // fields for their own rendering (see WhosOnline/RecentMembersWidget) —
-  // clicking through still opens the same full profile modal as everywhere
-  // else in the app (author names, comment authors), so this re-fetches the
-  // complete POSTER_FIELDS set by id rather than passing the trimmed row
-  // straight into ProfileModal.
-  async function openMemberProfile(id) {
-    const { data } = await supabase.from('profiles').select(POSTER_FIELDS).eq('id', id).single()
-    if (data) setOpenProfile(data)
+  // Clicking a name/avatar anywhere in the feed (author, commenter, "Who's
+  // online", "Recent members") goes to that person's standalone profile
+  // page now instead of popping a modal — accepts either a full profile
+  // object (post/comment authors) or a bare id ("Who's online"/"Recent
+  // members" only fetch a handful of light fields for their own rendering).
+  function goToProfile(personOrId) {
+    const id = typeof personOrId === 'string' ? personOrId : personOrId?.id
+    if (id) navigate(`/people/${id}`)
   }
 
   function postItemProps(p) {
@@ -283,7 +280,7 @@ export default function Feed({ session, profile, onMessage }) {
         { id: p.author_id, full_name: p.profiles?.full_name },
         'Hi! I saw your post on the feed and wanted to reach out.'
       ),
-      onOpenProfile: setOpenProfile,
+      onOpenProfile: goToProfile,
     }
   }
 
@@ -296,7 +293,7 @@ export default function Feed({ session, profile, onMessage }) {
         <div className="feed-main">
           <Composer session={session} profile={profile} onPosted={() => { loadFirstPage(); showToast('Post created') }} openRef={composerOpenRef} />
 
-          <WhosOnline session={session} onOpenProfile={openMemberProfile} />
+          <WhosOnline session={session} onOpenProfile={goToProfile} />
 
           {(posts.length > 0 || pinnedPosts.length > 0) && (
             <div className="search-wrap feed-search-wrap">
@@ -355,7 +352,7 @@ export default function Feed({ session, profile, onMessage }) {
 
         <aside className="feed-sidebar">
           <TopJobsWidget onViewAll={() => navigate('/jobs')} />
-          <RecentMembersWidget onOpenProfile={openMemberProfile} onViewAll={() => navigate('/directory')} />
+          <RecentMembersWidget onOpenProfile={goToProfile} onViewAll={() => navigate('/directory')} />
         </aside>
       </div>
 
@@ -365,18 +362,6 @@ export default function Feed({ session, profile, onMessage }) {
         </div>
       )}
 
-      {openProfile && (
-        <ProfileModal
-          person={openProfile}
-          isMe={openProfile.id === session.user.id}
-          onClose={() => setOpenProfile(null)}
-          onMessage={() => {
-            const p = openProfile
-            setOpenProfile(null)
-            onMessage?.({ id: p.id, full_name: p.full_name }, 'Hi! I saw your post on the feed and wanted to reach out.')
-          }}
-        />
-      )}
     </section>
   )
 }

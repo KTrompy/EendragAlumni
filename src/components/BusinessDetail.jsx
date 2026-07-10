@@ -5,12 +5,10 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import ProfileModal from './ProfileModal.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { useToast } from './Toast.jsx'
-import { buildIcebreaker } from '../icebreaker.js'
 import { sanitizeBusinessHtml } from '../sanitizeHtml.js'
 import { BusinessLogo, BusinessForm } from './BusinessDirectory.jsx'
 
@@ -45,7 +43,6 @@ export default function BusinessDetail({ session, profile, onMessage }) {
   const [business, setBusiness] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
-  const [openOwner, setOpenOwner] = useState(null)
   const isAdmin = !!profile?.is_admin
 
   async function load() {
@@ -147,7 +144,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
             )}
 
             <div className="business-detail-poster-row">
-              <button className="business-detail-poster" onClick={() => setOpenOwner(owner)}>
+              <button className="business-detail-poster" onClick={() => owner?.id && navigate(`/people/${owner.id}`)}>
                 <Avatar url={owner?.avatar_url} name={owner?.full_name} size={44} />
                 <span className="business-detail-poster-text">
                   <strong>{owner?.full_name || 'a member'}</strong>
@@ -240,19 +237,6 @@ export default function BusinessDetail({ session, profile, onMessage }) {
           </div>
         </aside>
       </div>
-
-      {openOwner && (
-        <ProfileModal
-          person={openOwner}
-          isMe={openOwner.id === session.user.id}
-          onClose={() => setOpenOwner(null)}
-          onMessage={() => {
-            const p = openOwner
-            setOpenOwner(null)
-            onMessage({ id: p.id, full_name: p.full_name }, buildIcebreaker(profile, p))
-          }}
-        />
-      )}
     </section>
   )
 }
