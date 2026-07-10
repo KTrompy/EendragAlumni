@@ -12,6 +12,7 @@ import DeleteButton from './DeleteButton.jsx'
 import DateTimePicker from './DateTimePicker.jsx'
 import { useToast } from './Toast.jsx'
 import { eventIcebreaker } from '../icebreaker.js'
+import EventFormEnhanced from './EventFormEnhanced'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -361,7 +362,7 @@ export default function Events({ session, profile, onMessage }) {
       </div>
 
       {showForm && (
-        <EventForm
+        <EventFormEnhanced
           session={session}
           onCancel={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); loadInitial(); showToast('Event created') }}
@@ -549,7 +550,7 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
   if (editing) {
     return (
       <li className="event-card event-card-editing" id={`event-${e.id}`}>
-        <EventForm
+        <EventFormEnhanced
           session={session}
           initial={e}
           onCancel={() => setEditing(false)}
@@ -876,103 +877,6 @@ function MiniCalendar({ events, cursorMonth, setCursorMonth, selectedDay, setSel
   )
 }
 
-function EventForm({ session, onCancel, onCreated, initial = null }) {
-  const isEdit = !!initial
-  const [title, setTitle] = useState(initial?.title || '')
-  const [date, setDate] = useState(initial ? new Date(initial.event_date) : null)
-  const [location, setLocation] = useState(initial?.location || '')
-  const [description, setDescription] = useState(initial?.description || '')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
-  const [isClosing, setIsClosing] = useState(false)
-
-  // Lock body scroll while the "Add an event" panel floats over its
-  // backdrop — same fix as Jobs' "Post a role" panel. Skipped for inline
-  // edits, which aren't a floating overlay in the first place.
-  useEffect(() => {
-    if (isEdit) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prevOverflow }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  function handleCancel() {
-    setIsClosing(true)
-    setTimeout(onCancel, 200)
-  }
-
-  async function submit() {
-    if (!title.trim() || !date) { setError('Title and date are required.'); return }
-    setBusy(true); setError(null)
-
-    // Re-geocode only when the location text actually changed (or this is a
-    // brand new event) — same "don't hit Nominatim on every unrelated edit"
-    // rule Profile/BusinessForm follow for their own pins. `location` here
-    // is a full free-text address rather than just a city, but geocodeCity
-    // just forwards whatever string it's given to Nominatim, so it works
-    // the same way — results just won't always be as precise.
-    const trimmedLocation = location.trim()
-    let coords = { lat: initial?.lat ?? null, lng: initial?.lng ?? null }
-    const locationChanged = !isEdit || trimmedLocation !== (initial?.location || '')
-    if (locationChanged && trimmedLocation) {
-      const geo = await geocodeCity(trimmedLocation, '')
-      coords = { lat: geo?.lat ?? null, lng: geo?.lng ?? null }
-    } else if (locationChanged && !trimmedLocation) {
-      coords = { lat: null, lng: null }
-    }
-
-    const payload = {
-      title: title.trim(),
-      event_date: date.toISOString(),
-      location: trimmedLocation,
-      description: description.trim(),
-      ...coords,
-    }
-    const { error } = isEdit
-      ? await supabase.from('events').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', initial.id)
-      : await supabase.from('events').insert({ ...payload, created_by: session.user.id })
-    if (error) {
-      setError(error.message.includes('policy')
-        ? 'Creating events unlocks once your account is approved.'
-        : error.message)
-      setBusy(false)
-    } else {
-      onCreated()
-    }
-  }
-
-  return (
-    <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
-      <div className={isEdit ? 'create-panel inline' : `create-panel ${isClosing ? 'closing' : ''}`}>
-        <h3>{isEdit ? 'Edit event' : 'Add an event'}</h3>
-        <div className="create-panel-content">
-          <label className="field"><span>Title</span>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="60-year reunion braai" />
-          </label>
-          <div className="field-row">
-            <label className="field"><span>Date & time</span>
-              <DateTimePicker value={date} onChange={setDate} placeholder="Pick a date & time" />
-            </label>
-            <label className="field"><span>Location</span>
-              <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Eendrag, Stellenbosch" />
-            </label>
-          </div>
-          <label className="field"><span>Description</span>
-            <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's happening, RSVP details, cost…" style={{ resize: 'none' }} />
-          </label>
-          {error && <p className="form-error">{error}</p>}
-        </div>
-        <div className="btn-row">
-          <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
-          <button className="btn primary" onClick={submit} disabled={busy}>
-            {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'Post event')}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 /* ---------- Icons ---------- */
 function CheckIcon() {
