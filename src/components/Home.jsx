@@ -407,7 +407,7 @@ export default function Home({ session, profile, onMessage }) {
                     <div key={m.id} className="home-community-card">
                       <button
                         className="home-community-card-identity"
-                        onClick={() => navigate('/directory')}
+                        onClick={() => navigate(`/people/${m.id}`)}
                         title={[m.occupation, m.company].filter(Boolean).join(' @ ')}
                       >
                         <Avatar url={m.avatar_url} name={m.full_name} size={54} />
