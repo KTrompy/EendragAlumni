@@ -5598,14 +5598,14 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .group-hero-cover {
   width: 100%;
-  height: 160px;
+  height: 200px;
   background: linear-gradient(135deg, var(--maroon), var(--maroon-soft));
   color: var(--orange-soft);
   display: grid;
   place-items: center;
   overflow: hidden;
 }
-.group-hero-cover img { width: 100%; height: 100%; object-fit: cover; }
+.group-hero-cover img { width: 100%; height: 100%; object-fit: contain; }
 .group-hero-body {
   display: flex;
   align-items: flex-start;
