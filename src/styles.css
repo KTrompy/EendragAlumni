@@ -1897,21 +1897,15 @@ button.delete-danger svg { flex-shrink: 0; }
 
 .card-grid {
   list-style: none; margin: 0; padding: 0;
-  display: grid; gap: 16px;
-  /* auto-fill + minmax keeps every card in a row the same width automatically,
-     and lets the count per row grow with available space instead of a fixed
-     number — smaller minimum on phones (room for 2-3), larger on laptops
-     and up (fewer, bigger cards). */
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  display: grid; gap: 24px;
+  /* 3 columns on desktop, 2 on tablet, 1 on mobile */
+  grid-template-columns: 1fr;
 }
-@media (min-width: 480px) {
-  .card-grid { gap: 20px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+@media (min-width: 640px) {
+  .card-grid { gap: 20px; grid-template-columns: repeat(2, 1fr); }
 }
-@media (min-width: 560px) {
-  .card-grid { gap: 24px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
-}
-@media (min-width: 900px) {
-  .card-grid { gap: 32px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+@media (min-width: 1024px) {
+  .card-grid { gap: 32px; grid-template-columns: repeat(3, 1fr); }
 }
 
 /* SACS-style card: dominant photo, info block below, icon row at foot */
@@ -2070,6 +2064,104 @@ button.delete-danger svg { flex-shrink: 0; }
 .person-action.linkedin-active:hover { background: #E8F0FE; color: #084E96; }
 .person-action:disabled { color: var(--line-strong); cursor: not-allowed; }
 .person-action:disabled:hover { background: none; color: var(--line-strong); }
+
+/* Person card footer sections */
+.person-card-photo {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: var(--maroon);
+  color: var(--orange-soft);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-bottom: 2px solid var(--orange);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.person-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+.person-card-overlay {
+  position: absolute;
+  bottom: 60px;
+  right: 8px;
+}
+.person-card-footer {
+  padding: 12px 14px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.person-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.person-card-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.person-card-you {
+  color: var(--orange);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.person-card-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.3;
+}
+.person-card-role {
+  font-size: 12.5px;
+  color: var(--ink);
+  margin: 2px 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.person-card-location {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin: 2px 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.person-card-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.person-card-ribbon {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--orange);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  z-index: 10;
+}
 
 /* ---------- Profile Modal ---------- */
 .modal-backdrop {

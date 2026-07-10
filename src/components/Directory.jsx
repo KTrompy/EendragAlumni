@@ -93,9 +93,9 @@ export default function Directory({ session, people, loading, me, onMessage, hid
         <EmptyState icon="search" message="No matching Eendragters found." subMessage="Try widening a filter or clearing them all." />
       )}
 
-      <ul className="person-row-list">
+      <ul className="card-grid">
         {shown.map((p) => (
-          <PersonRow
+          <PersonCard
             key={p.id}
             person={p}
             isMe={p.id === session.user.id}
@@ -125,19 +125,19 @@ export default function Directory({ session, people, loading, me, onMessage, hid
   )
 }
 
-/* ---------- Person row (compact list item) ---------- */
-function PersonRow({ person: p, isMe, onOpen, onMessage }) {
+/* ---------- Person card (grid layout) ---------- */
+function PersonCard({ person: p, isMe, onOpen, onMessage }) {
   function onKey(e) {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() }
+    if (e.key === ‘Enter’ || e.key === ‘ ‘) { e.preventDefault(); onOpen() }
   }
 
   const roleLine = p.occupation && p.company
     ? `${p.occupation} @ ${p.company}`
-    : (p.occupation || p.company || '')
+    : (p.occupation || p.company || ‘’)
 
   const locationLine = p.city && p.country
     ? `${p.city}, ${p.country}`
-    : (p.country || p.city || '')
+    : (p.country || p.city || ‘’)
 
   const expertise = normalizeExpertise(p.expertise)
   const willingToHelp = (p.services_offered || []).length > 0
@@ -145,48 +145,45 @@ function PersonRow({ person: p, isMe, onOpen, onMessage }) {
   return (
     <li>
       <div
-        className="person-row"
+        className="person-card"
         role="button"
         tabIndex={0}
         onClick={onOpen}
         onKeyDown={onKey}
-        aria-label={`Open profile for ${p.full_name || 'alumnus'}`}
+        aria-label={`Open profile for ${p.full_name || ‘alumnus’}`}
       >
-        {willingToHelp && <span className="person-row-ribbon">Willing to help!</span>}
-        <span className="person-row-avatar-wrap">
-          <Avatar url={p.avatar_url} name={p.full_name} size={48} />
+        {willingToHelp && <span className="person-card-ribbon">Willing to help!</span>}
+        <PhotoBlock url={p.avatar_url} name={p.full_name} className="person-card-photo" />
+        <div className="person-card-overlay">
           <OnlineDot lastSeen={p.last_seen} />
-        </span>
-        <div className="person-row-info">
-          <div className="person-row-name-line">
-            <span className="person-row-name">{p.full_name || 'Alumnus'}</span>
-            {isMe && <span className="person-name-you">You</span>}
-            <span className="person-row-affiliation">{p.is_current_resident ? 'In house' : 'Alum'}</span>
-            {p.grad_year && <span className="person-row-year">’{String(p.grad_year).slice(2)}</span>}
-          </div>
-          <p className="person-row-meta">
-            {[roleLine, locationLine, p.industry].filter(Boolean).join(' · ') || ' '}
-          </p>
-          {expertise.length > 0 && (
-            <div className="person-tags">
-              {expertise.slice(0, 3).map((e) => <span key={e} className="person-tag">{e}</span>)}
-            </div>
-          )}
         </div>
-        <div className="person-row-actions" onClick={(e) => e.stopPropagation()}>
-          <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label="Send a message">
-            <EnvelopeIcon />
-          </button>
-          {p.linkedin_url ? (
-            <a className="person-action linkedin-active" href={p.linkedin_url} target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label="LinkedIn" onClick={(e) => e.stopPropagation()}>
-              <LinkedInIcon />
-            </a>
-          ) : (
-            <button className="person-action" disabled title="No LinkedIn on file" aria-label="No LinkedIn on file">
-              <LinkedInIcon />
+        <div className="person-card-footer">
+          <div className="person-card-info">
+            <div className="person-card-name">
+              {p.full_name || ‘Alumnus’}
+              {isMe && <span className="person-card-you">You</span>}
+            </div>
+            <div className="person-card-meta">
+              {p.is_current_resident ? ‘In house’ : ‘Alum’}
+              {p.grad_year && <span> · ‘{String(p.grad_year).slice(2)}</span>}
+            </div>
+            {roleLine && <p className="person-card-role">{roleLine}</p>}
+            {locationLine && <p className="person-card-location">{locationLine}</p>}
+          </div>
+          <div className="person-card-actions" onClick={(e) => e.stopPropagation()}>
+            <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That’s you" : ‘Send a message’} aria-label="Send a message">
+              <EnvelopeIcon />
             </button>
-          )}
-          <span className="person-row-chevron" aria-hidden="true"><ChevronIcon /></span>
+            {p.linkedin_url ? (
+              <a className="person-action linkedin-active" href={p.linkedin_url} target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label="LinkedIn" onClick={(e) => e.stopPropagation()}>
+                <LinkedInIcon />
+              </a>
+            ) : (
+              <button className="person-action" disabled title="No LinkedIn on file" aria-label="No LinkedIn on file">
+                <LinkedInIcon />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </li>
