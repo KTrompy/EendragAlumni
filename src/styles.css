@@ -5428,20 +5428,22 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .home-more-link { border-top: none !important; margin: 0 !important; padding: 0 !important; width: auto !important; }
 
-.home-post-preview-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+/* Recent feed posts — whole section sits inside one bordered card (reuses
+   .feed-widget) so it reads as a single grouped block, matching "My
+   Community" alongside it; individual posts are rows separated by a
+   hairline rather than their own boxes. */
+.home-feed-widget { padding: 16px 18px 6px; }
+.home-feed-widget .home-section-head { margin-bottom: 4px; }
+
+.home-post-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .home-post-preview {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 16px;
-  border-radius: var(--radius);
-  background: var(--paper);
-  border: 1px solid var(--line);
-  transition: box-shadow 0.2s var(--ease);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
 }
-.home-post-preview:hover {
-  box-shadow: var(--shadow-card);
-}
+.home-post-preview:last-child { border-bottom: none; padding-bottom: 8px; }
 .home-post-preview-body { flex: 1; min-width: 0; }
 .home-post-preview-header {
   display: flex;
@@ -5533,12 +5535,10 @@ button.delete-danger svg { flex-shrink: 0; }
 
 /* ---------- My Community / Strengthen Your Network ---------- */
 .home-community-sub {
-  margin: 0 0 12px;
-  font-size: 12px;
+  margin: 0 0 14px;
+  font-size: 14px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-soft);
+  color: var(--ink);
 }
 .home-community-grid {
   display: grid;
@@ -5550,15 +5550,22 @@ button.delete-danger svg { flex-shrink: 0; }
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
+.home-community-card-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
   background: none;
   border: none;
-  padding: 8px 4px;
+  padding: 8px 4px 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.2s var(--ease);
 }
-.home-community-card:hover { background: var(--paper); }
-.home-community-card span {
+.home-community-card-identity:hover { background: var(--paper); }
+.home-community-card-identity span {
   font-size: 13px;
   font-weight: 500;
   color: var(--ink);
@@ -5567,6 +5574,36 @@ button.delete-danger svg { flex-shrink: 0; }
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
+}
+.home-community-message-btn {
+  width: 100%;
+  background: var(--maroon);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  transition: background 0.2s var(--ease);
+}
+.home-community-message-btn:hover { background: var(--maroon-dark); }
+
+/* "See who's on the platform" nested inside the same My Community card —
+   reuses Feed's .whos-online widget but strips its own card chrome so it
+   blends into the parent .home-community-widget instead of double-boxing. */
+.home-community-online {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.home-community-online .whos-online {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* ---------- Badges ---------- */

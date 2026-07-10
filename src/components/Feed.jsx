@@ -1007,7 +1007,7 @@ function Comments({ postId, session, profile, onOpenProfile }) {
 // channel), so "online" here means "currently on the Feed", not "logged in
 // somewhere in the app". Simpler to reason about than app-wide presence,
 // and it's the page this actually shows on in the reference.
-function WhosOnline({ session, onOpenProfile }) {
+export function WhosOnline({ session, onOpenProfile }) {
   const [members, setMembers] = useState([])
   const [showAll, setShowAll] = useState(false)
 

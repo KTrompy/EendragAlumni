@@ -376,7 +376,7 @@ export default function App() {
           <main className="content">
             <Routes>
               <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route path="/home" element={<Home session={session} profile={profile} />} />
+              <Route path="/home" element={<Home session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/directory" element={<People session={session} onMessage={openMessage} onGoToProfile={() => goTo('/profile')} refetchTrigger={directoryRefetchTrigger} />} />
               <Route path="/feed" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/groups" element={<Groups session={session} />} />

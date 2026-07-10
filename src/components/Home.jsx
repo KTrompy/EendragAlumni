@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import { GroupPlaceholderIcon } from './Groups.jsx'
+import { WhosOnline } from './Feed.jsx'
+import { buildIcebreaker } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
 
 // Fields checked for the profile-completion bar — the ones that actually
@@ -69,7 +71,7 @@ function formatEventDate(iso) {
   }
 }
 
-export default function Home({ session, profile }) {
+export default function Home({ session, profile, onMessage }) {
   const [recentPosts, setRecentPosts] = useState([])
   const [myGroups, setMyGroups] = useState([])
   const [upcomingEvent, setUpcomingEvent] = useState(null)
@@ -134,7 +136,7 @@ export default function Home({ session, profile }) {
         communityFilters.length
           ? supabase
               .from('profiles')
-              .select('id, full_name, avatar_url, occupation, company')
+              .select('id, full_name, avatar_url, occupation, company, industry')
               .eq('approved', true)
               .neq('id', uid)
               .or(communityFilters.join(','))
@@ -172,7 +174,7 @@ export default function Home({ session, profile }) {
       if (communityList.length === 0) {
         const { data: fallback } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, occupation, company')
+          .select('id, full_name, avatar_url, occupation, company, industry')
           .eq('approved', true)
           .neq('id', uid)
           .order('created_at', { ascending: false })
@@ -239,44 +241,46 @@ export default function Home({ session, profile }) {
       <div className="feed-layout" data-active-mobile-tab={mobileTab}>
         <div className="feed-main">
           <div className="home-tabsection" data-tab="posts">
-            <div className="home-section-head">
-              <h3 className="feed-section-label">Recent feed posts</h3>
-              <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/feed')}>More posts</button>
-            </div>
+            <div className="feed-widget home-feed-widget">
+              <div className="home-section-head">
+                <h3 className="feed-section-label">Recent feed posts</h3>
+                <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/feed')}>More posts</button>
+              </div>
 
-            {recentPosts.length === 0 ? (
-              <p className="empty small">No posts yet — be the first to share something.</p>
-            ) : (
-              <ul className="home-post-preview-list">
-                {recentPosts.map((p) => {
-                  const text = p.content && p.content !== '(no text)' ? truncate(plainText(p.content)) : ''
-                  const hasMedia = p.image_urls?.length > 0
-                  return (
-                    <li key={p.id} className="home-post-preview">
-                      <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={48} />
-                      <div className="home-post-preview-body">
-                        <div className="home-post-preview-header">
-                          <div>
-                            <span className="home-post-preview-head">
-                              {p.pinned && <PinIcon />}
-                              <strong>{p.profiles?.full_name || 'Alumnus'}</strong>
-                            </span>
-                            <p className="home-post-preview-occupation">{p.profiles?.occupation || 'Member'}</p>
+              {recentPosts.length === 0 ? (
+                <p className="empty small">No posts yet — be the first to share something.</p>
+              ) : (
+                <ul className="home-post-preview-list">
+                  {recentPosts.map((p) => {
+                    const text = p.content && p.content !== '(no text)' ? truncate(plainText(p.content)) : ''
+                    const hasMedia = p.image_urls?.length > 0
+                    return (
+                      <li key={p.id} className="home-post-preview">
+                        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={48} />
+                        <div className="home-post-preview-body">
+                          <div className="home-post-preview-header">
+                            <div>
+                              <span className="home-post-preview-head">
+                                {p.pinned && <PinIcon />}
+                                <strong>{p.profiles?.full_name || 'Alumnus'}</strong>
+                              </span>
+                              <p className="home-post-preview-occupation">{p.profiles?.occupation || 'Member'}</p>
+                            </div>
                           </div>
+                          {hasMedia && (
+                            <button className="home-post-media-row" onClick={() => navigate('/feed')}>
+                              <ImageIcon />
+                              <span>See all media posted</span>
+                              <span className="home-post-media-arrow">›</span>
+                            </button>
+                          )}
                         </div>
-                        {hasMedia && (
-                          <button className="home-post-media-row" onClick={() => navigate('/feed')}>
-                            <ImageIcon />
-                            <span>See all media posted</span>
-                            <span className="home-post-media-arrow">›</span>
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
 
           <div className="home-tabsection" data-tab="groups">
@@ -316,19 +320,35 @@ export default function Home({ session, profile }) {
                 <h3 className="feed-section-label" style={{ margin: 0 }}>My Community</h3>
                 <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/directory')}>All members</button>
               </div>
-              <p className="home-community-sub">Strengthen your network</p>
+              <p className="home-community-sub">Strengthen Your Network</p>
               {community.length === 0 ? (
                 <p className="empty small">No suggestions yet.</p>
               ) : (
                 <div className="home-community-grid">
                   {community.map((m) => (
-                    <button key={m.id} className="home-community-card" onClick={() => navigate('/directory')} title={[m.occupation, m.company].filter(Boolean).join(' @ ')}>
-                      <Avatar url={m.avatar_url} name={m.full_name} size={48} />
-                      <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
-                    </button>
+                    <div key={m.id} className="home-community-card">
+                      <button
+                        className="home-community-card-identity"
+                        onClick={() => navigate('/directory')}
+                        title={[m.occupation, m.company].filter(Boolean).join(' @ ')}
+                      >
+                        <Avatar url={m.avatar_url} name={m.full_name} size={48} />
+                        <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
+                      </button>
+                      <button
+                        className="home-community-message-btn"
+                        onClick={() => onMessage?.(m, buildIcebreaker(profile, m))}
+                      >
+                        Message
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
+
+              <div className="home-community-online">
+                <WhosOnline session={session} onOpenProfile={() => navigate('/directory')} />
+              </div>
             </div>
           </div>
 
