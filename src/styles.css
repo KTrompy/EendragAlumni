@@ -6197,14 +6197,23 @@ button.delete-danger svg { flex-shrink: 0; }
   text-align: center;
   line-height: 1.2;
 }
+.home-community-reason {
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: -4px 0 0 0;
+  text-align: center;
+}
 .home-community-message-btn {
   width: 100%;
   background: var(--orange);
   color: #fff;
   border: none;
   border-radius: var(--radius-sm);
-  padding: 9px 12px;
-  font-size: 11px;
+  padding: 6px 10px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;

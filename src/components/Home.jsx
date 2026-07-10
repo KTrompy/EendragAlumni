@@ -5,7 +5,7 @@ import { Avatar } from './Directory.jsx'
 import { GroupPlaceholderIcon } from './Groups.jsx'
 import { WhosOnline } from './Feed.jsx'
 import { BusinessLogo } from './BusinessDirectory.jsx'
-import { buildIcebreaker } from '../icebreaker.js'
+import { buildIcebreaker, matchReason } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
 
 // Fields checked for the profile-completion bar — the ones that actually
@@ -94,13 +94,12 @@ export default function Home({ session, profile, onMessage }) {
       const uid = session.user.id
 
       // Suggested connections for "My Community — Strengthen Your Network":
-      // other approved members who share a grad year, industry or city with
-      // this profile. Falls back to recently-joined members if the profile
-      // doesn't have enough filled in to match on, so the widget is never
-      // empty for a sparse profile.
+      // prioritizes industry match, then grad year, then city. Falls back to
+      // recently-joined members if the profile doesn't have enough filled in
+      // to match on, so the widget is never empty for a sparse profile.
       const communityFilters = []
-      if (profile?.grad_year) communityFilters.push(`grad_year.eq.${profile.grad_year}`)
       if (profile?.industry) communityFilters.push(`industry.eq.${profile.industry}`)
+      if (profile?.grad_year) communityFilters.push(`grad_year.eq.${profile.grad_year}`)
       if (profile?.city) communityFilters.push(`city.eq.${profile.city}`)
 
       // "Businesses near me": listings sharing the viewer's city or country,
@@ -202,7 +201,12 @@ export default function Home({ session, profile, onMessage }) {
           .limit(6)
         communityList = fallback || []
       }
-      setCommunity(communityList)
+      // Add match reason to each community member for display
+      const communityWithReasons = communityList.map((m) => ({
+        ...m,
+        matchReason: matchReason(profile, m),
+      }))
+      setCommunity(communityWithReasons)
 
       let businessList = matchedBusinesses || []
       if (businessList.length === 0) {
@@ -409,6 +413,9 @@ export default function Home({ session, profile, onMessage }) {
                         <Avatar url={m.avatar_url} name={m.full_name} size={54} />
                         <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
                       </button>
+                      {m.matchReason && (
+                        <p className="home-community-reason">{m.matchReason}</p>
+                      )}
                       <button
                         className="home-community-message-btn"
                         onClick={() => onMessage?.(m, buildIcebreaker(profile, m))}
