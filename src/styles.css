@@ -2341,10 +2341,76 @@ button.delete-danger svg { flex-shrink: 0; }
 .profile-card-subsection { margin-top: 14px; }
 .profile-card-subsection .modal-chips { margin-top: 6px; }
 
-.experience-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.experience-timeline-entry { border-left: 2px solid var(--orange-soft); padding-left: 12px; }
-.experience-timeline-title { font-size: 14px; font-weight: 700; color: var(--ink); }
-.experience-timeline-meta { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+/* A real vertical timeline — a continuous line with a dot per entry —
+   rather than just a left border per row, so the sequence of roles reads
+   as one continuous career path instead of a stack of disconnected facts.
+   Used on the standalone person-profile page (see .person-profile-page). */
+.experience-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 4px;
+  position: relative;
+}
+.experience-timeline::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--line-strong);
+}
+.experience-timeline-entry {
+  position: relative;
+  padding: 0 0 28px 28px;
+}
+.experience-timeline-entry:last-child { padding-bottom: 0; }
+.experience-timeline-marker {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 3px solid var(--orange-soft);
+}
+.experience-timeline-entry.current .experience-timeline-marker {
+  border-color: var(--orange);
+  background: var(--orange);
+}
+.experience-timeline-title { font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.35; }
+.experience-timeline-company { font-size: 14.5px; font-weight: 600; color: var(--maroon); margin-top: 2px; }
+.experience-timeline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+}
+.experience-timeline-range { font-weight: 600; }
+.experience-timeline-industry {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+
+/* ---------- Standalone person-profile page (read-only) — a bit more
+   breathing room throughout than the denser "edit my profile" page that
+   shares most of these classes, since there's no form chrome competing
+   for space here. ---------- */
+.person-profile-page .profile-section { padding: 26px 28px 22px; margin-bottom: 22px; }
+.person-profile-page .profile-fact-strip { gap: 22px; padding: 20px 0; }
+.person-profile-page .profile-card-section + .profile-card-section { margin-top: 28px; }
+.person-profile-page .profile-card-section-title { font-size: 13px; margin-bottom: 14px; }
+.person-profile-page .profile-card-bio { font-size: 15px; line-height: 1.7; }
+.person-profile-page .profile-photo-card { padding: 40px 28px; gap: 16px; }
+.person-profile-page .profile-card-subsection { margin-top: 20px; }
+.person-profile-page .profile-actions { margin-top: 24px; gap: 14px; }
 .modal-chips {
   display: flex;
   flex-wrap: wrap;

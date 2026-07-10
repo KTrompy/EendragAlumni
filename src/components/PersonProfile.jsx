@@ -115,7 +115,11 @@ export default function PersonProfile({ session, me, onMessage }) {
     ? `${contact.city}, ${contact.country}`
     : (contact?.country || contact?.city || '')
 
-  const experience = Array.isArray(p.experience) ? p.experience : []
+  // Most recent role first — a role still "in progress" (no `to` date) sorts
+  // above finished ones, then finished ones sort by how recently they ended.
+  const experience = (Array.isArray(p.experience) ? p.experience : [])
+    .slice()
+    .sort((a, b) => (b.to || b.from || '').localeCompare(a.to || a.from || ''))
   const expertise = normalizeExpertise(p.expertise)
   const servicesOffered = Array.isArray(p.services_offered) ? p.services_offered : []
   const businessCategories = Array.isArray(p.business_categories) ? p.business_categories : []
@@ -125,7 +129,7 @@ export default function PersonProfile({ session, me, onMessage }) {
     || !!p.business_website || !!p.availability
 
   return (
-    <section className="panel narrow profile-page">
+    <section className="panel narrow profile-page person-profile-page">
       <div className="profile-header-with-back">
         <button className="profile-back-btn" onClick={() => navigate(-1)} aria-label="Back">
           ← Back
@@ -180,19 +184,26 @@ export default function PersonProfile({ session, me, onMessage }) {
         )}
 
         {experience.length > 0 && (
-          <div className="profile-card-section">
+          <div className="profile-card-section profile-card-section-experience">
             <h3 className="profile-card-section-title">Experience</h3>
             <ul className="experience-timeline">
-              {experience.map((entry, i) => (
-                <li className="experience-timeline-entry" key={i}>
-                  <div className="experience-timeline-title">
-                    {entry.title || 'Role'}{entry.company && <> @ {entry.company}</>}
-                  </div>
-                  <div className="experience-timeline-meta">
-                    {[entry.industry, formatExperienceRange(entry.from, entry.to)].filter(Boolean).join(' · ')}
-                  </div>
-                </li>
-              ))}
+              {experience.map((entry, i) => {
+                const range = formatExperienceRange(entry.from, entry.to)
+                const isCurrent = !!entry.from && !entry.to
+                return (
+                  <li className={isCurrent ? 'experience-timeline-entry current' : 'experience-timeline-entry'} key={i}>
+                    <span className="experience-timeline-marker" aria-hidden="true" />
+                    <div className="experience-timeline-content">
+                      <div className="experience-timeline-title">{entry.title || 'Role'}</div>
+                      {entry.company && <div className="experience-timeline-company">{entry.company}</div>}
+                      <div className="experience-timeline-meta">
+                        {range && <span className="experience-timeline-range">{range}</span>}
+                        {entry.industry && <span className="experience-timeline-industry">{entry.industry}</span>}
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )}
@@ -252,7 +263,7 @@ export default function PersonProfile({ session, me, onMessage }) {
 
       <div className="profile-actions">
         {p.linkedin_url && (
-          <a className="btn ghost" href={p.linkedin_url} target="_blank" rel="noopener noreferrer">
+          <a className="linkedin-link" href={p.linkedin_url} target="_blank" rel="noopener noreferrer">
             <LinkedInIconSmall /> LinkedIn
           </a>
         )}
