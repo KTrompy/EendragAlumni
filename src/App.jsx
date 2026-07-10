@@ -17,6 +17,7 @@ import Profile from './components/Profile.jsx'
 import Events from './components/Events.jsx'
 import Jobs from './components/Jobs.jsx'
 import BusinessDirectory from './components/BusinessDirectory.jsx'
+import BusinessDetail from './components/BusinessDetail.jsx'
 import Donate from './components/Donate.jsx'
 import Admin from './components/Admin.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
@@ -388,6 +389,7 @@ export default function App() {
               <Route path="/events/:eventId" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/jobs" element={<Jobs session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/businesses" element={<BusinessDirectory session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/businesses/:businessId" element={<BusinessDetail session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/donate" element={<Donate />} />
               <Route
                 path="/admin"

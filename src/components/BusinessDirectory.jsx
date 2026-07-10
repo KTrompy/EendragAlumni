@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -14,8 +14,31 @@ import { useToast } from './Toast.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import { useIsWide } from '../utils.js'
 import { COUNTRIES } from '../constants.js'
+import BusinessDescriptionEditor from './BusinessDescriptionEditor.jsx'
+import { sanitizeBusinessHtml } from '../sanitizeHtml.js'
 
 const MAX_LOGO_SIZE = 3 * 1024 * 1024
+const MAX_COVER_SIZE = 5 * 1024 * 1024
+
+// Does the HTML contain anything besides whitespace/empty tags? Used so an
+// empty WYSIWYG description doesn't pass validation as "filled in".
+function hasText(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html || ''
+  return div.textContent.trim().length > 0
+}
+
+// Strips tags for search matching and the card's plain-text excerpt.
+function plainText(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html || ''
+  return div.textContent || ''
+}
+
+function truncate(text, max = 140) {
+  const t = text.trim()
+  return t.length > max ? t.slice(0, max).trim() + '…' : t
+}
 
 // A distinct list from the profile-level BUSINESS_CATEGORIES (which
 // classifies a *person's* relationship to business — "Founder", "Investor",
@@ -66,6 +89,7 @@ function pinIcon(count) {
 }
 
 export default function BusinessDirectory({ session, profile, onMessage }) {
+  const navigate = useNavigate()
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
   const [params, setParams] = useSearchParams()
@@ -75,7 +99,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const [filterOpen, setFilterOpen] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [openBusiness, setOpenBusiness] = useState(null)
   const [openOwner, setOpenOwner] = useState(null)
   const isWide = useIsWide(900)
   const showToast = useToast()
@@ -154,7 +177,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const needle = q.trim().toLowerCase()
   const shown = businesses.filter((b) => {
     if (needle) {
-      const hay = [b.name, b.category, b.description, b.city, b.country, b.profiles?.full_name]
+      const hay = [b.name, b.tagline, b.category, plainText(b.description), b.city, b.country, b.profiles?.full_name]
         .join(' ').toLowerCase()
       if (!hay.includes(needle)) return false
     }
@@ -315,7 +338,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                             <ul className="map-popup-list">
                               {c.items.map((b) => (
                                 <li key={b.id}>
-                                  <button className="map-popup-person" onClick={() => setOpenBusiness(b)}>
+                                  <button className="map-popup-person" onClick={() => navigate(`/businesses/${b.id}`)}>
                                     <BusinessLogo url={b.logo_url} name={b.name} />
                                     <span className="map-popup-info">
                                       <strong>{b.name}{b.promoted && <span className="business-featured-tag">Featured</span>}</strong>
@@ -348,7 +371,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                         isAdmin={isAdmin}
                         editingId={editingId}
                         setEditingId={setEditingId}
-                        onOpen={() => setOpenBusiness(b)}
+                        onOpen={() => navigate(`/businesses/${b.id}`)}
                         onOpenOwner={() => setOpenOwner(b.profiles)}
                         onMessage={() => openMessageWithOwner(b)}
                         onDelete={() => removeBusiness(b.id)}
@@ -372,7 +395,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                         isAdmin={isAdmin}
                         editingId={editingId}
                         setEditingId={setEditingId}
-                        onOpen={() => setOpenBusiness(b)}
+                        onOpen={() => navigate(`/businesses/${b.id}`)}
                         onOpenOwner={() => setOpenOwner(b.profiles)}
                         onMessage={() => openMessageWithOwner(b)}
                         onDelete={() => removeBusiness(b.id)}
@@ -422,20 +445,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
         </>
       )}
 
-      {openBusiness && (
-        <BusinessModal
-          b={openBusiness}
-          isMine={openBusiness.owner_id === session.user.id}
-          isAdmin={isAdmin}
-          onOpenOwner={() => setOpenOwner(openBusiness.profiles)}
-          onMessage={() => { setOpenBusiness(null); openMessageWithOwner(openBusiness) }}
-          onEdit={() => { setEditingId(openBusiness.id); setOpenBusiness(null) }}
-          onDelete={() => { removeBusiness(openBusiness.id); setOpenBusiness(null) }}
-          onTogglePromote={() => togglePromote(openBusiness)}
-          onClose={() => setOpenBusiness(null)}
-        />
-      )}
-
       {openOwner && (
         <ProfileModal
           person={openOwner}
@@ -464,6 +473,8 @@ function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpen, on
     )
   }
 
+  const excerpt = truncate(plainText(b.description), 160)
+
   return (
     <li className="job-card business-card">
       {isAdmin && (
@@ -478,30 +489,48 @@ function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpen, on
         </button>
       )}
       <div
-        className="job-card-main job-card-clickable"
+        className="job-card-main job-card-clickable business-card-main"
         role="button"
         tabIndex={0}
         onClick={onOpen}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
         aria-label={`Open details for ${b.name}`}
       >
-        <BusinessLogo url={b.logo_url} name={b.name} />
-        <div className="job-card-content">
-          <h3 className="job-title">
-            {b.name}
-            {b.promoted && <span className="job-badge business-featured-tag">Featured</span>}
-            {b.category && <span className="job-badge">{b.category}</span>}
-          </h3>
-          <p className="job-meta">
-            {[b.city, b.country].filter(Boolean).join(', ') || 'Location not set'}
-          </p>
-          <div className="job-poster-row" onClick={(e) => e.stopPropagation()}>
-            <button className="job-poster" onClick={onOpenOwner}>
-              <Avatar url={b.profiles?.avatar_url} name={b.profiles?.full_name} size={22} />
-              <span>Run by {b.profiles?.full_name || 'a member'} · {timeAgo(b.created_at)}</span>
-            </button>
+        {b.cover_image_url && (
+          <div className="business-card-cover">
+            <img src={b.cover_image_url} alt="" loading="lazy" />
           </div>
-          {b.description && <p className="job-desc">{b.description}</p>}
+        )}
+        <div className="business-card-body">
+          <BusinessLogo url={b.logo_url} name={b.name} />
+          <div className="job-card-content">
+            <h3 className="job-title">
+              {b.name}
+              {b.promoted && <span className="job-badge business-featured-tag">Featured</span>}
+              {b.category && <span className="job-badge">{b.category}</span>}
+            </h3>
+            <p className="job-meta">
+              {[b.city, b.country].filter(Boolean).join(', ') || 'Location not set'}
+            </p>
+            <div className="job-poster-row" onClick={(e) => e.stopPropagation()}>
+              <button className="job-poster" onClick={onOpenOwner}>
+                <Avatar url={b.profiles?.avatar_url} name={b.profiles?.full_name} size={22} />
+                <span>Run by {b.profiles?.full_name || 'a member'} · {timeAgo(b.created_at)}</span>
+              </button>
+            </div>
+            {b.tagline && <p className="business-card-tagline">{b.tagline}</p>}
+            {excerpt && (
+              <p className="business-desc-excerpt">
+                {excerpt}{' '}
+                <button
+                  type="button"
+                  className="business-read-more"
+                  onClick={(e) => { e.stopPropagation(); onOpen() }}
+                >
+                  Read more
+                </button>
+              </p>
+            )}
           <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
             {b.website && (
               <a className="btn primary small" href={/^https?:\/\//.test(b.website) ? b.website : `https://${b.website}`} target="_blank" rel="noopener noreferrer">
@@ -525,108 +554,24 @@ function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpen, on
               </DeleteButton>
             )}
           </div>
+          </div>
         </div>
       </div>
     </li>
   )
 }
 
-/* ---------- Detail modal ---------- */
-function BusinessModal({ b, isMine, isAdmin, onOpenOwner, onMessage, onEdit, onDelete, onTogglePromote, onClose }) {
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-    }
-  }, [onClose])
-
-  return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="business-modal-title">
-      <div className="modal profile-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 id="business-modal-title">{b.name}</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
-        </div>
-        <div className="modal-body">
-          <div className="profile-card-header">
-            <BusinessLogo url={b.logo_url} name={b.name} />
-            <div className="profile-card-heading">
-              <p className="profile-card-role">
-                {[b.city, b.country].filter(Boolean).join(', ') || 'Location not set'}
-              </p>
-              <div className="job-modal-badges">
-                {b.promoted && <span className="job-badge business-featured-tag">Featured</span>}
-                {b.category && <span className="job-badge">{b.category}</span>}
-              </div>
-            </div>
-          </div>
-
-          <div className="job-poster-row">
-            <button className="job-poster" onClick={onOpenOwner}>
-              <Avatar url={b.profiles?.avatar_url} name={b.profiles?.full_name} size={22} />
-              <span>Run by {b.profiles?.full_name || 'a member'} · {timeAgo(b.created_at)}</span>
-            </button>
-          </div>
-
-          {b.description && (
-            <div className="profile-card-section">
-              <h3 className="profile-card-section-title">About</h3>
-              <p>{b.description}</p>
-            </div>
-          )}
-
-          {(b.website || b.contact_email || b.phone) && (
-            <div className="profile-card-section">
-              <h3 className="profile-card-section-title">Contact</h3>
-              {b.website && <p><a href={/^https?:\/\//.test(b.website) ? b.website : `https://${b.website}`} target="_blank" rel="noopener noreferrer">{b.website}</a></p>}
-              {b.contact_email && <p>{b.contact_email}</p>}
-              {b.phone && <p>{b.phone}</p>}
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          {b.website && (
-            <a className="btn primary small" href={/^https?:\/\//.test(b.website) ? b.website : `https://${b.website}`} target="_blank" rel="noopener noreferrer">
-              Visit website
-            </a>
-          )}
-          {!isMine && <button className="btn ghost small" onClick={onMessage}>Message about this business</button>}
-          {isAdmin && (
-            <button className="btn ghost small" onClick={onTogglePromote}>
-              {b.promoted ? 'Remove from Featured' : 'Feature this business'}
-            </button>
-          )}
-          {isMine && <button className="btn ghost small" onClick={onEdit}>Edit</button>}
-          {(isMine || isAdmin) && (
-            <DeleteButton
-              onConfirm={onDelete}
-              label="Delete listing"
-              message="This removes the business listing. This can't be undone."
-              className="btn ghost small delete-danger"
-            >
-              Delete
-            </DeleteButton>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* ---------- Create/edit form ---------- */
-const DRAFT_FIELDS = ['name', 'category', 'description', 'website', 'contact_email', 'phone', 'city', 'country']
+const DRAFT_FIELDS = ['name', 'tagline', 'category', 'description', 'website', 'contact_email', 'phone', 'city', 'country']
 
-function BusinessForm({ session, onCancel, onCreated, initial = null }) {
+export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
   const isEdit = !!initial
   const draftKey = `eendrag-business-draft-${session.user.id}`
   const draftRestoredRef = useRef(false)
   const showToast = useToast()
   const [form, setForm] = useState({
     name: initial?.name || '',
+    tagline: initial?.tagline || '',
     category: initial?.category || LISTING_CATEGORIES[0],
     description: initial?.description || '',
     website: initial?.website || '',
@@ -637,10 +582,13 @@ function BusinessForm({ session, onCancel, onCreated, initial = null }) {
   })
   const [logoFile, setLogoFile] = useState(null)
   const [logoUrl, setLogoUrl] = useState(initial?.logo_url || '')
+  const [coverFile, setCoverFile] = useState(null)
+  const [coverUrl, setCoverUrl] = useState(initial?.cover_image_url || '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [isClosing, setIsClosing] = useState(false)
   const logoRef = useRef(null)
+  const coverRef = useRef(null)
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
 
@@ -708,8 +656,30 @@ function BusinessForm({ session, onCancel, onCreated, initial = null }) {
     return data.publicUrl
   }
 
+  function pickCover(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (f.size > MAX_COVER_SIZE) { setError('Cover image is over 5MB.'); e.target.value = ''; return }
+    setCoverFile(f)
+    setError(null)
+    e.target.value = ''
+  }
+
+  function removeCover() { setCoverFile(null); setCoverUrl('') }
+
+  async function uploadCover() {
+    const ext = coverFile.name.split('.').pop().toLowerCase()
+    const path = `${session.user.id}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('business-covers')
+      .upload(path, coverFile, { upsert: false, contentType: coverFile.type })
+    if (upErr) throw upErr
+    const { data } = supabase.storage.from('business-covers').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   async function submit() {
-    if (!form.name.trim() || !form.category || !form.description.trim()) {
+    if (!form.name.trim() || !form.category || !hasText(form.description)) {
       setError('Name, category and description are required.'); return
     }
     if (!form.website.trim() && !form.contact_email.trim() && !form.phone.trim()) {
@@ -718,6 +688,7 @@ function BusinessForm({ session, onCancel, onCreated, initial = null }) {
     setBusy(true); setError(null)
     try {
       const finalLogoUrl = logoFile ? await uploadLogo() : logoUrl
+      const finalCoverUrl = coverFile ? await uploadCover() : coverUrl
 
       // Re-geocode only when the city/country actually changed (or a brand
       // new listing) — same "don't hit Nominatim on every unrelated edit"
@@ -734,11 +705,13 @@ function BusinessForm({ session, onCancel, onCreated, initial = null }) {
       const payload = {
         ...form,
         name: form.name.trim(),
-        description: form.description.trim(),
+        tagline: form.tagline.trim(),
+        description: sanitizeBusinessHtml(form.description),
         website: form.website.trim(),
         contact_email: form.contact_email.trim(),
         phone: form.phone.trim(),
         logo_url: finalLogoUrl,
+        cover_image_url: finalCoverUrl,
         ...coords,
       }
       const { error } = isEdit
@@ -760,6 +733,7 @@ function BusinessForm({ session, onCancel, onCreated, initial = null }) {
   }
 
   const logoPreview = logoFile ? URL.createObjectURL(logoFile) : logoUrl
+  const coverPreview = coverFile ? URL.createObjectURL(coverFile) : coverUrl
 
   return (
     <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
@@ -781,6 +755,32 @@ function BusinessForm({ session, onCancel, onCreated, initial = null }) {
             </label>
           </div>
 
+          <label className="field"><span>Header / tagline (optional)</span>
+            <input
+              value={form.tagline}
+              onChange={(e) => set('tagline', e.target.value)}
+              placeholder="A fun and friendly beerhouse & bistro"
+              maxLength={140}
+            />
+          </label>
+
+          <label className="field"><span>Cover image (optional)</span></label>
+          <p className="form-hint" style={{ marginTop: -8 }}>A big banner image shown above your listing's name — on the card preview and the full listing page.</p>
+          <div className="job-logo-picker business-cover-picker">
+            {coverPreview ? (
+              <img className="business-cover-preview" src={coverPreview} alt="Cover preview" />
+            ) : (
+              <div className="business-cover-preview business-cover-fallback" aria-hidden="true"><ImagePlaceholderIcon /></div>
+            )}
+            <div className="job-logo-picker-actions">
+              <button type="button" className="btn ghost small" onClick={() => coverRef.current?.click()}>
+                {coverPreview ? 'Replace image' : 'Upload image'}
+              </button>
+              {coverPreview && <button type="button" className="btn ghost small" onClick={removeCover}>Remove</button>}
+            </div>
+            <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={pickCover} />
+          </div>
+
           <label className="field"><span>Logo (optional)</span></label>
           <div className="job-logo-picker">
             {logoPreview ? (
@@ -797,13 +797,16 @@ function BusinessForm({ session, onCancel, onCreated, initial = null }) {
             <input ref={logoRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={pickLogo} />
           </div>
 
-          <label className="field"><span>Description *</span>
-            <textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="What you do, who you serve, why a fellow Eendragter should reach out…" />
-          </label>
+          <label className="field"><span>Description *</span></label>
+          <BusinessDescriptionEditor
+            value={form.description}
+            onChange={(html) => set('description', html)}
+            placeholder="What you do, who you serve, why a fellow Eendragter should reach out…"
+          />
 
-          <div className="field-row">
-            <label className="field"><span>City</span>
-              <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Cape Town" />
+          <div className="field-row" style={{ marginTop: 14 }}>
+            <label className="field"><span>Location</span>
+              <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Stellenbosch" />
             </label>
             <label className="field"><span>Country</span>
               <div className="select-wrap">
@@ -841,12 +844,21 @@ function BusinessForm({ session, onCancel, onCreated, initial = null }) {
 }
 
 /* ---------- Small pieces ---------- */
-function BusinessLogo({ url, name }) {
+export function BusinessLogo({ url, name }) {
   const initial = (name || '?').trim().charAt(0).toUpperCase()
   return url ? (
     <img className="job-logo" src={url} alt={name ? `${name} logo` : 'Business logo'} loading="lazy" />
   ) : (
     <div className="job-logo job-logo-fallback" aria-hidden="true">{initial}</div>
+  )
+}
+
+function ImagePlaceholderIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </svg>
   )
 }
 

@@ -15,6 +15,24 @@ export function sanitizeHtml(html) {
   return DOMPurify.sanitize(html, CONFIG)
 }
 
+// Wider whitelist for the Business Directory description editor only — it
+// carries a fuller toolbar (underline, alignment, indent, ordered lists,
+// links) than the 3-button editor everywhere else, so it needs a few more
+// tags/attributes. Still no script/style/event-handler attributes; `style`
+// is limited in practice to what execCommand itself writes (text-align,
+// margin for indent) since nothing else in the editor can set it, and
+// DOMPurify still strips dangerous constructs (url(javascript:...), etc.)
+// out of any style value that does get through.
+const BUSINESS_CONFIG = {
+  ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'br', 'div', 'p', 'span', 'blockquote', 'a'],
+  ALLOWED_ATTR: ['style', 'href', 'target', 'rel'],
+}
+
+export function sanitizeBusinessHtml(html) {
+  if (!html) return ''
+  return DOMPurify.sanitize(html, BUSINESS_CONFIG)
+}
+
 // contentEditable (the rich text editor used for job/post descriptions)
 // often leaves a trailing empty <div><br></div> or two behind if someone
 // hits Enter a few extra times while composing. Nothing was stripping
