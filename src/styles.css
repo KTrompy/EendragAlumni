@@ -5432,10 +5432,10 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-post-preview {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 14px;
+  padding: 16px;
   border-radius: var(--radius);
-  background: var(--card);
+  background: var(--paper);
   border: 1px solid var(--line);
   transition: box-shadow 0.2s var(--ease);
 }
@@ -5443,19 +5443,55 @@ button.delete-danger svg { flex-shrink: 0; }
   box-shadow: var(--shadow-card);
 }
 .home-post-preview-body { flex: 1; min-width: 0; }
-.home-post-preview-head { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
-.home-post-preview-head strong { color: var(--ink); font-size: 14px; font-weight: 600; }
-.home-post-preview-text { margin: 5px 0 0; font-size: 14px; color: var(--ink); line-height: 1.5; }
-.home-post-preview-more {
-  background: none;
-  border: none;
-  padding: 0;
-  margin-left: 4px;
-  color: var(--orange-dark);
-  font-weight: 700;
-  font-size: 13px;
+.home-post-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
 }
-.home-post-preview-more:hover { text-decoration: underline; }
+.home-post-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.home-post-preview-head strong {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+.home-post-preview-occupation {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+.home-post-media-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s var(--ease);
+}
+.home-post-media-row:hover {
+  background: #f5f5f5;
+}
+.home-post-media-row span:first-of-type {
+  flex: 1;
+  font-weight: 500;
+}
+.home-post-media-arrow {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
 
 .home-group-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .home-group-preview {

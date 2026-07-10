@@ -250,23 +250,28 @@ export default function Home({ session, profile }) {
               <ul className="home-post-preview-list">
                 {recentPosts.map((p) => {
                   const text = p.content && p.content !== '(no text)' ? truncate(plainText(p.content)) : ''
+                  const hasMedia = p.image_urls?.length > 0
                   return (
                     <li key={p.id} className="home-post-preview">
-                      <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={36} />
+                      <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={48} />
                       <div className="home-post-preview-body">
-                        <span className="home-post-preview-head">
-                          {p.pinned && <PinIcon />}
-                          <strong>{p.profiles?.full_name || 'Alumnus'}</strong>
-                          <span className="post-meta-dot">·</span>
-                          <span className="post-time">{timeAgo(p.created_at)}</span>
-                        </span>
-                        <p className="home-post-preview-text">
-                          {p.title && <strong>{p.title}: </strong>}
-                          {text || (p.image_urls?.length > 0 ? 'Shared a photo.' : '')}
-                          <button className="home-post-preview-more" onClick={() => navigate('/feed')}>Read more</button>
-                        </p>
+                        <div className="home-post-preview-header">
+                          <div>
+                            <span className="home-post-preview-head">
+                              {p.pinned && <PinIcon />}
+                              <strong>{p.profiles?.full_name || 'Alumnus'}</strong>
+                            </span>
+                            <p className="home-post-preview-occupation">{p.profiles?.occupation || 'Member'}</p>
+                          </div>
+                        </div>
+                        {hasMedia && (
+                          <button className="home-post-media-row" onClick={() => navigate('/feed')}>
+                            <ImageIcon />
+                            <span>See all media posted</span>
+                            <span className="home-post-media-arrow">›</span>
+                          </button>
+                        )}
                       </div>
-                      {p.image_urls?.length > 0 && <ImageIcon />}
                     </li>
                   )
                 })}
