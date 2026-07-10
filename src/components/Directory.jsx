@@ -128,16 +128,16 @@ export default function Directory({ session, people, loading, me, onMessage, hid
 /* ---------- Person card (grid layout) ---------- */
 function PersonCard({ person: p, isMe, onOpen, onMessage }) {
   function onKey(e) {
-    if (e.key === ‘Enter’ || e.key === ‘ ‘) { e.preventDefault(); onOpen() }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() }
   }
 
   const roleLine = p.occupation && p.company
     ? `${p.occupation} @ ${p.company}`
-    : (p.occupation || p.company || ‘’)
+    : (p.occupation || p.company || '')
 
   const locationLine = p.city && p.country
     ? `${p.city}, ${p.country}`
-    : (p.country || p.city || ‘’)
+    : (p.country || p.city || '')
 
   const expertise = normalizeExpertise(p.expertise)
   const willingToHelp = (p.services_offered || []).length > 0
@@ -150,7 +150,7 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
         tabIndex={0}
         onClick={onOpen}
         onKeyDown={onKey}
-        aria-label={`Open profile for ${p.full_name || ‘alumnus’}`}
+        aria-label={`Open profile for ${p.full_name || 'alumnus'}`}
       >
         {willingToHelp && <span className="person-card-ribbon">Willing to help!</span>}
         <PhotoBlock url={p.avatar_url} name={p.full_name} className="person-card-photo" />
@@ -160,18 +160,18 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
         <div className="person-card-footer">
           <div className="person-card-info">
             <div className="person-card-name">
-              {p.full_name || ‘Alumnus’}
+              {p.full_name || 'Alumnus'}
               {isMe && <span className="person-card-you">You</span>}
             </div>
             <div className="person-card-meta">
-              {p.is_current_resident ? ‘In house’ : ‘Alum’}
-              {p.grad_year && <span> · ‘{String(p.grad_year).slice(2)}</span>}
+              {p.is_current_resident ? 'In house' : 'Alum'}
+              {p.grad_year && <span> · '{String(p.grad_year).slice(2)}</span>}
             </div>
             {roleLine && <p className="person-card-role">{roleLine}</p>}
             {locationLine && <p className="person-card-location">{locationLine}</p>}
           </div>
           <div className="person-card-actions" onClick={(e) => e.stopPropagation()}>
-            <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That’s you" : ‘Send a message’} aria-label="Send a message">
+            <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label="Send a message">
               <EnvelopeIcon />
             </button>
             {p.linkedin_url ? (
