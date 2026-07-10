@@ -229,31 +229,35 @@ export default function Home({ session, profile, onMessage }) {
   return (
     <section className="panel">
       <div className="home-banner">
-        <ProgressRing pct={pct} size={64}>
-          <Avatar url={profile?.avatar_url} name={profile?.full_name} size={54} />
-        </ProgressRing>
-        <div className="home-banner-body">
-          <span className="home-banner-pill">{pct}% complete</span>
-          <h2 className="home-banner-title">{greeting()}, {firstName}</h2>
+        <div className="home-banner-identity">
+          <ProgressRing pct={pct} size={64}>
+            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={54} />
+          </ProgressRing>
+          <div className="home-banner-body">
+            <h2 className="home-banner-title">{greeting()}, {firstName}</h2>
+            <p className="home-banner-sub">
+              <span>Profile {pct}% complete</span>
+              {badges.length > 0 && (
+                <>
+                  <span className="home-banner-sub-dot">·</span>
+                  <button className="home-banner-textlink" onClick={() => setShowBadges(true)}>
+                    <ShieldIcon /> {earnedCount}/{badges.length} badges
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
         </div>
-        <div className="home-banner-actions">
-          <div className="home-banner-action">
-            <RefreshIcon />
-            <span>Complete your missing profile information so other members can easily find you</span>
-            <button className="home-banner-link" onClick={() => navigate('/profile')}>UPDATE PROFILE ›</button>
-          </div>
-          {badges.length > 0 && (
-            <div className="home-banner-action">
-              <ShieldIcon />
-              <span>{earnedCount}/{badges.length} Badges achieved!</span>
-              <button className="home-banner-link" onClick={() => setShowBadges(true)}>SEE ALL</button>
-            </div>
+        <div className="home-banner-cta">
+          {pct < 100 ? (
+            <button className="btn primary" onClick={() => navigate('/profile')}>
+              <RefreshIcon /> Complete your profile
+            </button>
+          ) : (
+            <button className="btn primary" onClick={() => navigate('/feed', { state: { openComposer: true } })}>
+              <ShareIcon /> Share something
+            </button>
           )}
-          <div className="home-banner-action">
-            <ShareIcon />
-            <span>Share something!</span>
-            <button className="home-banner-link" onClick={() => navigate('/feed', { state: { openComposer: true } })}>Start sharing</button>
-          </div>
         </div>
       </div>
 
@@ -271,7 +275,7 @@ export default function Home({ session, profile, onMessage }) {
         ))}
       </div>
 
-      <div className="feed-layout" data-active-mobile-tab={mobileTab}>
+      <div className="feed-layout home-feed-layout" data-active-mobile-tab={mobileTab}>
         <div className="feed-main">
           <div className="home-tabsection" data-tab="posts">
             <div className="feed-widget home-feed-widget">
@@ -317,32 +321,34 @@ export default function Home({ session, profile, onMessage }) {
           </div>
 
           <div className="home-tabsection" data-tab="groups">
-            <div className="home-section-head" style={{ marginTop: 16 }}>
-              <h3 className="feed-section-label">My Groups</h3>
-              <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/groups')}>See all groups</button>
-            </div>
+            <div className="feed-widget home-feed-widget">
+              <div className="home-section-head">
+                <h3 className="feed-section-label">My Groups</h3>
+                <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/groups')}>See all groups</button>
+              </div>
 
-            {myGroups.length === 0 ? (
-              <p className="empty small">You haven't joined any groups yet. <button className="home-post-preview-more" onClick={() => navigate('/groups')}>Browse groups</button></p>
-            ) : (
-              <ul className="home-group-preview-list">
-                {myGroups.map((g) => (
-                  <li key={g.id} className="home-group-preview" onClick={() => navigate(`/groups/${g.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/groups/${g.id}`) }}>
-                    <div className="group-row-cover home-group-preview-cover">
-                      {g.cover_image_url ? <img src={g.cover_image_url} alt="" /> : <GroupPlaceholderIcon />}
-                    </div>
-                    <div className="home-group-preview-body">
-                      <strong>{g.name}</strong>
-                      <span>
-                        {g.latestPost
-                          ? `Recent post: ${truncate(plainText(g.latestPost.content) || g.latestPost.title || '', 80)}`
-                          : 'No posts yet'}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+              {myGroups.length === 0 ? (
+                <p className="empty small">You haven't joined any groups yet. <button className="home-post-preview-more" onClick={() => navigate('/groups')}>Browse groups</button></p>
+              ) : (
+                <ul className="home-group-preview-list">
+                  {myGroups.map((g) => (
+                    <li key={g.id} className="home-group-preview" onClick={() => navigate(`/groups/${g.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/groups/${g.id}`) }}>
+                      <div className="group-row-cover home-group-preview-cover">
+                        {g.cover_image_url ? <img src={g.cover_image_url} alt="" /> : <GroupPlaceholderIcon />}
+                      </div>
+                      <div className="home-group-preview-body">
+                        <strong>{g.name}</strong>
+                        <span>
+                          {g.latestPost
+                            ? `Recent post: ${truncate(plainText(g.latestPost.content) || g.latestPost.title || '', 80)}`
+                            : 'No posts yet'}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
 
           <div className="home-tabsection" data-tab="businesses">
