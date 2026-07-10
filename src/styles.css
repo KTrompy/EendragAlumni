@@ -5629,6 +5629,12 @@ button.delete-danger svg { flex-shrink: 0; }
 .group-hero-settings { color: var(--ink-soft); border: 1px solid var(--line); }
 .group-hero-settings:hover { background: var(--orange-soft); color: var(--orange-dark); }
 
+/* Group cover upload (in edit modal) */
+.group-cover-upload { display: flex; flex-direction: column; gap: 12px; }
+.group-cover-preview { width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-sm); overflow: hidden; background: var(--paper); display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); }
+.group-cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.group-cover-preview svg { color: var(--ink-soft); width: 48px; height: 48px; }
+
 /* ---------- Tabs (Feed / Members) ---------- */
 .group-tabs {
   display: flex;

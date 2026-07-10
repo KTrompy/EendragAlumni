@@ -200,19 +200,47 @@ export default function GroupDetail({ session, profile, onMessage }) {
 function EditGroupModal({ group, onClose, onSaved }) {
   const [name, setName] = useState(group.name)
   const [description, setDescription] = useState(group.description || '')
+  const [coverImagePreview, setCoverImagePreview] = useState(group.cover_image_url || null)
+  const [coverImageFile, setCoverImageFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const fileRef = useRef(null)
+
+  function handlePhotoChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { setError('Photo must be under 5MB.'); return }
+    setCoverImageFile(file)
+    setCoverImagePreview(URL.createObjectURL(file))
+    setError(null)
+  }
 
   async function submit() {
     if (!name.trim()) { setError('Give the group a name.'); return }
     setBusy(true); setError(null)
-    const { error: err } = await supabase
-      .from('groups')
-      .update({ name: name.trim(), description: description.trim() })
-      .eq('id', group.id)
-    setBusy(false)
-    if (err) { setError(err.message); return }
-    onSaved({ name: name.trim(), description: description.trim() })
+    try {
+      let cover_image_url = group.cover_image_url
+
+      // Upload new cover image if selected
+      if (coverImageFile) {
+        const ext = coverImageFile.name.split('.').pop().toLowerCase()
+        const path = `${group.id}/${Date.now()}.${ext}`
+        const { error: upErr } = await supabase.storage.from('group-covers').upload(path, coverImageFile, { contentType: coverImageFile.type, upsert: true })
+        if (upErr) throw upErr
+        cover_image_url = supabase.storage.from('group-covers').getPublicUrl(path).data.publicUrl
+      }
+
+      const { error: err } = await supabase
+        .from('groups')
+        .update({ name: name.trim(), description: description.trim(), cover_image_url })
+        .eq('id', group.id)
+      if (err) throw err
+      onSaved({ name: name.trim(), description: description.trim(), cover_image_url })
+    } catch (e) {
+      setError(e.message || 'Could not save changes.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -223,6 +251,21 @@ function EditGroupModal({ group, onClose, onSaved }) {
           <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className="modal-body">
+          <label className="field"><span>Cover photo</span>
+            <div className="group-cover-upload">
+              <div className="group-cover-preview">
+                {coverImagePreview ? (
+                  <img src={coverImagePreview} alt="Group cover preview" />
+                ) : (
+                  <GroupPlaceholderIcon />
+                )}
+              </div>
+              <button type="button" className="btn primary small" onClick={() => fileRef.current?.click()}>
+                Change photo
+              </button>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handlePhotoChange} />
+            </div>
+          </label>
           <label className="field"><span>Name</span>
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
           </label>
