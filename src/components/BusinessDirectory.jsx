@@ -106,6 +106,19 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const canPost = profile?.approved
   const isAdmin = !!profile?.is_admin
 
+  // Lets the detail page's sidebar "Start posting" CTA (and any other link)
+  // land here with the form already open via /businesses?post=1, instead of
+  // needing its own copy of the create form.
+  useEffect(() => {
+    if (params.get('post') === '1' && canPost) {
+      setShowForm(true)
+      const p = new URLSearchParams(params)
+      p.delete('post')
+      setParams(p, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function loadBusinesses() {
     setLoading(true)
     const { data, error } = await supabase

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import ProfileModal from './ProfileModal.jsx'
@@ -16,19 +19,25 @@ const POSTER_FIELDS =
   'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
   'business_categories, availability, geographic_focus, is_open_to_opportunities'
 
-function timeAgo(iso) {
-  const s = Math.floor((Date.now() - new Date(iso)) / 1000)
-  if (s < 60) return 'just now'
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
-  return new Date(iso).toLocaleDateString()
+// Same plain-div marker Leaflet trick BusinessDirectory's map view uses
+// (.alumni-pin-wrap / .alumni-pin business-pin) — avoids depending on
+// Leaflet's default marker image assets for this single-pin mini map.
+function singlePinIcon() {
+  return L.divIcon({
+    className: 'alumni-pin-wrap',
+    html: '<div class="alumni-pin business-pin">★</div>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  })
 }
 
-// The standalone listing page — replaces the old floating "read more" modal.
-// A card on the directory list only ever shows a brief excerpt + "Read
-// more"; clicking through lands here with a full-width cover photo above
-// the heading (same "big hero banner" treatment GroupDetail uses for
-// group covers) and the full formatted description.
+// The standalone listing page — reached from the directory card's "Read
+// more" link instead of the old floating modal. Laid out to match the
+// Maties Connect reference: everything about the listing itself (logo,
+// name, category/location, the cover photo at full size, who posted it,
+// tagline, description) lives in one card in the main column; contact
+// details, a map pin, and a "list your own" promo sit in cards down the
+// right-hand sidebar.
 export default function BusinessDetail({ session, profile, onMessage }) {
   const { businessId } = useParams()
   const navigate = useNavigate()
@@ -94,6 +103,9 @@ export default function BusinessDetail({ session, profile, onMessage }) {
   const website = business.website
     ? (/^https?:\/\//.test(business.website) ? business.website : `https://${business.website}`)
     : null
+  const hasPin = typeof business.lat === 'number' && typeof business.lng === 'number'
+  const owner = business.profiles
+  const ownerRole = owner && [owner.occupation, owner.company].filter(Boolean).join(' @ ')
 
   if (editing) {
     return (
@@ -113,77 +125,121 @@ export default function BusinessDetail({ session, profile, onMessage }) {
     <section className="panel business-detail-page">
       <button className="profile-back-btn" onClick={() => navigate('/businesses')}>‹ Business Directory</button>
 
-      <div className="business-hero">
-        <div className="business-hero-cover">
-          {business.cover_image_url ? <img src={business.cover_image_url} alt="" /> : <BusinessCoverFallback />}
-        </div>
-        <div className="business-hero-body">
-          <div className="business-hero-identity">
-            <BusinessLogo url={business.logo_url} name={business.name} />
-            <div>
-              <h2 className="business-hero-name">
+      <div className="business-detail-layout">
+        <div className="business-detail-main">
+          <div className="business-detail-card">
+            <div className="business-detail-card-head">
+              <BusinessLogo url={business.logo_url} name={business.name} />
+              <h2 className="business-detail-name">
                 {business.name}
                 {business.promoted && <span className="job-badge business-featured-tag">Featured</span>}
-                {business.category && <span className="job-badge">{business.category}</span>}
               </h2>
-              <p className="business-hero-location">
-                {[business.city, business.country].filter(Boolean).join(', ') || 'Location not set'}
+              <p className="business-detail-meta">
+                {[business.category, [business.city, business.country].filter(Boolean).join(', ')]
+                  .filter(Boolean).join(' - ') || 'Location not set'}
               </p>
-              {business.tagline && <p className="business-hero-tagline">{business.tagline}</p>}
             </div>
-          </div>
-          <div className="business-hero-actions">
-            {website && (
-              <a className="btn primary" href={website} target="_blank" rel="noopener noreferrer">Visit website</a>
+
+            {business.cover_image_url && (
+              <div className="business-detail-cover">
+                <img src={business.cover_image_url} alt="" />
+              </div>
             )}
-            {!isMine && <button className="btn ghost" onClick={messageOwner}>Message about this business</button>}
+
+            <div className="business-detail-poster-row">
+              <button className="business-detail-poster" onClick={() => setOpenOwner(owner)}>
+                <Avatar url={owner?.avatar_url} name={owner?.full_name} size={44} />
+                <span className="business-detail-poster-text">
+                  <strong>{owner?.full_name || 'a member'}</strong>
+                  {ownerRole && <span>{ownerRole}</span>}
+                </span>
+              </button>
+              {!isMine && (
+                <button className="business-direct-message-btn" onClick={messageOwner}>
+                  <MessageIcon /> Direct message
+                </button>
+              )}
+            </div>
+
+            {business.tagline && <h3 className="business-detail-tagline">{business.tagline}</h3>}
+
+            {business.description && (
+              <div
+                className="business-rich-content"
+                dangerouslySetInnerHTML={{ __html: sanitizeBusinessHtml(business.description) }}
+              />
+            )}
+
+            {(isMine || isAdmin) && (
+              <div className="business-detail-manage-row">
+                {isAdmin && (
+                  <button className="btn ghost small" onClick={togglePromote}>
+                    {business.promoted ? 'Remove from Featured' : 'Feature this business'}
+                  </button>
+                )}
+                {isMine && <button className="btn ghost small" onClick={() => setEditing(true)}>Edit</button>}
+                {(isMine || isAdmin) && (
+                  <DeleteButton
+                    onConfirm={remove}
+                    label="Delete listing"
+                    message="This removes the business listing. This can't be undone."
+                    className="btn ghost small delete-danger"
+                  >
+                    Delete
+                  </DeleteButton>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="job-poster-row" style={{ marginBottom: 18 }}>
-        <button className="job-poster" onClick={() => setOpenOwner(business.profiles)}>
-          <Avatar url={business.profiles?.avatar_url} name={business.profiles?.full_name} size={26} />
-          <span>Run by {business.profiles?.full_name || 'a member'} · {timeAgo(business.created_at)}</span>
-        </button>
-        <div className="business-hero-owner-actions">
-          {isAdmin && (
-            <button className="btn ghost small" onClick={togglePromote}>
-              {business.promoted ? 'Remove from Featured' : 'Feature this business'}
-            </button>
+        <aside className="business-detail-sidebar">
+          {(business.phone || business.contact_email || website) && (
+            <div className="feed-widget business-contact-card">
+              {business.phone && (
+                <a className="business-contact-row" href={`tel:${business.phone.replace(/\s+/g, '')}`}>
+                  <PhoneIcon /> {business.phone}
+                </a>
+              )}
+              {business.contact_email && (
+                <a className="business-contact-row" href={`mailto:${business.contact_email}`}>
+                  <MailIcon /> {business.contact_email}
+                </a>
+              )}
+              {website && (
+                <>
+                  <hr className="business-contact-divider" />
+                  <a className="business-visit-website" href={website} target="_blank" rel="noopener noreferrer">
+                    <ExternalIcon /> Visit website
+                  </a>
+                </>
+              )}
+            </div>
           )}
-          {isMine && <button className="btn ghost small" onClick={() => setEditing(true)}>Edit</button>}
-          {(isMine || isAdmin) && (
-            <DeleteButton
-              onConfirm={remove}
-              label="Delete listing"
-              message="This removes the business listing. This can't be undone."
-              className="btn ghost small delete-danger"
-            >
-              Delete
-            </DeleteButton>
-          )}
-        </div>
+
+          <div className="feed-widget business-location-card">
+            <p className="business-location-line">
+              <PinIcon /> {[business.city, business.country].filter(Boolean).join(', ') || 'Location not set'}
+            </p>
+            {hasPin && (
+              <div className="business-mini-map">
+                <MapContainer center={[business.lat, business.lng]} zoom={12} scrollWheelZoom={false} dragging={false} className="business-mini-map-inner">
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <Marker position={[business.lat, business.lng]} icon={singlePinIcon()} />
+                </MapContainer>
+              </div>
+            )}
+          </div>
+
+          <div className="feed-widget business-promote-card">
+            <p>Do you have a business you would like to promote?</p>
+            <button className="btn primary wide" onClick={() => navigate('/businesses?post=1')}>Start posting</button>
+          </div>
+        </aside>
       </div>
-
-      {business.description && (
-        <div className="profile-card-section">
-          <h3 className="profile-card-section-title">About</h3>
-          <div
-            className="business-rich-content"
-            dangerouslySetInnerHTML={{ __html: sanitizeBusinessHtml(business.description) }}
-          />
-        </div>
-      )}
-
-      {(business.website || business.contact_email || business.phone) && (
-        <div className="profile-card-section">
-          <h3 className="profile-card-section-title">Contact</h3>
-          {website && <p><a href={website} target="_blank" rel="noopener noreferrer">{business.website}</a></p>}
-          {business.contact_email && <p>{business.contact_email}</p>}
-          {business.phone && <p>{business.phone}</p>}
-        </div>
-      )}
 
       {openOwner && (
         <ProfileModal
@@ -201,14 +257,42 @@ export default function BusinessDetail({ session, profile, onMessage }) {
   )
 }
 
-function BusinessCoverFallback() {
+function MessageIcon() {
   return (
-    <div className="business-hero-cover-fallback" aria-hidden="true">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="7" width="18" height="13" rx="2" />
-        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-        <line x1="3" y1="12" x2="21" y2="12" />
-      </svg>
-    </div>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+function PhoneIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  )
+}
+function MailIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M2 7l10 6 10-6" />
+    </svg>
+  )
+}
+function ExternalIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <path d="M15 3h6v6" />
+      <path d="M10 14L21 3" />
+    </svg>
+  )
+}
+function PinIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
   )
 }

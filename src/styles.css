@@ -5375,39 +5375,32 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 
 /* ---------- Business Directory: standalone listing page ---------- */
+/* Two-column layout, same shape as .feed-layout: one big card with the
+   listing itself in the main column, a narrower sidebar of contact/map/CTA
+   cards on the right. */
 .business-detail-page .profile-back-btn { margin-bottom: 12px; }
-.business-hero {
+.business-detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 18px;
+  align-items: start;
+}
+.business-detail-sidebar { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 85px; }
+@media (max-width: 960px) {
+  .business-detail-layout { grid-template-columns: 1fr; }
+  .business-detail-sidebar { position: static; }
+}
+
+.business-detail-card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  overflow: hidden;
   box-shadow: var(--shadow-card);
-  margin-bottom: 18px;
+  padding: 20px 22px 22px;
 }
-.business-hero-cover {
-  width: 100%;
-  height: 220px;
-  background: linear-gradient(135deg, var(--maroon), var(--maroon-soft));
-  overflow: hidden;
-}
-.business-hero-cover img { width: 100%; height: 100%; object-fit: cover; }
-.business-hero-cover-fallback {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  color: var(--orange-soft);
-}
-.business-hero-body {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 18px 20px;
-}
-.business-hero-identity { display: flex; gap: 14px; align-items: flex-start; min-width: 0; }
-.business-hero-name {
+.business-detail-card-head { margin-bottom: 16px; }
+.business-detail-card-head .job-logo { margin-bottom: 10px; }
+.business-detail-name {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -5416,17 +5409,113 @@ button.delete-danger svg { flex-shrink: 0; }
   font-weight: 800;
   font-size: 22px;
   color: var(--maroon);
-  margin: 0 0 6px;
+  margin: 0 0 4px;
 }
-.business-hero-location { margin: 0 0 6px; color: var(--ink-soft); font-size: 14px; }
-.business-hero-tagline { margin: 0; font-weight: 700; color: var(--ink); }
-.business-hero-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
-.business-hero-owner-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.business-detail-meta { margin: 0; color: var(--ink-soft); font-size: 14px; }
 
-@media (max-width: 640px) {
-  .business-hero-body { flex-direction: column; }
-  .business-hero-owner-actions { margin-left: 0; }
+/* "Pasted as is, no crops" — natural aspect ratio at full card width,
+   never object-fit: cover (which would crop). */
+.business-detail-cover {
+  margin: 16px 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--paper);
 }
+.business-detail-cover img { width: 100%; height: auto; display: block; }
+
+.business-detail-poster-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.business-detail-poster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+.business-detail-poster:hover { background: var(--paper); }
+.business-detail-poster-text { display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
+.business-detail-poster-text strong { font-size: 14.5px; color: var(--ink); }
+.business-detail-poster-text span { font-size: 12.5px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.business-direct-message-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--maroon);
+  font-weight: 700;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+.business-direct-message-btn:hover { background: var(--orange-soft); color: var(--orange-dark); }
+
+.business-detail-tagline { margin: 0 0 10px; font-size: 16px; font-weight: 800; color: var(--ink); }
+.business-detail-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- Sidebar: contact / location+map / promote ---------- */
+.business-contact-card { display: flex; flex-direction: column; gap: 10px; }
+.business-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+.business-contact-row svg { color: var(--maroon); flex-shrink: 0; }
+.business-contact-row:hover { color: var(--orange-dark); }
+.business-contact-divider { border: none; border-top: 1px solid var(--line); margin: 2px 0; }
+.business-visit-website {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--maroon);
+  font-weight: 800;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.business-visit-website:hover { color: var(--orange-dark); }
+
+.business-location-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.business-location-line svg { color: var(--maroon); flex-shrink: 0; }
+.business-mini-map { border-radius: var(--radius-sm); overflow: hidden; }
+.business-mini-map-inner { width: 100%; height: 180px; }
+
+.business-promote-card { text-align: center; padding: 18px 16px; }
+.business-promote-card p { margin: 0 0 14px; font-size: 13.5px; color: var(--ink-soft); }
 
 /* Read-only render of the full rich description on the standalone page —
    shares rte-editor's paragraph/bullet look but also covers the extra tags
