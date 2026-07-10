@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -90,8 +90,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const navigate = useNavigate()
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
-  const [params, setParams] = useSearchParams()
-  const view = params.get('view') === 'map' ? 'map' : 'list'
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -103,18 +101,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const canPost = profile?.approved
   const isAdmin = !!profile?.is_admin
 
-  // Lets the detail page's sidebar "Start posting" CTA (and any other link)
-  // land here with the form already open via /businesses?post=1, instead of
-  // needing its own copy of the create form.
-  useEffect(() => {
-    if (params.get('post') === '1' && canPost) {
-      setShowForm(true)
-      const p = new URLSearchParams(params)
-      p.delete('post')
-      setParams(p, { replace: true })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   async function loadBusinesses() {
     setLoading(true)
@@ -149,13 +135,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [filterOpen, isWide])
-
-  function setView(next) {
-    const p = new URLSearchParams(params)
-    if (next === 'list') p.delete('view')
-    else p.set('view', next)
-    setParams(p, { replace: true })
-  }
 
   async function removeBusiness(id) {
     const { error } = await supabase.from('businesses').delete().eq('id', id)
@@ -285,14 +264,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
           />
           {q && <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>}
         </div>
-        <div className="view-switch" role="tablist" aria-label="Business directory view">
-          <button role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>
-            <ListViewIcon /> List
-          </button>
-          <button role="tab" aria-selected={view === 'map'} className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>
-            <MapViewIcon /> Map
-          </button>
-        </div>
         {!isWide && (
           <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
             <FilterIcon />
@@ -318,49 +289,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
               actionLabel={businesses.length === 0 ? (canPost && !showForm ? 'List your business' : undefined) : 'Clear filters'}
               onAction={businesses.length === 0 ? () => setShowForm(true) : clearFilters}
             />
-          ) : view === 'map' ? (
-            pinned.length === 0 ? (
-              <EmptyState
-                icon="search"
-                message="No businesses on the map yet."
-                subMessage="A pin appears automatically once a listing has a city — try widening or clearing your filters."
-              />
-            ) : (
-              <div className="map-shell">
-                <MapContainer center={[20, 10]} zoom={2} scrollWheelZoom className="alumni-map">
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  {clusters.map((c) => {
-                    const place = [c.items[0].city, c.items[0].country].filter(Boolean).join(', ')
-                    return (
-                      <Marker key={c.key} position={[c.lat, c.lng]} icon={pinIcon(c.items.length)}>
-                        <Popup maxWidth={280} minWidth={220}>
-                          <div className="map-popup">
-                            <div className="map-popup-title">{place || 'Unknown location'}</div>
-                            <ul className="map-popup-list">
-                              {c.items.map((b) => (
-                                <li key={b.id}>
-                                  <button className="map-popup-person" onClick={() => navigate(`/businesses/${b.id}`)}>
-                                    <BusinessLogo url={b.logo_url} name={b.name} />
-                                    <span className="map-popup-info">
-                                      <strong>{b.name}{b.promoted && <span className="business-featured-tag">Featured</span>}</strong>
-                                      <span className="map-popup-meta">{b.category}</span>
-                                    </span>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    )
-                  })}
-                </MapContainer>
-                <p className="map-hint">Tap a pin to see who's there, view the listing, or send a message.</p>
-              </div>
-            )
           ) : (
             <>
               {promotedShown.length > 0 && (
@@ -421,6 +349,45 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
             <div className="filter-panel-footer static">
               <button className="filter-clear" onClick={clearFilters}>Reset</button>
             </div>
+
+            {pinned.length > 0 && (
+              <div className="business-sidebar-map-section">
+                <div className="map-shell">
+                  <MapContainer center={[20, 10]} zoom={2} scrollWheelZoom className="alumni-map">
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    {clusters.map((c) => {
+                      const place = [c.items[0].city, c.items[0].country].filter(Boolean).join(', ')
+                      return (
+                        <Marker key={c.key} position={[c.lat, c.lng]} icon={pinIcon(c.items.length)}>
+                          <Popup maxWidth={280} minWidth={220}>
+                            <div className="map-popup">
+                              <div className="map-popup-title">{place || 'Unknown location'}</div>
+                              <ul className="map-popup-list">
+                                {c.items.map((b) => (
+                                  <li key={b.id}>
+                                    <button className="map-popup-person" onClick={() => navigate(`/businesses/${b.id}`)}>
+                                      <BusinessLogo url={b.logo_url} name={b.name} />
+                                      <span className="map-popup-info">
+                                        <strong>{b.name}{b.promoted && <span className="business-featured-tag">Featured</span>}</strong>
+                                        <span className="map-popup-meta">{b.category}</span>
+                                      </span>
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      )
+                    })}
+                  </MapContainer>
+                </div>
+              </div>
+            )}
+
             {canPost && (
               <div className="jobs-panel-post-cta">
                 <button className="btn primary wide" onClick={() => setShowForm(true)}>List your business</button>
@@ -883,19 +850,3 @@ function StarIcon({ filled = false }) {
   )
 }
 
-function ListViewIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 6h13M8 12h13M8 18h13" />
-      <path d="M3 6h.01M3 12h.01M3 18h.01" />
-    </svg>
-  )
-}
-function MapViewIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 4.5L3.5 6.7v13l5.5-2.2 6 2.2 5.5-2.2v-13L15 6.7l-6-2.2z" />
-      <path d="M9 4.5v13.2M15 6.7v13.2" />
-    </svg>
-  )
-}
