@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { supabase } from '../supabaseClient'
+import { geocodeCity } from '../geocode.js'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -10,16 +14,29 @@ import { useToast } from './Toast.jsx'
 import { eventIcebreaker } from '../icebreaker.js'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 const PAGE_SIZE = 20
 
+// Default map center when nothing's pinned yet — Stellenbosch, since that's
+// where most Eendrag events cluster, rather than a disorienting whole-world
+// view like the businesses/alumni maps use (those expect global spread).
+const DEFAULT_MAP_CENTER = [-33.9321, 18.8602]
+
 const EVENTS_SELECT = `
-  id, title, description, event_date, location, created_by,
+  id, title, description, event_date, location, created_by, lat, lng,
   profiles!events_created_by_fkey ( full_name ),
   rsvps:event_rsvps(count),
   comments:event_comments(count)
 `
+
+function eventPinIcon() {
+  return L.divIcon({
+    className: 'alumni-pin-wrap',
+    html: '<div class="alumni-pin">★</div>',
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  })
+}
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
@@ -48,11 +65,11 @@ export default function Events({ session, profile, onMessage }) {
   const [loading, setLoading] = useState(true)
   const [myRsvps, setMyRsvps] = useState(new Set())
   const [showForm, setShowForm] = useState(false)
-  const [view, setView] = useState('list') // 'list' | 'calendar'
   const [cursorMonth, setCursorMonth] = useState(() => {
     const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
   })
   const [selectedDay, setSelectedDay] = useState(null)
+  const [mapQuery, setMapQuery] = useState('')
   const [hasMoreUpcoming, setHasMoreUpcoming] = useState(true)
   const [hasMorePast, setHasMorePast] = useState(true)
   const [loadingMoreUpcoming, setLoadingMoreUpcoming] = useState(false)
@@ -281,9 +298,35 @@ export default function Events({ session, profile, onMessage }) {
   // "Saved" replaces the upcoming/past list entirely with a direct query
   // over bookmarked events — see the effect above.
   const allListItems = savedOnly ? savedEvents : [...upcoming, ...past]
-  const listItems = needle
+  let listItems = needle
     ? allListItems.filter((e) => eventMatches(e, needle))
     : allListItems
+  // Clicking a day on the sidebar mini-calendar narrows the main list down
+  // to just that day, same as the old full-page Calendar view did — just
+  // applied as one more filter step instead of swapping the whole view.
+  if (selectedDay) listItems = listItems.filter((e) => sameDay(new Date(e.event_date), selectedDay))
+
+  // Sidebar map: only events with a resolved pin, optionally narrowed by the
+  // map's own "search by location" box (matches location or title text).
+  const pinnedEvents = useMemo(
+    () => events.filter((e) => typeof e.lat === 'number' && typeof e.lng === 'number'),
+    [events]
+  )
+  const mapNeedle = mapQuery.trim().toLowerCase()
+  const mapMatches = mapNeedle
+    ? pinnedEvents.filter((e) => (e.location || '').toLowerCase().includes(mapNeedle) || (e.title || '').toLowerCase().includes(mapNeedle))
+    : pinnedEvents
+  const mapCenter = mapMatches.length
+    ? [
+        mapMatches.reduce((s, e) => s + e.lat, 0) / mapMatches.length,
+        mapMatches.reduce((s, e) => s + e.lng, 0) / mapMatches.length,
+      ]
+    : DEFAULT_MAP_CENTER
+
+  function focusEvent(id) {
+    const el = document.getElementById(`event-${id}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 
   // A shared /events/:id link should land you on that event, scrolled into
   // view, rather than the top of a long list — otherwise a bookmarkable URL
@@ -305,38 +348,15 @@ export default function Events({ session, profile, onMessage }) {
           <p className="panel-sub">Reunions, golf days, house drinks. See you there.</p>
         </div>
         <div className="events-header-actions">
-          <div className="view-switch" role="tablist" aria-label="Events view">
-            <button
-              role="tab"
-              aria-selected={view === 'list'}
-              className={view === 'list' ? 'on' : ''}
-              onClick={() => setView('list')}
-            >
-              List
-            </button>
-            {!savedOnly && (
-              <button
-                role="tab"
-                aria-selected={view === 'calendar'}
-                className={view === 'calendar' ? 'on' : ''}
-                onClick={() => setView('calendar')}
-              >
-                Calendar
-              </button>
-            )}
-          </div>
           <button
             className={savedOnly ? 'filters-toggle-btn on' : 'filters-toggle-btn'}
-            onClick={() => { setSavedOnly((s) => !s); setView('list') }}
+            onClick={() => setSavedOnly((s) => !s)}
             aria-pressed={savedOnly}
           >
             <BookmarkIcon filled={savedOnly} />
             Saved
             {savedIds.size > 0 && <span className="filters-toggle-badge">{savedIds.size}</span>}
           </button>
-          {canPost && !showForm && (
-            <button className="btn primary" onClick={() => setShowForm(true)}>Add event</button>
-          )}
         </div>
       </div>
 
@@ -348,22 +368,31 @@ export default function Events({ session, profile, onMessage }) {
         />
       ) || null}
 
-      {view === 'list' && (events.length > 0 || savedOnly) && (
-        <div className="search-wrap events-search-wrap">
-          <input
-            className="search directory-search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search events…"
-          />
-          {query && (
-            <button className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+      <div className="events-layout">
+        <div className="events-main">
+          {(events.length > 0 || savedOnly) && (
+            <div className="search-wrap events-search-wrap">
+              <input
+                className="search directory-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search events…"
+              />
+              {query && (
+                <button className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      {view === 'list' ? (
-        <>
+          {selectedDay && (
+            <div className="events-day-filter-banner">
+              <span>
+                Showing events on {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+              </span>
+              <button onClick={() => setSelectedDay(null)}>Clear</button>
+            </div>
+          )}
+
           {(loading || (savedOnly && savedLoading)) ? (
             <LoadingState message="Loading events…" />
           ) : allListItems.length === 0 && (
@@ -374,14 +403,16 @@ export default function Events({ session, profile, onMessage }) {
                 icon="events"
                 message="No events on the calendar yet."
                 subMessage="Post one to get the first reunion rolling."
-                actionLabel={canPost && !showForm ? 'Add event' : undefined}
+                actionLabel={canPost && !showForm ? 'Post event' : undefined}
                 onAction={() => setShowForm(true)}
               />
             )
           )}
 
           {!loading && allListItems.length > 0 && listItems.length === 0 && (
-            <p className="empty small">No events match "{query}".</p>
+            <p className="empty small">
+              {selectedDay ? 'Nothing on that day.' : `No events match "${query}".`}
+            </p>
           )}
 
           <ul className="event-list">
@@ -406,7 +437,7 @@ export default function Events({ session, profile, onMessage }) {
           {/* Search only filters what's already loaded — hide the pagers
               while searching, same reasoning as Feed/Jobs. Saved is its
               own complete query, so it never has "more" to page in. */}
-          {!needle && !savedOnly && (hasMoreUpcoming || hasMorePast) && (
+          {!needle && !savedOnly && !selectedDay && (hasMoreUpcoming || hasMorePast) && (
             <div className="load-more-row events-load-more-row">
               {hasMoreUpcoming && (
                 <button className="btn ghost" onClick={loadMoreUpcoming} disabled={loadingMoreUpcoming}>
@@ -420,25 +451,64 @@ export default function Events({ session, profile, onMessage }) {
               )}
             </div>
           )}
-        </>
-      ) : (
-        <CalendarView
-          events={events}
-          cursorMonth={cursorMonth}
-          setCursorMonth={setCursorMonth}
-          selectedDay={selectedDay}
-          setSelectedDay={setSelectedDay}
-          session={session}
-          profile={profile}
-          myRsvps={myRsvps}
-          savedIds={savedIds}
-          onToggleSaveEvent={toggleSaveEvent}
-          onToggleRsvp={toggleRsvp}
-          onDelete={removeEvent}
-          onSaved={loadInitial}
-          onMessage={onMessage}
-        />
-      )}
+        </div>
+
+        <aside className="events-sidebar">
+          {canPost && (
+            <button className="btn primary wide events-post-btn" onClick={() => setShowForm(true)}>Post event</button>
+          )}
+
+          <div className="feed-widget events-calendar-widget">
+            <MiniCalendar
+              events={events}
+              cursorMonth={cursorMonth}
+              setCursorMonth={setCursorMonth}
+              selectedDay={selectedDay}
+              setSelectedDay={setSelectedDay}
+            />
+          </div>
+
+          <div className="feed-widget events-map-widget">
+            <div className="events-map-search">
+              <SearchIcon />
+              <input
+                value={mapQuery}
+                onChange={(e) => setMapQuery(e.target.value)}
+                placeholder="Search by location"
+              />
+            </div>
+            <div className="events-mini-map">
+              <MapContainer center={mapCenter} zoom={mapMatches.length ? 9 : 6} scrollWheelZoom={false} className="events-mini-map-inner">
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {mapMatches.map((e) => (
+                  <Marker key={e.id} position={[e.lat, e.lng]} icon={eventPinIcon()} eventHandlers={{ click: () => focusEvent(e.id) }} />
+                ))}
+              </MapContainer>
+            </div>
+            {mapMatches.length > 0 && (
+              <ul className="events-map-list">
+                {mapMatches.map((e) => (
+                  <li key={e.id}>
+                    <button className="events-map-list-item" onClick={() => focusEvent(e.id)}>
+                      <CalendarDotIcon />
+                      <span>
+                        <strong>{e.title}</strong>
+                        <span className="events-map-list-location">{e.location}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {pinnedEvents.length === 0 && (
+              <p className="empty small" style={{ marginTop: 10 }}>No events pinned yet.</p>
+            )}
+          </div>
+        </aside>
+      </div>
     </section>
   )
 }
@@ -730,7 +800,11 @@ function EventComments({ eventId, session, profile }) {
 }
 
 /* ---------- Calendar grid view ---------- */
-function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay, session, profile, myRsvps, savedIds, onToggleSaveEvent, onToggleRsvp, onDelete, onSaved, onMessage }) {
+// Compact sidebar calendar — always visible now rather than a full-page
+// alternate view. Clicking a day toggles it as a filter on the main event
+// list (see `selectedDay` in the parent); this component only owns the
+// grid itself, not what's done with the selection.
+function MiniCalendar({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay }) {
   const year = cursorMonth.getFullYear()
   const month = cursorMonth.getMonth()
 
@@ -750,74 +824,53 @@ function CalendarView({ events, cursorMonth, setCursorMonth, selectedDay, setSel
     return events.filter((e) => sameDay(new Date(e.event_date), date))
   }
 
-  function prevMonth() { setCursorMonth(new Date(year, month - 1, 1)); setSelectedDay(null) }
-  function nextMonth() { setCursorMonth(new Date(year, month + 1, 1)); setSelectedDay(null) }
+  function prevMonth() { setCursorMonth(new Date(year, month - 1, 1)) }
+  function nextMonth() { setCursorMonth(new Date(year, month + 1, 1)) }
+  function jumpToToday() {
+    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0)
+    setCursorMonth(d)
+  }
 
   const today = new Date()
-  const selectedEvents = selectedDay ? eventsOn(selectedDay) : []
 
   return (
-    <div>
-      <div className="calendar-shell">
-        <div className="calendar-header">
-          <button className="btn ghost small" onClick={prevMonth} aria-label="Previous month">‹</button>
-          <span className="calendar-month-label">{MONTH_NAMES[month]} {year}</span>
-          <button className="btn ghost small" onClick={nextMonth} aria-label="Next month">›</button>
-        </div>
-
-        <div className="calendar-weekdays">
-          {WEEKDAYS.map((w) => <div key={w}>{w}</div>)}
-        </div>
-
-        <div className="calendar-grid">
-          {cells.map((date, i) => {
-            if (!date) return <div className="calendar-cell empty" key={i} />
-            const dayEvents = eventsOn(date)
-            const isToday = sameDay(date, today)
-            const isSelected = selectedDay && sameDay(date, selectedDay)
-            return (
-              <button
-                key={i}
-                className={[
-                  'calendar-cell',
-                  isToday ? 'today' : '',
-                  isSelected ? 'selected' : '',
-                  dayEvents.length ? 'has-event' : '',
-                ].filter(Boolean).join(' ')}
-                onClick={() => setSelectedDay(date)}
-              >
-                <span className="calendar-day-num">{date.getDate()}</span>
-                {dayEvents.length > 0 && <span className="calendar-dot" />}
-              </button>
-            )
-          })}
+    <div className="mini-calendar">
+      <div className="mini-calendar-header">
+        <button className="mini-calendar-month-btn" onClick={jumpToToday} title="Jump to current month">
+          {MONTHS[month]} {year} <ChevronDownIcon />
+        </button>
+        <div className="mini-calendar-nav">
+          <button onClick={prevMonth} aria-label="Previous month">‹</button>
+          <button onClick={nextMonth} aria-label="Next month">›</button>
         </div>
       </div>
 
-      <div className="calendar-selected-events">
-        {!selectedDay && <p className="empty small">Click a day to see what's happening.</p>}
-        {selectedDay && selectedEvents.length === 0 && (
-          <p className="empty small">Nothing on {selectedDay.toLocaleDateString()}.</p>
-        )}
-        {selectedEvents.length > 0 && (
-          <ul className="event-list">
-            {selectedEvents.map((e) => (
-              <EventCard
-                key={e.id}
-                e={e}
-                session={session}
-                profile={profile}
-                iAmGoing={myRsvps.has(e.id)}
-                isSaved={savedIds?.has(e.id)}
-                onToggleSave={onToggleSaveEvent ? () => onToggleSaveEvent(e.id) : undefined}
-                onToggleRsvp={() => onToggleRsvp(e.id)}
-                onDelete={() => onDelete(e.id)}
-                onSaved={onSaved}
-                onMessage={onMessage}
-              />
-            ))}
-          </ul>
-        )}
+      <div className="mini-calendar-weekdays">
+        {WEEKDAYS.map((w) => <span key={w}>{w[0]}</span>)}
+      </div>
+
+      <div className="mini-calendar-grid">
+        {cells.map((date, i) => {
+          if (!date) return <span className="mini-calendar-cell empty" key={i} />
+          const dayEvents = eventsOn(date)
+          const isToday = sameDay(date, today)
+          const isSelected = selectedDay && sameDay(date, selectedDay)
+          return (
+            <button
+              key={i}
+              className={[
+                'mini-calendar-cell',
+                isToday ? 'today' : '',
+                isSelected ? 'selected' : '',
+                dayEvents.length ? 'has-event' : '',
+              ].filter(Boolean).join(' ')}
+              onClick={() => setSelectedDay(isSelected ? null : date)}
+              title={dayEvents.length ? `${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : undefined}
+            >
+              {date.getDate()}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -852,11 +905,29 @@ function EventForm({ session, onCancel, onCreated, initial = null }) {
   async function submit() {
     if (!title.trim() || !date) { setError('Title and date are required.'); return }
     setBusy(true); setError(null)
+
+    // Re-geocode only when the location text actually changed (or this is a
+    // brand new event) — same "don't hit Nominatim on every unrelated edit"
+    // rule Profile/BusinessForm follow for their own pins. `location` here
+    // is a full free-text address rather than just a city, but geocodeCity
+    // just forwards whatever string it's given to Nominatim, so it works
+    // the same way — results just won't always be as precise.
+    const trimmedLocation = location.trim()
+    let coords = { lat: initial?.lat ?? null, lng: initial?.lng ?? null }
+    const locationChanged = !isEdit || trimmedLocation !== (initial?.location || '')
+    if (locationChanged && trimmedLocation) {
+      const geo = await geocodeCity(trimmedLocation, '')
+      coords = { lat: geo?.lat ?? null, lng: geo?.lng ?? null }
+    } else if (locationChanged && !trimmedLocation) {
+      coords = { lat: null, lng: null }
+    }
+
     const payload = {
       title: title.trim(),
       event_date: date.toISOString(),
-      location: location.trim(),
+      location: trimmedLocation,
       description: description.trim(),
+      ...coords,
     }
     const { error } = isEdit
       ? await supabase.from('events').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', initial.id)
@@ -955,6 +1026,30 @@ function BookmarkIcon({ filled = false }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+function ChevronDownIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.35-4.35" />
+    </svg>
+  )
+}
+function CalendarDotIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--maroon)', flexShrink: 0, marginTop: 2 }}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 3v4M16 3v4" />
     </svg>
   )
 }

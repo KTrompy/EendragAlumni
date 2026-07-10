@@ -4411,73 +4411,144 @@ button.delete-danger svg { flex-shrink: 0; }
 .loading-state-message { font-weight: 600; color: var(--ink); margin: 0; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
 
-/* ---------- Events calendar view ---------- */
-/* Keeps the grid's cells from stretching huge on a wide desktop panel,
-   which pushed the selected day's events too far down to see without
-   scrolling. Capping the whole calendar's width shrinks it proportionally. */
-.calendar-shell {
-  max-width: 420px;
-  margin: 0 auto;
+/* ---------- Events board: persistent sidebar layout ---------- */
+/* Same two-column shape as .feed-layout / .business-detail-layout — the
+   actual events stay in the main column; "Post event", the mini-calendar
+   and the location map live in the sidebar instead of behind a List/
+   Calendar toggle. */
+.events-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 18px;
+  align-items: start;
 }
-.calendar-header {
+.events-sidebar { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 85px; }
+@media (max-width: 960px) {
+  .events-layout { grid-template-columns: 1fr; }
+  .events-sidebar { position: static; }
+}
+.events-post-btn { text-transform: uppercase; letter-spacing: 0.04em; font-weight: 800; }
+
+.events-day-filter-banner {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 18px;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+  font-weight: 600;
 }
-.calendar-month-label {
+.events-day-filter-banner button {
+  background: none;
+  border: none;
+  color: var(--orange-dark);
+  font-weight: 800;
+  text-decoration: underline;
+  flex-shrink: 0;
+}
+
+/* ---------- Mini calendar widget ---------- */
+.mini-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.mini-calendar-month-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
   font-family: var(--display);
   font-weight: 800;
-  font-size: 17px;
+  font-size: 14px;
   color: var(--maroon);
-  min-width: 160px;
-  text-align: center;
+  padding: 2px 0;
 }
-.calendar-weekdays {
+.mini-calendar-nav { display: flex; gap: 2px; }
+.mini-calendar-nav button {
+  width: 26px;
+  height: 26px;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
-  margin-bottom: 6px;
-  text-align: center;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
-  margin-bottom: 20px;
-}
-.calendar-cell {
-  width: 100%;
-  aspect-ratio: 1;
+  place-items: center;
+  background: none;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: var(--card);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+.mini-calendar-nav button:hover { border-color: var(--orange); color: var(--orange-dark); }
+.mini-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.mini-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 3px;
-  color: var(--ink);
-  font-size: 13px;
 }
-.calendar-cell.empty { border: none; background: none; }
-.calendar-cell:not(.empty):hover { border-color: var(--orange); }
-.calendar-cell.today { border-color: var(--maroon); border-width: 2px; font-weight: 700; }
-.calendar-cell.has-event { background: var(--orange-soft); }
-.calendar-cell.selected { background: var(--orange); color: #fff; border-color: var(--orange); }
-.calendar-dot {
-  width: 5px; height: 5px;
+.mini-calendar-cell {
+  aspect-ratio: 1;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: none;
   border-radius: 50%;
-  background: var(--orange);
+  font-size: 12.5px;
+  color: var(--ink);
 }
-.calendar-cell.selected .calendar-dot { background: #fff; }
-.calendar-selected-events { border-top: 1px solid var(--line); padding-top: 16px; }
+.mini-calendar-cell.empty { pointer-events: none; }
+.mini-calendar-cell:not(.empty):hover { background: var(--paper); }
+.mini-calendar-cell.has-event { box-shadow: inset 0 0 0 1px var(--line-strong); font-weight: 700; }
+.mini-calendar-cell.today { background: var(--maroon); color: #fff; font-weight: 700; }
+.mini-calendar-cell.selected { background: var(--orange-soft); color: var(--orange-dark); box-shadow: inset 0 0 0 1px var(--orange); font-weight: 700; }
+
+/* ---------- Map widget: search + mini map + matching-events list ---------- */
+.events-map-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  color: var(--ink-soft);
+}
+.events-map-search input { border: none; outline: none; background: none; flex: 1; font-size: 13.5px; color: var(--ink); }
+.events-mini-map { border-radius: var(--radius-sm); overflow: hidden; }
+.events-mini-map-inner { width: 100%; height: 180px; }
+.events-map-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.events-map-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+}
+.events-map-list-item:hover { background: var(--paper); }
+.events-map-list-item strong { display: block; font-size: 13px; color: var(--maroon); }
+.events-map-list-location {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin-top: 1px;
+}
 
 /* ---------- Custom date-time picker ---------- */
 .dtp-wrap { position: relative; }
@@ -4834,8 +4905,6 @@ button.delete-danger svg { flex-shrink: 0; }
   }
   .mobile-tab.active { color: var(--orange); background: var(--orange-soft); }
 
-  .calendar-month-label { min-width: 120px; font-size: 15px; }
-  .calendar-day-num { font-size: 12px; }
   .dtp-popover { width: min(280px, calc(100vw - 48px)); }
 }
 @media (min-width: 721px) {
