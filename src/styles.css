@@ -1366,10 +1366,10 @@ button.delete-danger svg { flex-shrink: 0; }
    sliding underneath (visually "into") the sticky header. */
 .filter-panel.persistent {
   position: sticky;
-  top: 85px;
+  top: 20px;
   width: auto;
   max-width: none;
-  max-height: calc(100vh - 105px);
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
