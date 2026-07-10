@@ -3466,6 +3466,21 @@ button.delete-danger svg { flex-shrink: 0; }
   box-shadow: var(--shadow-lift);
   border-color: var(--line-strong);
 }
+/* .event-card's 3-column grid (date block | body | save button) is only
+   meant for the normal display state. Editing swaps the whole <li> down to
+   a single <EventForm> child, which — left on that grid — got squeezed
+   into just the 88px date-block column instead of taking the full width.
+   Job/Business cards don't hit this because .job-card already resets to a
+   single column (they lay out their date-block-equivalent with an inner
+   flex row instead); .event-card never had that reset, hence this modifier. */
+.event-card.event-card-editing {
+  display: block;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: none;
+}
+.event-card.event-card-editing:hover { transform: none; box-shadow: none; }
 .job-badge.business-featured-tag { background: var(--orange); margin-left: 8px; }
 .business-pin { background: var(--maroon) !important; }
 .map-popup-person .job-logo { width: 34px; height: 34px; border-radius: 8px; font-size: 14px; }

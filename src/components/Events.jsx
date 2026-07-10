@@ -548,7 +548,7 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
 
   if (editing) {
     return (
-      <li className="event-card" id={`event-${e.id}`}>
+      <li className="event-card event-card-editing" id={`event-${e.id}`}>
         <EventForm
           session={session}
           initial={e}
