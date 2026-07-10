@@ -303,7 +303,7 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
                 <span>people</span>
               </label>
             </div>
-          </label>
+          </div>
 
           {error && <p className="form-error">{error}</p>}
         </div>
