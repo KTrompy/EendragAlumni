@@ -254,9 +254,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
           <h2 className="panel-title">Business Directory</h2>
           <p className="panel-sub">Eendragter-owned and Eendragter-run businesses, all in one place.</p>
         </div>
-        {canPost && !showForm && isWide && (
-          <button className="btn primary" onClick={() => setShowForm(true)}>List your business</button>
-        )}
       </div>
 
       {showForm && (
@@ -270,13 +267,10 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
       {!showForm && businesses.length > 0 && (
         <div className="jobs-encourage-banner">
           <span>
-            🏢 {businesses.length} {businesses.length === 1 ? 'business has' : 'businesses have'} been listed by fellow Eendragters.{' '}
-            {canPost
-              ? "Run something of your own? List it — it takes about two minutes."
-              : "Once your account's approved, you'll be able to list your own."}
+            🏢 {businesses.length} {businesses.length === 1 ? 'business has' : 'businesses have'} been listed by fellow Eendragters. Run something of your own? List it — it takes about two minutes.
           </span>
           {canPost && (
-            <button className="btn primary small" onClick={() => setShowForm(true)}>List your business</button>
+            <button className="btn primary small" onClick={() => setShowForm(true)}>List it</button>
           )}
         </div>
       )}

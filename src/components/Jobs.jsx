@@ -309,9 +309,6 @@ export default function Jobs({ session, profile, onMessage }) {
           <h2 className="panel-title">Career &amp; Volunteer Opportunities</h2>
           <p className="panel-sub">Roles and internships posted by Eendragters, for Eendragters.</p>
         </div>
-        {canPost && !showForm && isWide && (
-          <button className="btn primary" onClick={() => setShowForm(true)}>Post a job</button>
-        )}
       </div>
 
       {showForm && (
@@ -322,19 +319,13 @@ export default function Jobs({ session, profile, onMessage }) {
         />
       ) || null}
 
-      {/* Social proof + a standing nudge to post, visible on every visit
-          (not just when the board is empty) — the header button is easy to
-          miss, this repeats the ask with a reason attached. */}
       {!showForm && jobs.length > 0 && (
         <div className="jobs-encourage-banner">
           <span>
-            🎓 {jobs.length} {jobs.length === 1 ? 'role has' : 'roles have'} been shared by fellow Eendragters.{' '}
-            {canPost
-              ? 'Know of an opening? Add yours — it takes about two minutes.'
-              : "Once your account's approved, you'll be able to post one too."}
+            🎓 {jobs.length} {jobs.length === 1 ? 'role has' : 'roles have'} been shared by fellow Eendragters. Know of an opening? Add yours — it takes about two minutes.
           </span>
           {canPost && (
-            <button className="btn primary small" onClick={() => setShowForm(true)}>Post a role</button>
+            <button className="btn primary small" onClick={() => setShowForm(true)}>Post one</button>
           )}
         </div>
       )}
