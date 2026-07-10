@@ -266,18 +266,15 @@ input, textarea, select { font: inherit; }
 }
 
 /* ---------- Hero banner ---------- */
-/* Rounded-rectangle photo banner (card-style corners, not a full pill),
-   same max-width and centering as .app-body so it lines up exactly with
-   the sidebar on the left and the content/right column on the right,
-   instead of bleeding edge-to-edge across the viewport. Replaces the old
-   look where .sidebar ran flush from right under the header all the way
-   down — now there's a rounded photo band first, sidebar starts below it. */
+/* Full-bleed background photo (edge-to-edge, no card/pill treatment) that
+   dissolves into the page background at the bottom rather than ending in
+   a hard rounded-corner edge — matches the reference site's look, where
+   the banner reads as a backdrop behind the top of the page rather than a
+   floating photo card. Shared chrome, sits above every page. */
 .hero-banner {
   position: relative;
-  max-width: 1360px;
-  margin: 20px auto 0;
-  height: 240px;
-  border-radius: 28px;
+  width: 100%;
+  height: 320px;
   overflow: hidden;
   background: var(--maroon);
 }
@@ -289,23 +286,20 @@ input, textarea, select { font: inherit; }
   object-fit: cover;
 }
 /* No text overlay (matches the Lions Connect reference — plain photo, no
-   caption), so this is just a soft bottom fade rather than a scrim dark
-   enough to keep white text legible. */
+   caption). The gradient fades the photo to solid --paper at the bottom so
+   it blends seamlessly into the page instead of showing a visible edge. */
 .hero-banner-overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.18) 0%,
-    rgba(0, 0, 0, 0.05) 35%,
-    rgba(0, 0, 0, 0) 60%
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0) 45%,
+    var(--paper) 100%
   );
 }
 @media (max-width: 720px) {
-  .hero-banner { height: 150px; border-radius: 18px; margin: 12px auto 0; }
-}
-@media (max-width: 1360px) {
-  .hero-banner { margin-left: 16px; margin-right: 16px; }
+  .hero-banner { height: 200px; }
 }
 
 /* ---------- Layout ---------- */
@@ -319,9 +313,10 @@ input, textarea, select { font: inherit; }
   align-items: flex-start;
   gap: 20px;
 }
-/* Rounded card, same border-radius and left edge as .hero-banner so the two
-   line up visually — floats with a gap top/bottom/right instead of running
-   flush from the header all the way down with a plain divider line. */
+/* Rounded card, floating with a gap top/bottom/right instead of running
+   flush from the header all the way down with a plain divider line. Sits
+   just below the full-bleed .hero-banner, whose bottom fade already blends
+   into the page background above it. */
 .sidebar {
   width: 216px;
   flex-shrink: 0;
