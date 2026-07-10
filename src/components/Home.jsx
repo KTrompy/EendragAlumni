@@ -290,9 +290,16 @@ export default function Home({ session, profile, onMessage }) {
                 <ul className="home-post-preview-list">
                   {recentPosts.map((p) => {
                     const text = p.content && p.content !== '(no text)' ? truncate(plainText(p.content)) : ''
-                    const hasMedia = p.image_urls?.length > 0
+                    const thumb = p.image_urls?.[0] || null
                     return (
-                      <li key={p.id} className="home-post-preview">
+                      <li
+                        key={p.id}
+                        className="home-post-preview"
+                        onClick={() => navigate('/feed')}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter') navigate('/feed') }}
+                      >
                         <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={54} />
                         <div className="home-post-preview-body">
                           <div className="home-post-preview-header">
@@ -304,14 +311,13 @@ export default function Home({ session, profile, onMessage }) {
                               <p className="home-post-preview-occupation">{p.profiles?.occupation || 'Member'}</p>
                             </div>
                           </div>
-                          {hasMedia && (
-                            <button className="home-post-media-row" onClick={() => navigate('/feed')}>
-                              <ImageIcon />
-                              <span>See all media posted</span>
-                              <span className="home-post-media-arrow">›</span>
-                            </button>
-                          )}
+                          {text && <p className="home-post-preview-text">{text}</p>}
                         </div>
+                        {thumb && (
+                          <div className="home-post-preview-thumb">
+                            <img src={thumb} alt="" />
+                          </div>
+                        )}
                       </li>
                     )
                   })}
