@@ -55,7 +55,9 @@ export default function GroupDetail({ session, profile, onMessage }) {
   const [memberCount, setMemberCount] = useState(0)
   const [editingGroup, setEditingGroup] = useState(false)
   const [leavingConfirm, setLeavingConfirm] = useState(false)
+  const [deletingGroup, setDeletingGroup] = useState(false)
   const isSiteAdmin = !!profile?.is_admin
+  const isGroupCreator = group?.created_by === session.user.id
 
   // Clicking a member/author/commenter anywhere on this page goes to their
   // standalone profile page rather than popping a modal over the group.
@@ -105,6 +107,17 @@ export default function GroupDetail({ session, profile, onMessage }) {
     showToast('Left group')
   }
 
+  async function deleteGroup() {
+    setDeletingGroup(false)
+    const { error } = await supabase.from('groups').delete().eq('id', groupId)
+    if (error) {
+      showToast('Could not delete group.', { type: 'error' })
+      return
+    }
+    showToast('Group deleted')
+    navigate('/groups')
+  }
+
   const isMember = !!myRole
   const isGroupAdmin = myRole === 'admin' || isSiteAdmin
 
@@ -138,9 +151,16 @@ export default function GroupDetail({ session, profile, onMessage }) {
               <button className="btn primary" onClick={join}>Join group</button>
             )}
             {isGroupAdmin && (
-              <button className="header-icon-btn group-hero-settings" onClick={() => setEditingGroup(true)} aria-label="Edit group" title="Edit group">
-                <GearIcon />
-              </button>
+              <>
+                <button className="header-icon-btn group-hero-settings" onClick={() => setEditingGroup(true)} aria-label="Edit group" title="Edit group">
+                  <GearIcon />
+                </button>
+                {isGroupCreator && (
+                  <button className="header-icon-btn group-hero-delete" onClick={() => setDeletingGroup(true)} aria-label="Delete group" title="Delete group">
+                    <TrashIcon />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -189,6 +209,17 @@ export default function GroupDetail({ session, profile, onMessage }) {
           confirmLabel="Leave"
           onConfirm={leave}
           onCancel={() => setLeavingConfirm(false)}
+        />
+      )}
+
+      {deletingGroup && (
+        <ConfirmDialog
+          title="Delete group?"
+          message="This will permanently delete the group and all its posts. This can't be undone."
+          confirmLabel="Delete permanently"
+          isDangerous={true}
+          onConfirm={deleteGroup}
+          onCancel={() => setDeletingGroup(false)}
         />
       )}
 
@@ -980,6 +1011,16 @@ function StarIcon({ filled }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  )
+}
+function TrashIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
     </svg>
   )
 }
