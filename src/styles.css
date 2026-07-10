@@ -1360,10 +1360,17 @@ button.delete-danger svg { flex-shrink: 0; }
   margin-top: 16px;
 }
 .directory-main { min-width: 0; }
+/* Sticks in place at a fixed offset below the masthead while the results
+   column scrolls, same pattern as .feed-sidebar on Home/Feed — without
+   this it's `position: static` and scrolls with the page, ending up
+   sliding underneath (visually "into") the sticky header. */
 .filter-panel.persistent {
-  position: static;
+  position: sticky;
+  top: 85px;
   width: auto;
   max-width: none;
+  max-height: calc(100vh - 105px);
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
