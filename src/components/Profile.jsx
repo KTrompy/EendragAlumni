@@ -25,9 +25,12 @@ const EMPTY = {
   is_open_to_opportunities: true,
   availability: '',
   geographic_focus: [],
+  experience: [],
   // keeping looking_to_connect for backward compatibility but not using in UI
   looking_to_connect: [],
 }
+
+const EMPTY_EXPERIENCE_ENTRY = { title: '', company: '', industry: '', from: '', to: '' }
 
 export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
   const [form, setForm] = useState(EMPTY)
@@ -67,6 +70,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         is_open_to_opportunities: profile.is_open_to_opportunities !== false,
         availability: profile.availability || '',
         geographic_focus: Array.isArray(profile.geographic_focus) ? profile.geographic_focus : [],
+        experience: Array.isArray(profile.experience) ? profile.experience : [],
         looking_to_connect: Array.isArray(profile.looking_to_connect) ? profile.looking_to_connect : [],
       })
       if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
@@ -111,6 +115,30 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       const newArr = arr.includes(tag) ? arr.filter(t => t !== tag) : [...arr, tag]
       return { ...f, [field]: newArr }
     })
+    setSaved(false)
+    setDirty(true)
+  }
+
+  // Experience: a free-form, add/remove list of past roles rather than a
+  // single job title/company — most alumni have more than one. Kept
+  // separate from the single "current role" fields above (which drive the
+  // directory card and quick filters) so this can grow without touching
+  // those.
+  function addExperience() {
+    setForm((f) => ({ ...f, experience: [...f.experience, { ...EMPTY_EXPERIENCE_ENTRY }] }))
+    setSaved(false)
+    setDirty(true)
+  }
+  function removeExperience(index) {
+    setForm((f) => ({ ...f, experience: f.experience.filter((_, i) => i !== index) }))
+    setSaved(false)
+    setDirty(true)
+  }
+  function setExperienceField(index, key, value) {
+    setForm((f) => ({
+      ...f,
+      experience: f.experience.map((entry, i) => (i === index ? { ...entry, [key]: value } : entry)),
+    }))
     setSaved(false)
     setDirty(true)
   }
@@ -180,12 +208,23 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       return false
     }
 
+    // Drop fully-blank experience rows (e.g. an "+ Add" that was never
+    // filled in), but any row with something in it needs at least a
+    // company name to be worth keeping.
+    const cleanedExperience = form.experience
+      .filter((e) => e.title.trim() || e.company.trim() || e.industry.trim() || e.from.trim() || e.to.trim())
+    if (cleanedExperience.some((e) => !e.company.trim())) {
+      setError('Please add a company name for each experience entry, or remove the incomplete one.')
+      return false
+    }
+
     setBusy(true)
     const industry = form.industry === 'Other' ? customIndustry.trim() : form.industry
 
     const payload = {
       ...form,
       industry,
+      experience: cleanedExperience,
       grad_year: form.grad_year ? Number(form.grad_year) : null,
       linkedin_url: form.linkedin_url.trim(),
       phone: form.phone.trim(),
@@ -388,6 +427,77 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </div>
       </div>
 
+      {/* Experience Section */}
+      <div className="profile-section profile-section-experience">
+        <h3 className="profile-section-title"><ExperienceIcon /> Experience</h3>
+
+        {form.experience.map((entry, i) => {
+          const showCompanyError = !entry.company.trim() && (entry.title.trim() || entry.industry.trim() || entry.from.trim() || entry.to.trim())
+          return (
+            <div className="experience-entry" key={i}>
+              <div className="field-row">
+                <label className="field"><span>Title</span>
+                  <ClearableInput
+                    value={entry.title}
+                    onChange={(e) => setExperienceField(i, 'title', e.target.value)}
+                    onClear={() => setExperienceField(i, 'title', '')}
+                    placeholder="e.g. Marketing Manager"
+                  />
+                </label>
+                <label className="field"><span>Company name</span>
+                  <ClearableInput
+                    value={entry.company}
+                    onChange={(e) => setExperienceField(i, 'company', e.target.value)}
+                    onClear={() => setExperienceField(i, 'company', '')}
+                    placeholder="e.g. Naspers"
+                    className={showCompanyError ? 'input-error' : ''}
+                  />
+                  {showCompanyError && <span className="field-error">Company name is required</span>}
+                </label>
+              </div>
+
+              <label className="field"><span>Industry</span>
+                <ListAutocomplete
+                  value={entry.industry}
+                  onChange={(v) => setExperienceField(i, 'industry', v)}
+                  options={INDUSTRIES}
+                  placeholder="Search or type an industry"
+                  clearable
+                />
+              </label>
+
+              <div className="field-row">
+                <label className="field"><span>From</span>
+                  <input
+                    type="month"
+                    className="experience-date"
+                    value={entry.from}
+                    onChange={(e) => setExperienceField(i, 'from', e.target.value)}
+                  />
+                </label>
+                <label className="field"><span>To</span>
+                  <input
+                    type="month"
+                    className="experience-date"
+                    value={entry.to}
+                    onChange={(e) => setExperienceField(i, 'to', e.target.value)}
+                  />
+                  <span className="hint">Leave blank if this is current</span>
+                </label>
+              </div>
+
+              <button type="button" className="experience-remove" onClick={() => removeExperience(i)}>
+                Remove
+              </button>
+            </div>
+          )
+        })}
+
+        <button type="button" className="experience-add" onClick={addExperience}>
+          + Add
+        </button>
+      </div>
+
       {/* Location Section */}
       <div className="profile-section profile-section-location">
         <h3 className="profile-section-title">Location</h3>
@@ -577,5 +687,15 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         />
       )}
     </section>
+  )
+}
+
+function ExperienceIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+      <path d="M2 13h20" />
+    </svg>
   )
 }

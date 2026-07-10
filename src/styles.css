@@ -2340,6 +2340,11 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .profile-card-subsection { margin-top: 14px; }
 .profile-card-subsection .modal-chips { margin-top: 6px; }
+
+.experience-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.experience-timeline-entry { border-left: 2px solid var(--orange-soft); padding-left: 12px; }
+.experience-timeline-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+.experience-timeline-meta { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
 .modal-chips {
   display: flex;
   flex-wrap: wrap;
@@ -3963,6 +3968,9 @@ button.delete-danger svg { flex-shrink: 0; }
    list still needs to float over the Location card below it, so it
    needs an even higher stacking order than .profile-section-location. */
 .profile-section-career { position: relative; z-index: 6; }
+/* Same reasoning as Career above — Experience's own per-entry Industry
+   autocomplete needs to float over the Location card that follows it. */
+.profile-section-experience { position: relative; z-index: 6; }
 /* Stagger each card's entrance slightly so the page feels like it's
    settling into place rather than popping in all at once. */
 .profile-section:nth-of-type(1) { animation-delay: 0.02s; }
@@ -3979,7 +3987,67 @@ button.delete-danger svg { flex-shrink: 0; }
   text-transform: uppercase;
   color: var(--maroon);
   margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+
+/* ---------- Experience: repeatable add/remove entry cards ---------- */
+.experience-entry {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 12px);
+  padding: 16px 16px 4px;
+  margin-bottom: 16px;
+  background: var(--surface, #fafafa);
+}
+.experience-date {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.experience-date:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px var(--orange-soft);
+}
+.field-error {
+  display: block;
+  font-size: 12px;
+  color: var(--danger, #c0392b);
+  margin-top: 4px;
+}
+.input-clear-wrap input.input-error {
+  border-color: var(--danger, #c0392b);
+}
+.experience-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 16px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--maroon);
+  cursor: pointer;
+}
+.experience-remove:hover { text-decoration: underline; }
+.experience-add {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--orange-dark);
+  cursor: pointer;
+}
+.experience-add:hover { text-decoration: underline; }
 .field input, .field textarea, .field select {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }

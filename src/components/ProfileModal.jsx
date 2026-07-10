@@ -66,6 +66,7 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
     ? `${contact.city}, ${contact.country}`
     : (contact?.country || contact?.city || '')
 
+  const experience = Array.isArray(p.experience) ? p.experience : []
   const expertise = normalizeExpertise(p.expertise)
   const servicesOffered = Array.isArray(p.services_offered) ? p.services_offered : []
   const businessCategories = Array.isArray(p.business_categories) ? p.business_categories : []
@@ -110,6 +111,24 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
             <div className="profile-card-section">
               <h3 className="profile-card-section-title">About</h3>
               <p className="profile-card-bio">{p.bio}</p>
+            </div>
+          )}
+
+          {experience.length > 0 && (
+            <div className="profile-card-section">
+              <h3 className="profile-card-section-title">Experience</h3>
+              <ul className="experience-timeline">
+                {experience.map((entry, i) => (
+                  <li className="experience-timeline-entry" key={i}>
+                    <div className="experience-timeline-title">
+                      {entry.title || 'Role'}{entry.company && <> @ {entry.company}</>}
+                    </div>
+                    <div className="experience-timeline-meta">
+                      {[entry.industry, formatExperienceRange(entry.from, entry.to)].filter(Boolean).join(' · ')}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -191,6 +210,21 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
       </div>
     </div>
   )
+}
+
+// Experience dates are stored as "YYYY-MM" (from a native <input type="month">).
+// Renders "Jan 2022 – Present" style ranges, or nothing if both are blank.
+function formatExperienceRange(from, to) {
+  const fmt = (v) => {
+    if (!v) return ''
+    const [y, m] = v.split('-')
+    const d = new Date(Number(y), Number(m) - 1)
+    return isNaN(d) ? v : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  }
+  const fromLabel = fmt(from)
+  const toLabel = to ? fmt(to) : (from ? 'Present' : '')
+  if (!fromLabel && !toLabel) return ''
+  return [fromLabel, toLabel].filter(Boolean).join(' – ')
 }
 
 function LinkedInIconSmall() {
