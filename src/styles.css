@@ -6159,52 +6159,59 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-community-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 10px;
 }
 .home-community-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  transition: all 0.2s var(--ease);
 }
+.home-community-card:hover { border-color: var(--orange); box-shadow: 0 2px 6px rgba(232, 97, 28, 0.08); }
 .home-community-card-identity {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   width: 100%;
   background: none;
   border: none;
-  padding: 9px 4px 0;
-  border-radius: var(--radius-sm);
+  padding: 0;
   cursor: pointer;
-  transition: background 0.2s var(--ease);
+  transition: opacity 0.2s var(--ease);
 }
-.home-community-card-identity:hover { background: var(--paper); }
+.home-community-card-identity:hover { opacity: 0.8; }
 .home-community-card-identity span {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--ink);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
+  line-height: 1.2;
 }
 .home-community-message-btn {
   width: 100%;
-  background: var(--maroon);
+  background: var(--orange);
   color: #fff;
   border: none;
-  border-radius: 999px;
-  padding: 7px 8px;
-  font-size: 12px;
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  transition: background 0.2s var(--ease);
+  transition: all 0.2s var(--ease);
+  cursor: pointer;
 }
-.home-community-message-btn:hover { background: var(--maroon-dark); }
+.home-community-message-btn:hover { background: var(--orange-dark); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(232, 97, 28, 0.2); }
 
 /* "See who's on the platform" nested inside the same My Community card —
    reuses Feed's .whos-online widget but strips its own card chrome so it
