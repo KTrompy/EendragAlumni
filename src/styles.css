@@ -81,16 +81,55 @@ input, textarea, select { font: inherit; }
    size (desktop and mobile alike), not just as a mobile fallback. */
 .header-avatar-btn {
   display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: none;
   border: 2px solid rgba(255, 255, 255, 0.5);
-  padding: 3px;
-  border-radius: 50%;
+  padding: 3px 8px 3px 3px;
+  border-radius: 999px;
   flex-shrink: 0;
+  color: #fff;
   transition: border-color 0.2s ease;
   cursor: pointer;
 }
 .header-avatar-btn:hover { border-color: var(--orange); }
 .header-avatar-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+/* ---------- Header profile dropdown (Settings / Edit profile / Sign out) ---------- */
+.profile-menu-wrap { position: relative; }
+.profile-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 200px;
+  background: var(--card);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  z-index: 80;
+  overflow: hidden;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.profile-menu-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.profile-menu-dropdown button:hover { background: var(--paper); }
+.profile-menu-dropdown .profile-menu-signout { color: var(--danger); }
 .header-icon-badge {
   position: absolute;
   top: 2px;
@@ -5786,4 +5825,117 @@ button.delete-danger svg { flex-shrink: 0; }
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   font-size: 13.5px;
+}
+
+/* ===========================================================
+   Settings page (/settings — Account / Notifications / Privacy)
+   Not to be confused with .settings-card above, which is Mentoring's own
+   per-program admin settings panel.
+   =========================================================== */
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line-strong);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.settings-tab {
+  background: none;
+  border: none;
+  padding: 10px 4px;
+  margin-right: 22px;
+  font-family: var(--display);
+  font-size: 12.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.settings-tab:hover { color: var(--maroon); }
+.settings-tab.active { color: var(--maroon); border-bottom-color: var(--maroon); }
+
+.settings-panel { max-width: 640px; }
+.settings-section-group { display: flex; flex-direction: column; gap: 26px; }
+.settings-section h3 {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--maroon);
+}
+.settings-section + .settings-section { margin-top: 26px; }
+.settings-field { max-width: 360px; }
+.settings-field select,
+.settings-field input { width: 100%; }
+.settings-divider { height: 1px; background: var(--line); margin: 18px 0; }
+.settings-danger {
+  border: 1px solid rgba(178, 58, 42, 0.3);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  background: rgba(178, 58, 42, 0.04);
+}
+
+/* Notifications tab: label column + Email/Mobile/Platform columns */
+.notif-prefs-table { display: flex; flex-direction: column; margin-top: 10px; }
+.notif-prefs-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 70px 70px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.notif-prefs-row:last-child { border-bottom: none; }
+.notif-prefs-head span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); text-align: center; }
+.notif-prefs-head span:first-child { text-align: left; }
+.notif-prefs-label { font-size: 13.5px; color: var(--ink); }
+.notif-prefs-row .settings-toggle { justify-self: center; }
+
+.settings-toggle {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+.settings-toggle.on { background: var(--orange); }
+.settings-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+.settings-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+.settings-toggle.on .settings-toggle-knob { transform: translateX(16px); }
+
+/* Privacy tab: label column + All / Mentoring Relationships / Hide radios */
+.privacy-table { display: flex; flex-direction: column; margin-top: 10px; }
+.privacy-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 140px 70px;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.privacy-row:last-child { border-bottom: none; }
+.privacy-row-head span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); text-align: center; }
+.privacy-row-head span:first-child { text-align: left; }
+.privacy-row-label { font-size: 13.5px; color: var(--ink); padding-right: 8px; }
+.privacy-radio { display: flex; justify-content: center; }
+.privacy-radio input { width: 17px; height: 17px; accent-color: var(--orange); cursor: pointer; }
+@media (max-width: 640px) {
+  .privacy-row, .notif-prefs-row { grid-template-columns: 1fr repeat(3, 44px); gap: 4px; }
+  .privacy-row-head span:not(:first-child), .notif-prefs-head span:not(:first-child) { font-size: 9.5px; }
 }

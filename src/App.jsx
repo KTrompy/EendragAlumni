@@ -21,6 +21,7 @@ import Donate from './components/Donate.jsx'
 import Admin from './components/Admin.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
 import ConfirmDialog from './components/ConfirmDialog.jsx'
+import Settings from './components/Settings.jsx'
 
 // Eendragters (directory) now includes the alumni map as a view toggle
 // (see People.jsx) instead of splitting "find a person" across two nav
@@ -88,6 +89,8 @@ export default function App() {
   const [leaveError, setLeaveError] = useState(null)
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
   const [directoryRefetchTrigger, setDirectoryRefetchTrigger] = useState(0) // increment to trigger refetch
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false) // header avatar dropdown (Settings/Edit profile/Sign out)
+  const profileMenuRef = useRef(null)
 
   // Lock body scroll while the mobile nav drawer is open, and let Escape
   // close it — same pattern as the filter drawers (DirectoryFilters.jsx,
@@ -103,6 +106,20 @@ export default function App() {
       document.removeEventListener('keydown', onKey)
     }
   }, [navOpen])
+
+  // Header avatar dropdown — same outside-click/Escape pattern as
+  // NotificationBell's dropdown.
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    function onClick(e) { if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) setProfileMenuOpen(false) }
+    function onKey(e) { if (e.key === 'Escape') setProfileMenuOpen(false) }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [profileMenuOpen])
 
   // Warn on an actual browser navigation/refresh/close too, not just
   // switching tabs inside the app.
@@ -261,15 +278,39 @@ export default function App() {
             <NotificationBell session={session} onNavigate={handleNotificationNavigate} />
 
             {/* My profile lives here — top-right of the header — on every
-                screen size now, instead of as a sidebar/hamburger entry. */}
-            <button
-              className="header-avatar-btn"
-              onClick={() => goTo('/profile')}
-              aria-label="My profile (click to open)"
-              title="Click to open your profile"
-            >
-              <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
-            </button>
+                screen size now, instead of as a sidebar/hamburger entry.
+                Clicking the avatar opens a small dropdown (Settings / Edit
+                profile / Sign out) rather than navigating straight to the
+                profile page. */}
+            <div className="profile-menu-wrap" ref={profileMenuRef}>
+              <button
+                className="header-avatar-btn"
+                onClick={() => setProfileMenuOpen((o) => !o)}
+                aria-label="Account menu"
+                aria-expanded={profileMenuOpen}
+              >
+                <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
+                <ChevronDownIcon />
+              </button>
+
+              {profileMenuOpen && (
+                <div className="profile-menu-dropdown" role="menu">
+                  <button role="menuitem" onClick={() => { setProfileMenuOpen(false); goTo('/settings') }}>
+                    <SettingsIcon /> Settings
+                  </button>
+                  <button role="menuitem" onClick={() => { setProfileMenuOpen(false); goTo('/profile') }}>
+                    <EditIcon /> Edit profile
+                  </button>
+                  <button
+                    role="menuitem"
+                    className="profile-menu-signout"
+                    onClick={() => { setProfileMenuOpen(false); attemptNavigate(() => { setNavOpen(false); setConfirmingSignOut(true) }) }}
+                  >
+                    <SignOutIcon /> Sign out
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               className="nav-toggle"
@@ -367,6 +408,10 @@ export default function App() {
                     onNavigateHome={() => goTo('/home')}
                   />
                 }
+              />
+              <Route
+                path="/settings"
+                element={<Settings session={session} profile={profile} onSaved={setProfile} />}
               />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
@@ -623,6 +668,29 @@ function MessagesIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+function ChevronDownIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+function SettingsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M19.4 13.5a1.8 1.8 0 0 0 .36 1.98l.07.07a2.16 2.16 0 1 1-3.06 3.06l-.07-.07a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.65v.2a2.16 2.16 0 1 1-4.32 0v-.1a1.8 1.8 0 0 0-1.17-1.65 1.8 1.8 0 0 0-1.98.36l-.07.07a2.16 2.16 0 1 1-3.06-3.06l.07-.07a1.8 1.8 0 0 0 .36-1.98 1.8 1.8 0 0 0-1.65-1.1h-.2a2.16 2.16 0 1 1 0-4.32h.1a1.8 1.8 0 0 0 1.65-1.17 1.8 1.8 0 0 0-.36-1.98l-.07-.07a2.16 2.16 0 1 1 3.06-3.06l.07.07a1.8 1.8 0 0 0 1.98.36h.09a1.8 1.8 0 0 0 1.1-1.65v-.2a2.16 2.16 0 1 1 4.32 0v.1a1.8 1.8 0 0 0 1.1 1.65h.09a1.8 1.8 0 0 0 1.98-.36l.07-.07a2.16 2.16 0 1 1 3.06 3.06l-.07.07a1.8 1.8 0 0 0-.36 1.98v.09a1.8 1.8 0 0 0 1.65 1.1h.2a2.16 2.16 0 1 1 0 4.32h-.1a1.8 1.8 0 0 0-1.65 1.1z" />
+    </svg>
+  )
+}
+function EditIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
     </svg>
   )
 }

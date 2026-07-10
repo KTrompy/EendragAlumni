@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
 import { normalizeExpertise } from '../utils.js'
 
@@ -32,6 +33,13 @@ function Chips({ items }) {
 }
 
 export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
+  // Phone/email/location are fetched separately from a privacy-aware RPC
+  // rather than read straight off `p` — the caller's initial select may
+  // include city/country for other purposes, but showing them here has to
+  // respect that person's Settings → Privacy choices first, so we wait for
+  // this to resolve rather than flashing the unfiltered values from `p`.
+  const [contact, setContact] = useState(null)
+
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
@@ -43,13 +51,20 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
     }
   }, [onClose])
 
+  useEffect(() => {
+    setContact(null)
+    supabase.rpc('get_profile_contact', { target_id: p.id }).then(({ data, error }) => {
+      setContact(error ? {} : (data?.[0] || {}))
+    })
+  }, [p.id])
+
   const roleLine = p.occupation && p.company
     ? `${p.occupation} @ ${p.company}`
     : (p.occupation || p.company || '')
 
-  const locationLine = p.city && p.country
-    ? `${p.city}, ${p.country}`
-    : (p.country || p.city || '')
+  const locationLine = contact?.city && contact?.country
+    ? `${contact.city}, ${contact.country}`
+    : (contact?.country || contact?.city || '')
 
   const expertise = normalizeExpertise(p.expertise)
   const servicesOffered = Array.isArray(p.services_offered) ? p.services_offered : []
@@ -95,6 +110,16 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
             <div className="profile-card-section">
               <h3 className="profile-card-section-title">About</h3>
               <p className="profile-card-bio">{p.bio}</p>
+            </div>
+          )}
+
+          {(contact?.phone || contact?.email) && (
+            <div className="profile-card-section">
+              <h3 className="profile-card-section-title">Contact</h3>
+              <div className="profile-fact-strip">
+                {contact.phone && <Fact label="Phone" value={contact.phone} />}
+                {contact.email && <Fact label="Email" value={contact.email} />}
+              </div>
             </div>
           )}
 

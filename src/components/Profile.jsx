@@ -16,7 +16,7 @@ const EMPTY = {
   industry: '', occupation: '',
   company: '', city: '', country: 'South Africa',
   bio: '',
-  linkedin_url: '',
+  linkedin_url: '', phone: '',
   is_current_resident: false,
   expertise: [],
   services_offered: [],
@@ -58,6 +58,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         country: profile.country || 'South Africa',
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
+        phone: profile.phone || '',
         is_current_resident: !!profile.is_current_resident,
         expertise: normalizeExpertise(profile.expertise),
         services_offered: Array.isArray(profile.services_offered) ? profile.services_offered : [],
@@ -187,6 +188,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       industry,
       grad_year: form.grad_year ? Number(form.grad_year) : null,
       linkedin_url: form.linkedin_url.trim(),
+      phone: form.phone.trim(),
     }
 
     // Re-geocode when the city/country changed, or when this profile simply
@@ -423,6 +425,17 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             onClear={() => set('linkedin_url', '')}
             placeholder="https://linkedin.com/in/yourname"
           />
+        </label>
+
+        <label className="field"><span>Phone number</span>
+          <ClearableInput
+            type="tel"
+            value={form.phone}
+            onChange={(e) => set('phone', e.target.value)}
+            onClear={() => set('phone', '')}
+            placeholder="+27 …"
+          />
+          <span className="hint">Who can see this is controlled in Settings → Privacy.</span>
         </label>
       </div>
 
