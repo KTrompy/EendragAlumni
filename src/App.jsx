@@ -293,14 +293,12 @@ export default function App() {
       {/* Full-width photo banner, sitting above the sidebar/content row so
           the sidebar no longer runs flush from the header all the way down
           the page — same idea as the Lions Connect reference layout. Image
-          lives at /courtyard1.png in public/. */}
+          lives at /courtyard1.png in public/. No text overlay (matches the
+          reference exactly — just the photo; brand name/motto already live
+          in the header next to the logo). */}
       <div className="hero-banner">
         <img src="/courtyard1.png" alt="" className="hero-banner-img" />
         <div className="hero-banner-overlay" />
-        <div className="hero-banner-content">
-          <span className="hero-banner-title">Eendrag Alumni</span>
-          <span className="hero-banner-motto">Character · Style · Pride · Since 1961</span>
-        </div>
       </div>
 
       <div className="app-body">

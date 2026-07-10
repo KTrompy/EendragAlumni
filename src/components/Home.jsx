@@ -194,28 +194,30 @@ export default function Home({ session, profile }) {
   return (
     <section className="panel">
       <div className="home-banner">
-        <Avatar url={profile?.avatar_url} name={profile?.full_name} size={56} />
+        <ProgressRing pct={pct} size={64}>
+          <Avatar url={profile?.avatar_url} name={profile?.full_name} size={54} />
+        </ProgressRing>
         <div className="home-banner-body">
-          <div className="home-banner-progress">
-            <span className="home-banner-pct">{pct}% complete</span>
-            <div className="home-progress-track"><div className="home-progress-fill" style={{ width: `${pct}%` }} /></div>
-          </div>
+          <span className="home-banner-pill">{pct}% complete</span>
           <h2 className="home-banner-title">{greeting()}, {firstName}</h2>
         </div>
         <div className="home-banner-actions">
           <div className="home-banner-action">
+            <RefreshIcon />
             <span>Complete your missing profile information so other members can easily find you</span>
-            <button className="home-banner-link" onClick={() => navigate('/profile')}>Update profile ›</button>
+            <button className="home-banner-link" onClick={() => navigate('/profile')}>UPDATE PROFILE ›</button>
           </div>
           {badges.length > 0 && (
             <div className="home-banner-action">
+              <ShieldIcon />
               <span>{earnedCount}/{badges.length} Badges achieved!</span>
-              <button className="home-banner-link" onClick={() => setShowBadges(true)}>See all ›</button>
+              <button className="home-banner-link" onClick={() => setShowBadges(true)}>SEE ALL</button>
             </div>
           )}
           <div className="home-banner-action">
-            <span>Share something with the house</span>
-            <button className="home-banner-link" onClick={() => navigate('/feed', { state: { openComposer: true } })}>Start sharing ›</button>
+            <ShareIcon />
+            <span>Share something!</span>
+            <button className="home-banner-link" onClick={() => navigate('/feed', { state: { openComposer: true } })}>Start sharing</button>
           </div>
         </div>
       </div>
@@ -377,6 +379,57 @@ export default function Home({ session, profile }) {
   )
 }
 
+// Circular completion ring drawn around the avatar (SVG stroke-dasharray),
+// in Eendrag's own orange/maroon rather than the reference screenshot's
+// green — Kyle chose to keep brand colors here, matching everything else
+// (ring shape/position, pill, layout) exactly.
+function ProgressRing({ pct, size = 64, strokeWidth = 3, children }) {
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - Math.min(100, Math.max(0, pct)) / 100)
+  const center = size / 2
+  return (
+    <div className="home-progress-ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={center} cy={center} r={radius} fill="none" stroke="var(--line-strong)" strokeWidth={strokeWidth} />
+        <circle
+          cx={center} cy={center} r={radius} fill="none"
+          stroke="var(--orange)" strokeWidth={strokeWidth}
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          strokeLinecap="round" transform={`rotate(-90 ${center} ${center})`}
+          style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+        />
+      </svg>
+      <div className="home-progress-ring-inner">{children}</div>
+    </div>
+  )
+}
+function RefreshIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--orange-dark)' }}>
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      <path d="M3 21v-5h5" />
+    </svg>
+  )
+}
+function ShieldIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--orange-dark)' }}>
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+    </svg>
+  )
+}
+function ShareIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--orange-dark)' }}>
+      <path d="M12 16V4" />
+      <path d="M8 8l4-4 4 4" />
+      <path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+    </svg>
+  )
+}
 function PinIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--orange)' }}>
