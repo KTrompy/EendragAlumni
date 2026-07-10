@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import { GroupPlaceholderIcon } from './Groups.jsx'
 import { WhosOnline } from './Feed.jsx'
+import { BusinessLogo } from './BusinessDirectory.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
 
@@ -24,6 +25,7 @@ const MOBILE_TABS = [
   { id: 'posts', label: 'Recent feed posts' },
   { id: 'community', label: 'My Community' },
   { id: 'groups', label: 'My Groups' },
+  { id: 'businesses', label: 'Businesses near me' },
   { id: 'events', label: 'Upcoming events' },
 ]
 
@@ -78,6 +80,7 @@ export default function Home({ session, profile, onMessage }) {
   const [badges, setBadges] = useState([])
   const [earnedKeys, setEarnedKeys] = useState(new Set())
   const [community, setCommunity] = useState([])
+  const [nearbyBusinesses, setNearbyBusinesses] = useState([])
   const [showBadges, setShowBadges] = useState(false)
   const [mobileTab, setMobileTab] = useState('posts')
   const [loading, setLoading] = useState(true)
@@ -100,6 +103,14 @@ export default function Home({ session, profile, onMessage }) {
       if (profile?.industry) communityFilters.push(`industry.eq.${profile.industry}`)
       if (profile?.city) communityFilters.push(`city.eq.${profile.city}`)
 
+      // "Businesses near me": listings sharing the viewer's city or country,
+      // same "match first, fall back to most recent" shape as the community
+      // widget above so this is never empty just because the viewer's own
+      // location fields are blank.
+      const businessFilters = []
+      if (profile?.city) businessFilters.push(`city.eq.${profile.city}`)
+      if (profile?.country) businessFilters.push(`country.eq.${profile.country}`)
+
       const [
         { data: posts },
         { data: memberships },
@@ -110,6 +121,7 @@ export default function Home({ session, profile, onMessage }) {
         { count: photosCount },
         { count: mentoringCount },
         { data: matchedCommunity },
+        { data: matchedBusinesses },
       ] = await Promise.all([
         supabase
           .from('posts')
@@ -140,6 +152,15 @@ export default function Home({ session, profile, onMessage }) {
               .eq('approved', true)
               .neq('id', uid)
               .or(communityFilters.join(','))
+              .limit(6)
+          : Promise.resolve({ data: [] }),
+        businessFilters.length
+          ? supabase
+              .from('businesses')
+              .select('id, name, logo_url, description, city, country')
+              .or(businessFilters.join(','))
+              .order('promoted', { ascending: false })
+              .order('created_at', { ascending: false })
               .limit(6)
           : Promise.resolve({ data: [] }),
       ])
@@ -182,6 +203,18 @@ export default function Home({ session, profile, onMessage }) {
         communityList = fallback || []
       }
       setCommunity(communityList)
+
+      let businessList = matchedBusinesses || []
+      if (businessList.length === 0) {
+        const { data: fallback } = await supabase
+          .from('businesses')
+          .select('id, name, logo_url, description, city, country')
+          .order('promoted', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(6)
+        businessList = fallback || []
+      }
+      setNearbyBusinesses(businessList)
 
       setLoading(false)
     }
@@ -310,6 +343,35 @@ export default function Home({ session, profile, onMessage }) {
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className="home-tabsection" data-tab="businesses">
+            <div className="feed-widget home-feed-widget">
+              <div className="home-section-head">
+                <h3 className="feed-section-label">Businesses near me</h3>
+              </div>
+
+              {nearbyBusinesses.length === 0 ? (
+                <p className="empty small">No businesses listed yet.</p>
+              ) : (
+                <div className="home-business-grid">
+                  {nearbyBusinesses.map((b) => (
+                    <button key={b.id} className="home-business-card" onClick={() => navigate(`/businesses/${b.id}`)}>
+                      <div className="home-business-card-head">
+                        <BusinessLogo url={b.logo_url} name={b.name} />
+                        <strong>{b.name}</strong>
+                      </div>
+                      <p className="home-business-excerpt">{truncate(plainText(b.description), 90)}</p>
+                      <p className="home-business-location">
+                        <LocationDotIcon /> {[b.city, b.country].filter(Boolean).join(', ') || 'Location not set'}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button className="feed-widget-viewall home-more-link home-business-viewall" onClick={() => navigate('/businesses')}>More businesses</button>
+            </div>
           </div>
         </div>
 
@@ -459,6 +521,14 @@ function PinIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--orange)' }}>
       <path d="M12 2l1.5 5.5L19 9l-4 3.5L16 18l-4-3-4 3 1-5.5-4-3.5 5.5-1.5z" />
+    </svg>
+  )
+}
+function LocationDotIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--maroon)', flexShrink: 0 }}>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+      <circle cx="12" cy="10" r="3" />
     </svg>
   )
 }
