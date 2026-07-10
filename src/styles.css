@@ -5635,6 +5635,35 @@ button.delete-danger svg { flex-shrink: 0; }
 .group-cover-preview img { width: 100%; height: 100%; object-fit: cover; }
 .group-cover-preview svg { color: var(--ink-soft); width: 48px; height: 48px; }
 
+/* Image positioning editor modal */
+.image-editor-modal { max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
+.image-editor-modal .modal-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+
+.image-editor-controls { display: flex; flex-direction: column; gap: 12px; }
+.control-group { display: flex; flex-direction: column; gap: 8px; }
+.control-group > label { font-weight: 600; font-size: 13px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.mode-buttons { display: flex; gap: 8px; }
+.mode-btn { flex: 1; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.mode-btn:hover { border-color: var(--orange); color: var(--ink); }
+.mode-btn.active { background: var(--orange-soft); border-color: var(--orange); color: var(--orange-dark); }
+
+.zoom-control { display: flex; align-items: center; gap: 12px; }
+.zoom-control button { padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); cursor: pointer; font-weight: 600; }
+.zoom-control button:hover { border-color: var(--orange); background: var(--orange-soft); }
+.zoom-value { font-size: 13px; color: var(--ink-soft); font-weight: 600; min-width: 50px; text-align: center; }
+
+.editor-hint { font-size: 12px; color: var(--ink-soft); margin: 0; font-style: italic; }
+
+.image-editor-canvas-wrap { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.image-editor-canvas { background: var(--paper); border: 2px solid var(--line-strong); border-radius: var(--radius-sm); overflow: hidden; flex: 1; min-height: 300px; display: flex; align-items: center; justify-content: center; position: relative; }
+
+.image-editor-frame { width: 100%; max-width: 100%; max-height: 100%; position: relative; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.image-editor-frame img { width: 100%; height: 100%; object-fit: contain; cursor: grab; }
+.image-editor-frame img:active { cursor: grabbing; }
+
+.frame-label { font-size: 11px; color: var(--ink-soft); text-align: center; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+
 /* ---------- Tabs (Feed / Members) ---------- */
 .group-tabs {
   display: flex;

@@ -202,6 +202,8 @@ function EditGroupModal({ group, onClose, onSaved }) {
   const [description, setDescription] = useState(group.description || '')
   const [coverImagePreview, setCoverImagePreview] = useState(group.cover_image_url || null)
   const [coverImageFile, setCoverImageFile] = useState(null)
+  const [imageEditorOpen, setImageEditorOpen] = useState(false)
+  const [imageData, setImageData] = useState(null) // { url, offsetX, offsetY, scale, mode }
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const fileRef = useRef(null)
@@ -211,7 +213,10 @@ function EditGroupModal({ group, onClose, onSaved }) {
     if (!file) return
     if (file.size > 5 * 1024 * 1024) { setError('Photo must be under 5MB.'); return }
     setCoverImageFile(file)
-    setCoverImagePreview(URL.createObjectURL(file))
+    const url = URL.createObjectURL(file)
+    setCoverImagePreview(url)
+    setImageData({ url, offsetX: 0, offsetY: 0, scale: 1, mode: 'pan' })
+    setImageEditorOpen(true)
     setError(null)
   }
 
@@ -263,6 +268,11 @@ function EditGroupModal({ group, onClose, onSaved }) {
               <button type="button" className="btn primary small" onClick={() => fileRef.current?.click()}>
                 Change photo
               </button>
+              {imageData && (
+                <button type="button" className="btn ghost small" onClick={() => setImageEditorOpen(true)}>
+                  Adjust positioning
+                </button>
+              )}
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handlePhotoChange} />
             </div>
           </label>
@@ -277,6 +287,144 @@ function EditGroupModal({ group, onClose, onSaved }) {
         <div className="modal-footer">
           <button className="btn ghost" onClick={onClose} disabled={busy}>Cancel</button>
           <button className="btn primary" onClick={submit} disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>
+        </div>
+      </div>
+
+      {imageEditorOpen && imageData && (
+        <ImagePositioningEditor
+          imageData={imageData}
+          onClose={() => setImageEditorOpen(false)}
+          onSave={(updated) => { setImageData(updated); setImageEditorOpen(false) }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ---------- Image positioning editor ---------- */
+function ImagePositioningEditor({ imageData, onClose, onSave }) {
+  const [offsetX, setOffsetX] = useState(imageData.offsetX)
+  const [offsetY, setOffsetY] = useState(imageData.offsetY)
+  const [scale, setScale] = useState(imageData.scale)
+  const [mode, setMode] = useState(imageData.mode)
+  const canvasRef = useRef(null)
+
+  // Pan by dragging
+  function handleMouseDown(e) {
+    if (e.button !== 0) return
+    const startX = e.clientX
+    const startY = e.clientY
+    const startOffsetX = offsetX
+    const startOffsetY = offsetY
+
+    function handleMouseMove(moveE) {
+      const deltaX = moveE.clientX - startX
+      const deltaY = moveE.clientY - startY
+      setOffsetX(startOffsetX + deltaX)
+      setOffsetY(startOffsetY + deltaY)
+    }
+
+    function handleMouseUp() {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  // Zoom with scroll
+  function handleWheel(e) {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    setScale((s) => Math.max(0.5, Math.min(3, s * delta)))
+  }
+
+  function handleSave() {
+    onSave({ ...imageData, offsetX, offsetY, scale, mode })
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Position image">
+      <div className="modal image-editor-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Adjust photo positioning</h2>
+          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+
+        <div className="modal-body">
+          <div className="image-editor-controls">
+            <div className="control-group">
+              <label>Display mode</label>
+              <div className="mode-buttons">
+                <button
+                  className={mode === 'pan' ? 'mode-btn active' : 'mode-btn'}
+                  onClick={() => setMode('pan')}
+                  title="Pan and zoom the image"
+                >
+                  Pan & Zoom
+                </button>
+                <button
+                  className={mode === 'crop' ? 'mode-btn active' : 'mode-btn'}
+                  onClick={() => setMode('crop')}
+                  title="Crop the image to fit"
+                >
+                  Crop to Frame
+                </button>
+              </div>
+            </div>
+
+            {mode === 'pan' && (
+              <>
+                <p className="editor-hint">Click and drag to move. Scroll to zoom.</p>
+                <div className="zoom-control">
+                  <button onClick={() => setScale((s) => Math.max(0.5, s - 0.1))}>−</button>
+                  <span className="zoom-value">{Math.round(scale * 100)}%</span>
+                  <button onClick={() => setScale((s) => Math.min(3, s + 0.1))}>+</button>
+                </div>
+              </>
+            )}
+
+            {mode === 'crop' && (
+              <p className="editor-hint">Click and drag to reposition the image inside the frame.</p>
+            )}
+          </div>
+
+          <div className="image-editor-canvas-wrap">
+            <div
+              className="image-editor-canvas"
+              ref={canvasRef}
+              onMouseDown={handleMouseDown}
+              onWheel={handleWheel}
+              style={{ cursor: 'grab' }}
+            >
+              {/* Preview frame (16:9 aspect ratio) */}
+              <div className="image-editor-frame" style={{ aspectRatio: '16/9' }}>
+                <img
+                  src={imageData.url}
+                  alt="Preview"
+                  style={{
+                    transform: `translate(${offsetX}px, ${offsetY}px) scale(${scale})`,
+                    transformOrigin: 'center',
+                    userSelect: 'none',
+                  }}
+                  onMouseDown={(e) => e.preventDefault()}
+                />
+              </div>
+            </div>
+            <p className="frame-label">Preview (how it looks on the group page)</p>
+          </div>
+
+          <div className="control-group">
+            <button type="button" className="btn ghost small" onClick={() => { setOffsetX(0); setOffsetY(0); setScale(1) }}>
+              Reset to default
+            </button>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn primary" onClick={handleSave}>Done</button>
         </div>
       </div>
     </div>
