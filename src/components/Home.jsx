@@ -293,7 +293,7 @@ export default function Home({ session, profile, onMessage }) {
                     const hasMedia = p.image_urls?.length > 0
                     return (
                       <li key={p.id} className="home-post-preview">
-                        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={48} />
+                        <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={54} />
                         <div className="home-post-preview-body">
                           <div className="home-post-preview-header">
                             <div>
@@ -400,7 +400,7 @@ export default function Home({ session, profile, onMessage }) {
                         onClick={() => navigate('/directory')}
                         title={[m.occupation, m.company].filter(Boolean).join(' @ ')}
                       >
-                        <Avatar url={m.avatar_url} name={m.full_name} size={48} />
+                        <Avatar url={m.avatar_url} name={m.full_name} size={54} />
                         <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
                       </button>
                       <button

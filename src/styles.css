@@ -5992,8 +5992,12 @@ button.delete-danger svg { flex-shrink: 0; }
    .feed-widget) so it reads as a single grouped block, matching "My
    Community" alongside it; individual posts are rows separated by a
    hairline rather than their own boxes. */
-.home-feed-widget { padding: 16px 18px 6px; }
-.home-feed-widget .home-section-head { margin-bottom: 4px; }
+.home-feed-widget { padding: 20px 22px 10px; }
+.home-feed-widget .home-section-head { margin-bottom: 6px; }
+/* Home dashboard only: bump the shared "view all" links and empty-state
+   text up a notch to match the larger text everywhere else on this page. */
+.home-feed-layout .feed-widget-viewall { font-size: 13.5px; padding: 12px 4px 8px; }
+.home-feed-layout .empty.small { font-size: 14px; padding: 10px 0; }
 
 .home-post-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .home-post-preview {
@@ -6015,17 +6019,17 @@ button.delete-danger svg { flex-shrink: 0; }
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--ink);
 }
 .home-post-preview-head strong {
   color: var(--ink);
-  font-size: 15px;
+  font-size: 16.5px;
   font-weight: 600;
 }
 .home-post-preview-occupation {
-  margin: 4px 0 0;
-  font-size: 13px;
+  margin: 5px 0 0;
+  font-size: 14px;
   color: var(--ink-soft);
   line-height: 1.4;
 }
@@ -6035,11 +6039,11 @@ button.delete-danger svg { flex-shrink: 0; }
   gap: 10px;
   background: var(--card);
   border: 1px solid var(--line);
-  padding: 10px 12px;
+  padding: 11px 13px;
   border-radius: var(--radius-sm);
   margin-top: 10px;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 14.5px;
   cursor: pointer;
   transition: background 0.2s var(--ease);
 }
@@ -6059,51 +6063,51 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-group-preview {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 14px;
+  padding: 12px 14px;
   border-radius: var(--radius-sm);
   background: var(--card);
   border: 1px solid var(--line);
   cursor: pointer;
 }
 .home-group-preview:hover { border-color: var(--orange); }
-.home-group-preview-cover { width: 40px; height: 40px; flex-shrink: 0; }
-.home-group-preview-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.home-group-preview-body strong { font-size: 13.5px; color: var(--ink); }
-.home-group-preview-body span { font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-group-preview-cover { width: 46px; height: 46px; flex-shrink: 0; }
+.home-group-preview-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.home-group-preview-body strong { font-size: 15px; color: var(--ink); }
+.home-group-preview-body span { font-size: 13px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.home-event-widget { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 14px 16px; }
+.home-event-widget { display: flex; align-items: center; gap: 14px; cursor: pointer; padding: 16px 18px; }
 .home-event-widget:hover { border-color: var(--orange); }
 .home-event-date {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
   background: var(--orange-soft);
   color: var(--orange-dark);
 }
-.home-event-date span { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
-.home-event-date strong { font-size: 18px; line-height: 1; }
+.home-event-date span { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+.home-event-date strong { font-size: 20px; line-height: 1; }
 
-.home-donate-card { text-align: center; padding: 18px 16px; }
-.home-donate-card h3 { margin: 0 0 8px; font-family: var(--display); font-size: 14px; text-transform: uppercase; color: var(--maroon); }
-.home-donate-card p { margin: 0 0 14px; font-size: 12.5px; color: var(--ink-soft); }
+.home-donate-card { text-align: center; padding: 20px 18px; }
+.home-donate-card h3 { margin: 0 0 8px; font-family: var(--display); font-size: 15px; text-transform: uppercase; color: var(--maroon); }
+.home-donate-card p { margin: 0 0 14px; font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
 
 /* ---------- My Community / Strengthen Your Network ---------- */
 .home-community-sub {
   margin: 0 0 14px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--ink);
 }
 .home-community-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  gap: 16px;
 }
 .home-community-card {
   display: flex;
@@ -6115,18 +6119,18 @@ button.delete-danger svg { flex-shrink: 0; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
   background: none;
   border: none;
-  padding: 8px 4px 0;
+  padding: 9px 4px 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.2s var(--ease);
 }
 .home-community-card-identity:hover { background: var(--paper); }
 .home-community-card-identity span {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink);
   max-width: 100%;
@@ -6141,8 +6145,8 @@ button.delete-danger svg { flex-shrink: 0; }
   color: #fff;
   border: none;
   border-radius: 999px;
-  padding: 6px 8px;
-  font-size: 11px;
+  padding: 7px 8px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -6170,27 +6174,27 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-business-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-  margin-bottom: 12px;
+  gap: 16px;
+  margin-bottom: 14px;
 }
 .home-business-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   align-items: flex-start;
   text-align: left;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 16px;
   cursor: pointer;
   transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 .home-business-card:hover { border-color: var(--orange); box-shadow: var(--shadow-card); }
-.home-business-card-head { display: flex; align-items: center; gap: 10px; width: 100%; }
-.home-business-card-head .job-logo { width: 40px; height: 40px; font-size: 15px; }
+.home-business-card-head { display: flex; align-items: center; gap: 12px; width: 100%; }
+.home-business-card-head .job-logo { width: 46px; height: 46px; font-size: 17px; }
 .home-business-card-head strong {
-  font-size: 14.5px;
+  font-size: 15.5px;
   color: var(--maroon);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6199,9 +6203,9 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .home-business-excerpt {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-soft);
-  line-height: 1.4;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -6210,9 +6214,9 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-business-location {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-soft);
 }
 .home-business-viewall { display: block; margin-top: 4px !important; }
