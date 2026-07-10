@@ -12,6 +12,7 @@ import { useIsWide } from '../utils.js'
 export const STATUS = { ALL: 'all', CURRENT: 'current', ALUMNI: 'alumni' }
 
 export const EMPTY_FILTERS = {
+  name: '',
   status: STATUS.ALL,
   yearFrom: '',
   yearTo: '',
@@ -26,7 +27,6 @@ const QUICK_TABS = [
   { id: 'location', label: 'My Location' },
   { id: 'industry', label: 'My Industry' },
   { id: 'mentors', label: 'Mentors' },
-  { id: 'community', label: 'Alumni Community' },
 ]
 
 const PEOPLE_SELECT = 'id, full_name, grad_year, degree, occupation, industry, company, city, country, ' +
@@ -100,6 +100,7 @@ export function useDirectoryFilters(session, refetchTrigger) {
         .join(' ').toLowerCase()
       if (!hay.includes(needle)) return false
     }
+    if (f.name && !(p.full_name || '').toLowerCase().includes(f.name.trim().toLowerCase())) return false
     if (f.status === STATUS.CURRENT && !p.is_current_resident) return false
     if (f.status === STATUS.ALUMNI && p.is_current_resident) return false
     if (f.yearFrom && (!p.grad_year || p.grad_year < Number(f.yearFrom))) return false
@@ -120,7 +121,6 @@ export function useDirectoryFilters(session, refetchTrigger) {
     if (id === 'location' && me?.country) next = { ...EMPTY_FILTERS, countries: [me.country] }
     else if (id === 'industry' && me?.industry) next = { ...EMPTY_FILTERS, industries: [me.industry] }
     else if (id === 'mentors') next = { ...EMPTY_FILTERS, mentoringOnly: true }
-    else if (id === 'community') next = { ...EMPTY_FILTERS, status: STATUS.ALUMNI }
     setFilters(next); setDraftFilters(next); setQ('')
   }
 
@@ -189,6 +189,18 @@ export function DirectoryToolbar({ f }) {
 export function DirectoryFilterPanel({ f }) {
   const fields = (
     <>
+      <FilterSection title="Name">
+        <div className="input-clear-wrap">
+          <input
+            type="text"
+            placeholder="Search by name"
+            value={f.draftFilters.name}
+            onChange={(e) => f.setDraft('name', e.target.value)}
+          />
+          {f.draftFilters.name && <button type="button" className="search-clear" onClick={() => f.setDraft('name', '')} aria-label="Clear name">×</button>}
+        </div>
+      </FilterSection>
+
       <FilterSection title="Affiliation">
         <div className="filter-radio-row">
           <button className={f.draftFilters.status === STATUS.ALL ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALL)}>All</button>
@@ -244,7 +256,7 @@ export function DirectoryFilterPanel({ f }) {
         </label>
       </FilterSection>
 
-      <FilterSection title="Work experience" defaultOpen={false}>
+      <FilterSection title="Industry" defaultOpen={false}>
         <MultiSelectAutocomplete
           options={INDUSTRIES}
           values={f.draftFilters.industries}

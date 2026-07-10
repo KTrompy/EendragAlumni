@@ -164,8 +164,7 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
               {isMe && <span className="person-card-you">You</span>}
             </div>
             <div className="person-card-meta">
-              {p.is_current_resident ? 'In house' : 'Alum'}
-              {p.grad_year && <span> · '{String(p.grad_year).slice(2)}</span>}
+              {p.industry || (p.is_current_resident ? 'In house' : 'Alum')}
             </div>
             {roleLine && <p className="person-card-role">{roleLine}</p>}
             {locationLine && <p className="person-card-location">{locationLine}</p>}
