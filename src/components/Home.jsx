@@ -336,23 +336,23 @@ export default function Home({ session, profile, onMessage }) {
               {myGroups.length === 0 ? (
                 <p className="empty small">You haven't joined any groups yet. <button className="home-post-preview-more" onClick={() => navigate('/groups')}>Browse groups</button></p>
               ) : (
-                <ul className="home-group-preview-list">
+                <div className="home-group-card-grid">
                   {myGroups.map((g) => (
-                    <li key={g.id} className="home-group-preview" onClick={() => navigate(`/groups/${g.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/groups/${g.id}`) }}>
-                      <div className="group-row-cover home-group-preview-cover">
+                    <div key={g.id} className="home-group-card" onClick={() => navigate(`/groups/${g.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/groups/${g.id}`) }}>
+                      <div className="home-group-card-cover">
                         {g.cover_image_url ? <img src={g.cover_image_url} alt="" /> : <GroupPlaceholderIcon />}
                       </div>
-                      <div className="home-group-preview-body">
+                      <div className="home-group-card-body">
                         <strong>{g.name}</strong>
                         <span>
                           {g.latestPost
-                            ? `Recent post: ${truncate(plainText(g.latestPost.content) || g.latestPost.title || '', 80)}`
+                            ? `${truncate(plainText(g.latestPost.content) || g.latestPost.title || '', 60)}`
                             : 'No posts yet'}
                         </span>
                       </div>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
           </div>
