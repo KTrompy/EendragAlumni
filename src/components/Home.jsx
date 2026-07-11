@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
@@ -87,6 +87,48 @@ export default function Home({ session, profile, onMessage }) {
   const navigate = useNavigate()
   const pct = completionPercent(profile)
   const firstName = (profile?.full_name || '').trim().split(' ')[0] || 'there'
+
+  // "My Community" is a horizontally-scrolling strip (2 full cards + a peek
+  // of the next) rather than a static grid, so people know there's more to
+  // browse without a page nav. communityDragRef tracks a mouse drag so we
+  // can scroll the strip by hand-dragging (touch already scrolls natively);
+  // `moved` distinguishes a drag from a plain click so dragging off a card
+  // doesn't also fire its navigate/message action.
+  const communityScrollRef = useRef(null)
+  const communityDragRef = useRef({ down: false, startX: 0, startScroll: 0, moved: false })
+
+  const scrollCommunity = (dir) => {
+    const el = communityScrollRef.current
+    if (!el) return
+    const card = el.querySelector('.home-community-card')
+    const step = card ? card.getBoundingClientRect().width + 10 : 112
+    el.scrollBy({ left: dir * step, behavior: 'smooth' })
+  }
+  const handleCommunityPointerDown = (e) => {
+    if (e.pointerType !== 'mouse') return
+    const el = communityScrollRef.current
+    if (!el) return
+    communityDragRef.current = { down: true, startX: e.clientX, startScroll: el.scrollLeft, moved: false }
+    el.setPointerCapture(e.pointerId)
+  }
+  const handleCommunityPointerMove = (e) => {
+    const drag = communityDragRef.current
+    if (!drag.down) return
+    const el = communityScrollRef.current
+    if (!el) return
+    const dx = e.clientX - drag.startX
+    if (Math.abs(dx) > 4) drag.moved = true
+    el.scrollLeft = drag.startScroll - dx
+  }
+  const endCommunityDrag = () => { communityDragRef.current.down = false }
+  const handleCommunityCardClick = (e, action) => {
+    if (communityDragRef.current.moved) {
+      e.preventDefault()
+      communityDragRef.current.moved = false
+      return
+    }
+    action()
+  }
 
   useEffect(() => {
     async function load() {
@@ -402,28 +444,47 @@ export default function Home({ session, profile, onMessage }) {
               {community.length === 0 ? (
                 <p className="empty small">No suggestions yet.</p>
               ) : (
-                <div className="home-community-grid">
-                  {community.map((m) => (
-                    <div key={m.id} className="home-community-card">
-                      <button
-                        className="home-community-card-identity"
-                        onClick={() => navigate(`/people/${m.id}`)}
-                        title={[m.occupation, m.company].filter(Boolean).join(' @ ')}
-                      >
-                        <Avatar url={m.avatar_url} name={m.full_name} size={54} />
-                        <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
-                      </button>
-                      {m.matchReason && (
-                        <p className="home-community-reason">{m.matchReason}</p>
-                      )}
-                      <button
-                        className="home-community-message-btn"
-                        onClick={() => onMessage?.(m, buildIcebreaker(profile, m))}
-                      >
-                        Message
-                      </button>
-                    </div>
-                  ))}
+                <div className="home-community-carousel">
+                  <div
+                    className="home-community-grid"
+                    ref={communityScrollRef}
+                    onPointerDown={handleCommunityPointerDown}
+                    onPointerMove={handleCommunityPointerMove}
+                    onPointerUp={endCommunityDrag}
+                    onPointerLeave={endCommunityDrag}
+                  >
+                    {community.map((m) => (
+                      <div key={m.id} className="home-community-card">
+                        <button
+                          className="home-community-card-identity"
+                          onClick={(e) => handleCommunityCardClick(e, () => navigate(`/people/${m.id}`))}
+                          title={[m.occupation, m.company].filter(Boolean).join(' @ ')}
+                        >
+                          <Avatar url={m.avatar_url} name={m.full_name} size={54} />
+                          <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
+                        </button>
+                        {m.matchReason && (
+                          <p className="home-community-reason">{m.matchReason}</p>
+                        )}
+                        <button
+                          className="home-community-message-btn"
+                          onClick={(e) => handleCommunityCardClick(e, () => onMessage?.(m, buildIcebreaker(profile, m)))}
+                        >
+                          Message
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {community.length > 2 && (
+                    <button
+                      type="button"
+                      className="home-community-scroll-btn"
+                      onClick={() => scrollCommunity(1)}
+                      aria-label="Show more suggested connections"
+                    >
+                      <ChevronRightIcon />
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -548,6 +609,13 @@ function LocationDotIcon() {
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--maroon)', flexShrink: 0 }}>
       <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
       <circle cx="12" cy="10" r="3" />
+    </svg>
+  )
+}
+function ChevronRightIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 6l6 6-6 6" />
     </svg>
   )
 }

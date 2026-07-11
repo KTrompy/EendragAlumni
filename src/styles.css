@@ -6605,15 +6605,27 @@ button.delete-danger svg { flex-shrink: 0; }
   font-weight: 700;
   color: var(--ink);
 }
+/* Horizontally-scrolling strip instead of a static grid — about 2 full
+   cards fit in the 300px sidebar with the next one peeking in, so people
+   notice there's more to browse. scroll-snap keeps cards settling at a
+   clean edge whether someone uses the arrow, drags, or swipes (touch).
+   Scrollbar is hidden since the arrow + drag/swipe are the intended
+   controls — a visible native scrollbar in a 268px-wide widget just adds
+   clutter. */
+.home-community-carousel { position: relative; }
 .home-community-grid {
-  display: grid;
-  /* minmax(0, 1fr) instead of 1fr — grid tracks otherwise size to the
-     intrinsic min-width of their content (e.g. an unbroken word like
-     "ACCOUNTING" in .home-community-reason), which was pushing the grid
-     wider than the 300px sidebar and spilling cards out of the widget. */
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  cursor: grab;
 }
+.home-community-grid:active { cursor: grabbing; }
+.home-community-grid::-webkit-scrollbar { display: none; }
 .home-community-card {
   display: flex;
   flex-direction: column;
@@ -6625,6 +6637,10 @@ button.delete-danger svg { flex-shrink: 0; }
   background: var(--card);
   transition: all 0.2s var(--ease);
   min-width: 0;
+  /* Fixed width (not 1fr) — ~2 cards fit fully in the 268px-wide widget
+     content area with roughly half of the 3rd peeking past the edge. */
+  flex: 0 0 102px;
+  scroll-snap-align: start;
 }
 .home-community-card:hover { border-color: var(--orange); box-shadow: 0 2px 6px rgba(232, 97, 28, 0.08); }
 .home-community-card-identity {
@@ -6681,6 +6697,27 @@ button.delete-danger svg { flex-shrink: 0; }
   margin-top: auto;
 }
 .home-community-message-btn:hover { background: var(--orange-dark); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(232, 97, 28, 0.2); }
+
+/* Next-card arrow, floating over the peeking card's right edge, vertically
+   centered on the avatar row (not the full card height, so it doesn't sit
+   awkwardly low next to short cards with no matchReason text). */
+.home-community-scroll-btn {
+  position: absolute;
+  top: 41px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--maroon);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.home-community-scroll-btn:hover { background: var(--orange); border-color: var(--orange); color: #fff; }
 
 /* "See who's on the platform" nested inside the same My Community card —
    reuses Feed's .whos-online widget but strips its own card chrome so it
