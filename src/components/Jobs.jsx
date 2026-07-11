@@ -7,6 +7,7 @@ import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { Avatar } from './Directory.jsx'
 import ListAutocomplete from './ListAutocomplete.jsx'
+import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
 import { matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
@@ -678,6 +679,14 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
   const [attachmentFile, setAttachmentFile] = useState(null) // newly picked PDF, not yet uploaded
   const [attachmentUrl, setAttachmentUrl] = useState(initial?.attachment_url || '')
   const [attachmentName, setAttachmentName] = useState(initial?.attachment_name || '')
+  // Coordinates from picking a Location suggestion, plus the label they
+  // belong to — used on submit only while the location text still matches
+  // what was picked; if it's since been edited (or was always free-typed,
+  // e.g. "Remote"), submit falls back to geocoding the text instead.
+  const [pickedCoords, setPickedCoords] = useState(
+    initial?.lat != null && initial?.lng != null ? { lat: initial.lat, lng: initial.lng } : null
+  )
+  const [pickedLabel, setPickedLabel] = useState(initial?.location || '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [isClosing, setIsClosing] = useState(false)
@@ -685,6 +694,12 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
   const attachmentRef = useRef(null)
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
+
+  function handleLocationCoords(payload) {
+    if (!payload) { setPickedCoords(null); setPickedLabel(''); return }
+    setPickedCoords({ lat: payload.lat, lng: payload.lng })
+    setPickedLabel(payload.label)
+  }
 
   // Lock body scroll while the "Post a role" panel floats over its
   // backdrop — without this, the job list behind it keeps scrolling along
@@ -818,12 +833,17 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
       const finalAttachmentUrl = attachmentFile ? await uploadAttachment() : attachmentUrl
       const finalAttachmentName = attachmentFile ? attachmentFile.name : attachmentName
 
-      // Re-geocode only when the location text actually changed (or a brand
-      // new listing) — same "don't hit Nominatim on every unrelated edit"
-      // rule BusinessDirectory follows for its city/country pin.
+      // Prefer coordinates from an actual picked suggestion — precise, and
+      // free (no extra Nominatim call). Only trusted while the location
+      // text still matches what was picked; otherwise (free-typed text
+      // like "Remote", or an edit since the last pick) fall back to
+      // geocoding the text, same "don't hit Nominatim on every unrelated
+      // edit" rule BusinessDirectory follows for its city/country pin.
       let coords = { lat: initial?.lat ?? null, lng: initial?.lng ?? null }
       const locationChanged = !isEdit || form.location !== initial?.location
-      if (locationChanged && form.location.trim()) {
+      if (pickedCoords && form.location.trim() === pickedLabel.trim()) {
+        coords = pickedCoords
+      } else if (locationChanged && form.location.trim()) {
         const geo = await geocodeCity(form.location, '')
         coords = { lat: geo?.lat ?? null, lng: geo?.lng ?? null }
       } else if (locationChanged && !form.location.trim()) {
@@ -913,7 +933,13 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
 
           <div className="field-row">
             <label className="field"><span>Location *</span>
-              <input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Cape Town / Remote" />
+              <CityAutocomplete
+                value={form.location}
+                onChange={(v) => set('location', v)}
+                onSelectCoords={handleLocationCoords}
+                placeholder="Cape Town / Remote"
+                strict={false}
+              />
             </label>
             <label className="field"><span>Type</span>
               <div className="select-wrap">

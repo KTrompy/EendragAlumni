@@ -13,6 +13,14 @@ export default function CityAutocomplete({
   onSelectCoords,
   placeholder,
   inputClassName,
+  // Strict mode (the default, and what every city/town field wants) only
+  // ever commits a value the person actually picked from the dropdown — see
+  // the class comment above. Some fields hold more than just a place name
+  // though (a job's "Location" is often "Cape Town / Remote", or just
+  // "Remote", neither of which Nominatim will ever suggest) — pass
+  // `strict={false}` there so free-typed text is kept as-is on blur, with
+  // the live suggestions still offered as a convenience, not a requirement.
+  strict = true,
 }) {
   const [text, setText] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
@@ -33,6 +41,7 @@ export default function CityAutocomplete({
   function handleBlur() {
     blurTimeoutRef.current = setTimeout(() => {
       setOpen(false)
+      if (!strict) return // free-typed text already committed via onChange as it was typed
       // Only a picked suggestion is allowed to become the real value. If
       // someone typed something and clicked/tabbed away without picking,
       // discard it and fall back to whatever was last confirmed.
@@ -118,7 +127,10 @@ export default function CityAutocomplete({
     setText(row.display_name)
     setNeedsPick(false)
     onChange(row.display_name)
-    onSelectCoords?.({ lat: parseFloat(row.lat), lng: parseFloat(row.lon) })
+    // `label` lets a non-strict caller (e.g. a job's "Location" field) tell
+    // whether the text still matches this pick, or has since been edited —
+    // existing strict callers just ignore the extra field.
+    onSelectCoords?.({ lat: parseFloat(row.lat), lng: parseFloat(row.lon), label: row.display_name })
     setSuggestions([])
     setOpen(false)
   }
@@ -137,7 +149,16 @@ export default function CityAutocomplete({
       <input
         className={inputClassName}
         value={text}
-        onChange={(e) => { setText(e.target.value); setNeedsPick(false); setOpen(true) }}
+        onChange={(e) => {
+          setText(e.target.value)
+          setNeedsPick(false)
+          setOpen(true)
+          // Strict mode only commits a picked suggestion (see class
+          // comment); non-strict fields commit free-typed text live, same
+          // as a plain controlled input, with suggestions just offered
+          // alongside.
+          if (!strict) onChange(e.target.value)
+        }}
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
