@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import EmptyState from './EmptyState.jsx'
@@ -6,9 +7,12 @@ import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
-import { useIsWide } from '../utils.js'
 
 const MAX_IMAGE_SIZE = 3 * 1024 * 1024
+
+// How recent counts as "New" on a card — longer window than Jobs' 48h
+// since the store won't turn over nearly as often.
+const NEW_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
 // Official, admin-curated store — hoodies, mugs, caps, that sort of thing —
 // not a peer marketplace like Jobs/Business Directory, so there's no
@@ -40,11 +44,6 @@ function plainText(html) {
   return div.textContent || ''
 }
 
-function truncate(text, max = 140) {
-  const t = text.trim()
-  return t.length > max ? t.slice(0, max).trim() + '…' : t
-}
-
 function formatPrice(price) {
   const n = Number(price)
   return `R${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -58,7 +57,6 @@ export default function Merchandise({ session, profile, onMessage }) {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const isWide = useIsWide(700)
   const showToast = useToast()
   const isAdmin = !!profile?.is_admin
 
@@ -224,102 +222,79 @@ export default function Merchandise({ session, profile, onMessage }) {
   )
 }
 
-/* ---------- One merch card ---------- */
+/* ---------- One merch card — product tile: full photo, NEW/+ADD overlays,
+   title + price underneath. Variant pickers live on the detail page, not
+   here, so "+ Add" opens that page for anything with sizes/colours and only
+   orders directly for one-size items. ---------- */
 export function MerchCard({ item, isAdmin, onOpen, onOrder, onEdit, onDelete, onToggleAvailable }) {
-  const [size, setSize] = useState(item.sizes?.[0] || '')
-  const [color, setColor] = useState(item.colors?.[0] || '')
-  const excerpt = truncate(plainText(item.description), 120)
+  const isNew = Date.now() - new Date(item.created_at).getTime() < NEW_WINDOW_MS
+  const hasVariants = (item.sizes?.length > 0) || (item.colors?.length > 0)
 
-  function variantText() {
-    const bits = []
-    if (item.sizes?.length) bits.push(`Size: ${size}`)
-    if (item.colors?.length) bits.push(`Colour: ${color}`)
-    return bits.length ? ` (${bits.join(', ')})` : ''
+  function handleAdd(e) {
+    e.stopPropagation()
+    if (hasVariants) { onOpen(); return }
+    onOrder('')
   }
 
   return (
-    <li className="job-card business-card merch-card">
-      <div
-        className="job-card-main job-card-clickable business-card-main"
-        role="button"
-        tabIndex={0}
+    <div className="merch-card">
+      <button
+        type="button"
+        className="merch-card-photo"
         onClick={onOpen}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
         aria-label={`Open details for ${item.name}`}
       >
-        <div className="business-card-cover merch-card-cover">
-          {item.image_url ? (
-            <img src={item.image_url} alt="" loading="lazy" />
-          ) : (
-            <div className="merch-image-fallback" aria-hidden="true"><ShirtIcon /></div>
-          )}
-          {!item.is_available && <span className="job-badge merch-soldout-tag">Sold out</span>}
-        </div>
-        <div className="business-card-body">
-          <div className="job-card-content">
-            <h3 className="job-title">
-              {item.name}
-              {item.category && <span className="job-badge">{item.category}</span>}
-            </h3>
-            <p className="job-meta merch-price">{formatPrice(item.price)}</p>
-            {excerpt && <p className="business-desc-excerpt">{excerpt}</p>}
-          </div>
-        </div>
+        {item.image_url ? (
+          <img src={item.image_url} alt="" loading="lazy" />
+        ) : (
+          <div className="merch-card-photo-fallback" aria-hidden="true"><ShirtIcon /></div>
+        )}
+        {!item.is_available ? (
+          <span className="merch-card-badge soldout">Sold out</span>
+        ) : isNew ? (
+          <span className="merch-card-badge new">New</span>
+        ) : null}
+        {item.is_available && (
+          <span
+            className="merch-add-btn"
+            role="button"
+            tabIndex={0}
+            onClick={handleAdd}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAdd(e) } }}
+          >
+            + Add
+          </span>
+        )}
+      </button>
+
+      <div className="merch-card-info">
+        <button type="button" className="merch-card-title" onClick={onOpen}>{item.name}</button>
+        <p className="merch-card-price">{formatPrice(item.price)}</p>
       </div>
 
-      <div className="merch-card-actions" onClick={(e) => e.stopPropagation()}>
-        {(item.sizes?.length > 0 || item.colors?.length > 0) && (
-          <div className="merch-variant-row">
-            {item.sizes?.length > 0 && (
-              <div className="select-wrap">
-                <select value={size} onChange={(e) => setSize(e.target.value)} aria-label="Size">
-                  {item.sizes.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            )}
-            {item.colors?.length > 0 && (
-              <div className="select-wrap">
-                <select value={color} onChange={(e) => setColor(e.target.value)} aria-label="Colour">
-                  {item.colors.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
-          <button
-            className="btn primary small"
-            disabled={!item.is_available}
-            onClick={() => onOrder(variantText())}
-          >
-            {item.is_available ? 'Order' : 'Sold out'}
+      {isAdmin && (
+        <div className="merch-card-admin-row">
+          <button className="btn ghost small" onClick={onToggleAvailable}>
+            {item.is_available ? 'Mark sold out' : 'Mark available'}
           </button>
-          {isAdmin && (
-            <>
-              <button className="btn ghost small" onClick={onToggleAvailable}>
-                {item.is_available ? 'Mark sold out' : 'Mark available'}
-              </button>
-              <button className="btn ghost small" onClick={onEdit}>Edit</button>
-              <DeleteButton
-                onConfirm={onDelete}
-                label="Delete item"
-                message="This removes the item from the store. This can't be undone."
-                className="btn ghost small delete-danger"
-              >
-                Delete
-              </DeleteButton>
-            </>
-          )}
+          <button className="btn ghost small" onClick={onEdit}>Edit</button>
+          <DeleteButton
+            onConfirm={onDelete}
+            label="Delete item"
+            message="This removes the item from the store. This can't be undone."
+            className="btn ghost small delete-danger"
+          >
+            Delete
+          </DeleteButton>
         </div>
-      </div>
-    </li>
+      )}
+    </div>
   )
 }
 
 /* ---------- Admin create/edit form ---------- */
 export function MerchForm({ session, onCancel, onCreated, initial = null }) {
   const isEdit = !!initial
-  const showToast = useToast()
   const [form, setForm] = useState({
     name: initial?.name || '',
     description: initial?.description || '',

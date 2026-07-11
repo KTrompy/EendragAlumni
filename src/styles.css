@@ -3677,22 +3677,80 @@ button.delete-danger svg { flex-shrink: 0; }
 .job-badge.business-featured-tag { background: var(--orange); margin-left: 8px; }
 .business-pin { background: var(--maroon) !important; }
 
-/* ---------- Merchandise (reuses job-card/business-card shape) ---------- */
-.merch-card-cover { position: relative; }
-.merch-image-fallback {
-  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-  color: var(--ink-soft); background: var(--card-alt, #F1ECDD);
+/* ---------- Merchandise ---------- */
+/* Product-tile card (photo-forward, like a retail catalog) rather than the
+   row-style .job-card/.business-card layout — Kyle asked to match a Maties
+   Connect merch-page screenshot: full-bleed photo, NEW/+ADD overlays, then
+   just title + price underneath (no category badge or variant pickers on
+   the card itself — those moved to the detail page). */
+.merch-grid { list-style: none; margin: 0; padding: 0; }
+.merch-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s ease, border-color 0.2s ease;
+  width: 100%;
 }
+.merch-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); border-color: var(--line-strong); }
+
+.merch-card-photo {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--paper);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  width: 100%;
+  display: block;
+}
+.merch-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.merch-card-photo-fallback {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  color: var(--ink-soft); background: var(--paper);
+}
+.merch-card-photo-fallback svg { width: 40px; height: 40px; }
+
+.merch-card-badge {
+  position: absolute; top: 10px; left: 10px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 4px; color: #fff;
+}
+.merch-card-badge.new { background: var(--maroon); }
+.merch-card-badge.soldout { background: var(--ink-soft); }
+
+.merch-add-btn {
+  position: absolute; right: 10px; bottom: 10px;
+  background: #fff; color: var(--maroon);
+  border: 1.5px solid var(--maroon);
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+  padding: 7px 14px; border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.merch-add-btn:hover:not(:disabled) { background: var(--maroon); color: #fff; transform: translateY(-1px); }
+.merch-add-btn:disabled { opacity: 0.5; cursor: default; }
+
+.merch-card-info { padding: 12px 14px 16px; }
+.merch-card-title {
+  display: block; background: none; border: none; padding: 0; margin: 0 0 4px; text-align: left;
+  cursor: pointer; font-weight: 700; font-size: 14px; color: var(--ink); line-height: 1.35;
+}
+.merch-card-title:hover { color: var(--maroon); }
+.merch-card-price { margin: 0; font-weight: 700; color: var(--orange-dark); font-size: 14px; }
+
+.merch-card-admin-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 14px 14px; }
+
+/* Detail page only — variant pickers (size/colour) and the inline
+   "Sold out" pill next to the item name live here now, not on the card. */
 .merch-image-fallback-large {
   display: flex; align-items: center; justify-content: center; min-height: 160px;
-  color: var(--ink-soft); background: var(--card-alt, #F1ECDD);
+  color: var(--ink-soft); background: var(--paper);
 }
-.merch-soldout-tag {
-  position: absolute; top: 10px; right: 10px; margin-left: 0;
-  background: var(--ink-soft); color: #fff;
-}
-.merch-price { font-weight: 700; color: var(--orange-dark, var(--orange)); }
-.merch-card-actions { padding: 0 18px 18px 18px; }
+.merch-soldout-tag { background: var(--ink-soft); color: #fff; }
 .merch-variant-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .merch-variant-row .select-wrap { min-width: 110px; }
 .map-popup-person .job-logo { width: 34px; height: 34px; border-radius: 8px; font-size: 14px; }
