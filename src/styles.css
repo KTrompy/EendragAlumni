@@ -440,6 +440,12 @@ input, textarea, select { font: inherit; }
   gap: 8px;
   flex-shrink: 0;
 }
+.profile-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
 .profile-message-btn {
   color: var(--ink-soft);
   border: 1px solid var(--line);

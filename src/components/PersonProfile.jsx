@@ -131,9 +131,16 @@ export default function PersonProfile({ session, me, onMessage }) {
   return (
     <section className="panel narrow profile-page person-profile-page">
       <div className="profile-header-with-back">
-        <button className="profile-back-btn" onClick={() => navigate(-1)} aria-label="Back">
-          ← Back
-        </button>
+        <div className="profile-header-left">
+          <button className="profile-back-btn" onClick={() => navigate(-1)} aria-label="Back">
+            ← Back
+          </button>
+          {!isMe && (
+            <button className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
+              <MessageIcon />
+            </button>
+          )}
+        </div>
         <div>
           <h2 className="panel-title">
             {p.full_name || 'Alumnus'}
@@ -141,20 +148,11 @@ export default function PersonProfile({ session, me, onMessage }) {
           </h2>
           {roleLine && <p className="panel-sub">{roleLine}</p>}
         </div>
-        <div className="profile-header-actions">
-          {!isMe && (
-            <>
-              <button className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
-                <MessageIcon />
-              </button>
-              {p.linkedin_url && (
-                <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer" className="header-icon-btn profile-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
-                  <LinkedInIcon />
-                </a>
-              )}
-            </>
-          )}
-        </div>
+        {!isMe && p.linkedin_url && (
+          <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer" className="header-icon-btn profile-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
+            <LinkedInIcon />
+          </a>
+        )}
       </div>
 
       {/* Photo hero — same treatment as the "My profile" page, minus the
