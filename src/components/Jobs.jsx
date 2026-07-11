@@ -6,24 +6,34 @@ import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { Avatar } from './Directory.jsx'
-import JobModal from './JobModal.jsx'
+import ListAutocomplete from './ListAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
 import { matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
 import { useIsWide } from '../utils.js'
+import { geocodeCity } from '../geocode.js'
+import { INDUSTRIES } from '../constants.js'
 
 const NEW_WINDOW_MS = 48 * 60 * 60 * 1000 // how recent counts as "New"
 const PAGE_SIZE = 20
 
 // Fields needed for the poster's profile modal + "in common with you" badge —
 // same shape Directory/Events already pull for the same purpose.
-const POSTER_FIELDS =
+export const POSTER_FIELDS =
   'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
   'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
   'business_categories, availability, geographic_focus, is_open_to_opportunities'
 
+// Everything the job board itself, the standalone job detail page, and the
+// "saved jobs" query all need — kept in one place so the three stay in sync.
+export const JOB_FIELDS =
+  'id, title, company, location, employment_type, industry, description, apply_url, contact_email, ' +
+  'additional_email, company_website, attachment_url, attachment_name, closing_date, logo_url, lat, lng, ' +
+  'updated_at, created_at, posted_by'
+
 const TYPES = ['Full-time', 'Part-time', 'Internship', 'Contract', 'Bursary']
 const MAX_LOGO_SIZE = 3 * 1024 * 1024
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
 
 const EMPTY_FILTERS = {
   type: '',
@@ -65,7 +75,6 @@ export default function Jobs({ session, profile, onMessage }) {
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [filterOpen, setFilterOpen] = useState(false)
-  const [openJob, setOpenJob] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -101,8 +110,7 @@ export default function Jobs({ session, profile, onMessage }) {
     supabase
       .from('jobs')
       .select(
-        `id, title, company, location, employment_type, description, apply_url, contact_email, logo_url, updated_at, created_at, posted_by,
-         profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`
+        `${JOB_FIELDS}, profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`
       )
       .in('id', [...savedIds])
       .order('created_at', { ascending: false })
@@ -139,8 +147,7 @@ export default function Jobs({ session, profile, onMessage }) {
     const { data, error } = await supabase
       .from('jobs')
       .select(
-        `id, title, company, location, employment_type, description, apply_url, contact_email, logo_url, updated_at, created_at, posted_by,
-         profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`
+        `${JOB_FIELDS}, profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`
       )
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1)
@@ -424,9 +431,9 @@ export default function Jobs({ session, profile, onMessage }) {
                 className="job-card-main job-card-clickable"
                 role="button"
                 tabIndex={0}
-                onClick={() => setOpenJob({ job: j, isMine, isNew, reason })}
+                onClick={() => navigate(`/jobs/${j.id}`)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenJob({ job: j, isMine, isNew, reason }) }
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/jobs/${j.id}`) }
                 }}
                 aria-label={`Open details for ${j.title} at ${j.company}`}
               >
@@ -571,34 +578,12 @@ export default function Jobs({ session, profile, onMessage }) {
         </>
       )}
 
-      {openJob && (
-        <JobModal
-          entry={openJob}
-          isSaved={savedIds.has(openJob.job.id)}
-          onToggleSave={() => toggleSave(openJob.job.id)}
-          onOpenPoster={() => { const j = openJob; setOpenJob(null); goToProfile(j.job.profiles) }}
-          onApplyEmail={() => openMailto(openJob.job.contact_email, `Application: ${openJob.job.title}`)}
-          onMessage={() => {
-            const j = openJob.job
-            setOpenJob(null)
-            onMessage(
-              { id: j.posted_by, full_name: j.profiles?.full_name },
-              `Hi! I saw your "${j.title}" post on the job board and wanted to reach out.`
-            )
-          }}
-          onShare={() => shareJob(openJob.job)}
-          copied={copiedId === openJob.job.id}
-          onEdit={() => { setEditingId(openJob.job.id); setOpenJob(null) }}
-          onDelete={() => { removeJob(openJob.job.id); setOpenJob(null) }}
-          onClose={() => setOpenJob(null)}
-        />
-      )}
     </section>
   )
 }
 
 /* ---------- Company/job logo shown on each card ---------- */
-function JobLogo({ url, company }) {
+export function JobLogo({ url, company }) {
   const initial = (company || '?').trim().charAt(0).toUpperCase()
   return url ? (
     <img className="job-logo" src={url} alt={company ? `${company} logo` : 'Company logo'} loading="lazy" />
@@ -641,11 +626,32 @@ function BookmarkIcon({ filled = false }) {
   )
 }
 
+export function PdfIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+    </svg>
+  )
+}
+
 // Fields worth persisting as a draft — the logo file itself can't survive
 // a localStorage round-trip, so it's left out on purpose.
-const JOB_DRAFT_FIELDS = ['title', 'company', 'location', 'employment_type', 'description', 'apply_url', 'contact_email']
+const JOB_DRAFT_FIELDS = [
+  'title', 'company', 'location', 'employment_type', 'industry', 'description',
+  'apply_method', 'apply_url', 'contact_email', 'additional_email', 'company_website', 'closing_date',
+]
 
-function JobForm({ session, onCancel, onCreated, initial = null }) {
+// Default "closing date" offered on a brand new listing — three months out,
+// same span Maties Connect defaults to. Just a starting point; posters can
+// change or clear it.
+function defaultClosingDate() {
+  const d = new Date()
+  d.setMonth(d.getMonth() + 3)
+  return d.toISOString().slice(0, 10)
+}
+
+export function JobForm({ session, onCancel, onCreated, initial = null }) {
   const isEdit = !!initial
   const draftKey = `eendrag-job-draft-${session.user.id}`
   const draftRestoredRef = useRef(false)
@@ -655,16 +661,28 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
     company: initial?.company || '',
     location: initial?.location || '',
     employment_type: initial?.employment_type || 'Full-time',
+    industry: initial?.industry || '',
     description: initial?.description || '',
+    // Which way candidates should apply — mirrors the radio choice on the
+    // Maties Connect posting form instead of just offering both fields with
+    // "at least one is required".
+    apply_method: initial ? (initial.apply_url ? 'site' : 'email') : 'email',
     apply_url: initial?.apply_url || '',
     contact_email: initial?.contact_email || '',
+    additional_email: initial?.additional_email || '',
+    company_website: initial?.company_website || '',
+    closing_date: initial?.closing_date || (isEdit ? '' : defaultClosingDate()),
   })
   const [logoFile, setLogoFile] = useState(null) // newly picked file, not yet uploaded
   const [logoUrl, setLogoUrl] = useState(initial?.logo_url || '') // existing/uploaded url
+  const [attachmentFile, setAttachmentFile] = useState(null) // newly picked PDF, not yet uploaded
+  const [attachmentUrl, setAttachmentUrl] = useState(initial?.attachment_url || '')
+  const [attachmentName, setAttachmentName] = useState(initial?.attachment_name || '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [isClosing, setIsClosing] = useState(false)
   const logoRef = useRef(null)
+  const attachmentRef = useRef(null)
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
 
@@ -750,24 +768,84 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
     return data.publicUrl
   }
 
+  function pickAttachment(e) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (f.type !== 'application/pdf') {
+      setError('Attachment must be a PDF.')
+      e.target.value = ''
+      return
+    }
+    if (f.size > MAX_ATTACHMENT_SIZE) {
+      setError('Attachment is over 10MB.')
+      e.target.value = ''
+      return
+    }
+    setAttachmentFile(f)
+    setError(null)
+    e.target.value = ''
+  }
+
+  function removeAttachment() {
+    setAttachmentFile(null)
+    setAttachmentUrl('')
+    setAttachmentName('')
+  }
+
+  async function uploadAttachment() {
+    const path = `${session.user.id}/${Date.now()}-${attachmentFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+    const { error: upErr } = await supabase.storage
+      .from('job-attachments')
+      .upload(path, attachmentFile, { upsert: false, contentType: 'application/pdf' })
+    if (upErr) throw upErr
+    const { data } = supabase.storage.from('job-attachments').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   async function submit() {
     if (!form.title.trim() || !form.company.trim() || !form.location.trim() || !hasText(form.description)) {
       setError('Title, company, location and description are required.'); return
     }
-    if (!form.apply_url.trim() && !form.contact_email.trim()) {
-      setError('Please provide at least one way to apply — either an Apply URL or Contact email.'); return
+    if (form.apply_method === 'email' && !form.contact_email.trim()) {
+      setError('Please provide an email address for candidates to apply to.'); return
+    }
+    if (form.apply_method === 'site' && !form.apply_url.trim()) {
+      setError('Please provide a link candidates can apply through.'); return
     }
     setBusy(true); setError(null)
     try {
       const finalLogoUrl = logoFile ? await uploadLogo() : logoUrl
+      const finalAttachmentUrl = attachmentFile ? await uploadAttachment() : attachmentUrl
+      const finalAttachmentName = attachmentFile ? attachmentFile.name : attachmentName
+
+      // Re-geocode only when the location text actually changed (or a brand
+      // new listing) — same "don't hit Nominatim on every unrelated edit"
+      // rule BusinessDirectory follows for its city/country pin.
+      let coords = { lat: initial?.lat ?? null, lng: initial?.lng ?? null }
+      const locationChanged = !isEdit || form.location !== initial?.location
+      if (locationChanged && form.location.trim()) {
+        const geo = await geocodeCity(form.location, '')
+        coords = { lat: geo?.lat ?? null, lng: geo?.lng ?? null }
+      } else if (locationChanged && !form.location.trim()) {
+        coords = { lat: null, lng: null }
+      }
+
       const payload = {
-        ...form,
         title: form.title.trim(),
         company: form.company.trim(),
+        location: form.location.trim(),
+        employment_type: form.employment_type,
+        industry: form.industry.trim(),
         description: trimTrailingHtml(sanitizeHtml(form.description)),
-        apply_url: form.apply_url.trim(),
-        contact_email: form.contact_email.trim(),
+        apply_url: form.apply_method === 'site' ? form.apply_url.trim() : '',
+        contact_email: form.apply_method === 'email' ? form.contact_email.trim() : '',
+        additional_email: form.apply_method === 'email' ? form.additional_email.trim() : '',
+        company_website: form.company_website.trim(),
+        closing_date: form.closing_date || null,
         logo_url: finalLogoUrl,
+        attachment_url: finalAttachmentUrl,
+        attachment_name: finalAttachmentName,
+        ...coords,
       }
       const { error } = isEdit
         ? await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', initial.id)
@@ -782,12 +860,13 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
         onCreated()
       }
     } catch (e) {
-      setError(e.message || 'Logo upload failed.')
+      setError(e.message || 'Upload failed.')
       setBusy(false)
     }
   }
 
   const logoPreview = logoFile ? URL.createObjectURL(logoFile) : logoUrl
+  const attachmentPreviewName = attachmentFile ? attachmentFile.name : attachmentName
 
   return (
     <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
@@ -844,6 +923,30 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
               </div>
             </label>
           </div>
+
+          <div className="field-row">
+            <label className="field"><span>Industry</span>
+              <ListAutocomplete
+                value={form.industry}
+                onChange={(v) => set('industry', v)}
+                options={INDUSTRIES}
+                placeholder="Search or type an industry"
+                clearable
+              />
+            </label>
+            <label className="field"><span>Company website</span>
+              <input
+                type="url"
+                value={form.company_website}
+                onChange={(e) => set('company_website', e.target.value)}
+                placeholder="https://company.com"
+              />
+            </label>
+          </div>
+          <p className="form-hint" style={{ marginTop: -6 }}>
+            The company's general site — not where candidates apply.
+          </p>
+
           <label className="field"><span>Description *</span></label>
           <div className="rte-box">
             <RichTextEditor
@@ -852,15 +955,71 @@ function JobForm({ session, onCancel, onCreated, initial = null }) {
               placeholder="Role, requirements, why you'd want a fellow Eendragter…"
             />
           </div>
+
+          <label className="field"><span>Attachment — job description PDF (optional)</span></label>
+          <div className="job-attachment-picker">
+            {attachmentPreviewName ? (
+              <span className="job-attachment-chip"><PdfIcon /> {attachmentPreviewName}</span>
+            ) : (
+              <span className="job-attachment-chip empty">No file attached</span>
+            )}
+            <div className="job-logo-picker-actions">
+              <button type="button" className="btn ghost small" onClick={() => attachmentRef.current?.click()}>
+                {attachmentPreviewName ? 'Replace PDF' : 'Upload PDF'}
+              </button>
+              {attachmentPreviewName && (
+                <button type="button" className="btn ghost small" onClick={removeAttachment}>Remove</button>
+              )}
+            </div>
+            <input
+              ref={attachmentRef}
+              type="file"
+              accept="application/pdf"
+              style={{ display: 'none' }}
+              onChange={pickAttachment}
+            />
+          </div>
+
+          <label className="field" style={{ marginTop: 14 }}><span>Please select how you would like candidates to apply *</span></label>
+          <div className="filter-radio-row">
+            <button
+              type="button"
+              className={form.apply_method === 'email' ? 'on' : ''}
+              onClick={() => set('apply_method', 'email')}
+            >
+              Email
+            </button>
+            <button
+              type="button"
+              className={form.apply_method === 'site' ? 'on' : ''}
+              onClick={() => set('apply_method', 'site')}
+            >
+              Through your site
+            </button>
+          </div>
+
+          {form.apply_method === 'email' ? (
+            <div className="field-row" style={{ marginTop: 10 }}>
+              <label className="field"><span>Email *</span>
+                <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
+              </label>
+              <label className="field"><span>Additional email</span>
+                <input type="email" value={form.additional_email} onChange={(e) => set('additional_email', e.target.value)} placeholder="optional second recipient" />
+              </label>
+            </div>
+          ) : (
+            <div className="field-row" style={{ marginTop: 10 }}>
+              <label className="field"><span>Application link *</span>
+                <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
+              </label>
+            </div>
+          )}
+
           <div className="field-row" style={{ marginTop: 14 }}>
-            <label className="field"><span>Apply URL</span>
-              <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
-            </label>
-            <label className="field"><span>Contact email</span>
-              <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
+            <label className="field"><span>Closing date for applications</span>
+              <input type="date" value={form.closing_date} onChange={(e) => set('closing_date', e.target.value)} />
             </label>
           </div>
-          <p className="form-hint">At least one of these is required so people can actually apply.</p>
           {error && <p className="form-error">{error}</p>}
         </div>
         <div className="btn-row">
