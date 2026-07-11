@@ -141,6 +141,20 @@ export default function PersonProfile({ session, me, onMessage }) {
           </h2>
           {roleLine && <p className="panel-sub">{roleLine}</p>}
         </div>
+        <div className="profile-header-actions">
+          {!isMe && (
+            <>
+              <button className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
+                <MessageIcon />
+              </button>
+              {p.linkedin_url && (
+                <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer" className="header-icon-btn profile-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
+                  <LinkedInIcon />
+                </a>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Photo hero — same treatment as the "My profile" page, minus the
@@ -293,6 +307,22 @@ function LocationIcon() {
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z" />
       <circle cx="12" cy="9.5" r="2.4" />
+    </svg>
+  )
+}
+
+function MessageIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
+function LinkedInIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.13 1 2.5 1s2.48 1.13 2.48 2.5zM.24 8h4.52v14H.24V8zm7.5 0h4.34v1.92h.06c.6-1.14 2.07-2.34 4.26-2.34 4.56 0 5.4 3 5.4 6.9V22h-4.52v-6.14c0-1.46-.02-3.34-2.04-3.34-2.04 0-2.36 1.6-2.36 3.24V22H7.74V8z"/>
     </svg>
   )
 }

@@ -432,6 +432,34 @@ input, textarea, select { font: inherit; }
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 16px;
+  justify-content: space-between;
+}
+.profile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.profile-message-btn {
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+.profile-message-btn:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  border-color: var(--orange);
+}
+.profile-linkedin-btn {
+  color: #0a66c2;
+  border: 1px solid #0a66c2;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-linkedin-btn:hover {
+  background: rgba(10, 102, 194, 0.1);
+  border-color: #0a66c2;
 }
 .profile-back-btn {
   background: none;
