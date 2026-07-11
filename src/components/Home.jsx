@@ -5,7 +5,7 @@ import { Avatar } from './Directory.jsx'
 import { GroupPlaceholderIcon } from './Groups.jsx'
 import { WhosOnline } from './Feed.jsx'
 import { BusinessLogo } from './BusinessDirectory.jsx'
-import { buildIcebreaker, matchReason } from '../icebreaker.js'
+import { buildIcebreaker } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
 
 // Fields checked for the profile-completion bar — the ones that actually
@@ -243,12 +243,7 @@ export default function Home({ session, profile, onMessage }) {
           .limit(6)
         communityList = fallback || []
       }
-      // Add match reason to each community member for display
-      const communityWithReasons = communityList.map((m) => ({
-        ...m,
-        matchReason: matchReason(profile, m),
-      }))
-      setCommunity(communityWithReasons)
+      setCommunity(communityList)
 
       let businessList = matchedBusinesses || []
       if (businessList.length === 0) {
@@ -463,8 +458,8 @@ export default function Home({ session, profile, onMessage }) {
                           <Avatar url={m.avatar_url} name={m.full_name} size={54} />
                           <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
                         </button>
-                        {m.matchReason && (
-                          <p className="home-community-reason">{m.matchReason}</p>
+                        {m.industry && (
+                          <p className="home-community-industry">{m.industry}</p>
                         )}
                         <button
                           className="home-community-message-btn"

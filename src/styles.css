@@ -6667,7 +6667,7 @@ button.delete-danger svg { flex-shrink: 0; }
   text-align: center;
   line-height: 1.2;
 }
-.home-community-reason {
+.home-community-industry {
   font-size: 11px;
   color: var(--ink-soft);
   font-weight: 600;
@@ -6691,16 +6691,16 @@ button.delete-danger svg { flex-shrink: 0; }
   letter-spacing: 0.03em;
   transition: all 0.2s var(--ease);
   cursor: pointer;
-  /* Pushes the button to the bottom of the (grid-stretched) card so it
-     lines up across a row even when one card has no matchReason text
-     and is therefore shorter above the button. */
+  /* Pushes the button to the bottom of the card so it lines up across a
+     row even when one card has no industry text and is therefore shorter
+     above the button. */
   margin-top: auto;
 }
 .home-community-message-btn:hover { background: var(--orange-dark); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(232, 97, 28, 0.2); }
 
 /* Next-card arrow, floating over the peeking card's right edge, vertically
    centered on the avatar row (not the full card height, so it doesn't sit
-   awkwardly low next to short cards with no matchReason text). */
+   awkwardly low next to short cards with no industry text). */
 .home-community-scroll-btn {
   position: absolute;
   top: 41px;
