@@ -235,10 +235,14 @@ export default function Jobs({ session, profile, onMessage }) {
     () => [...new Set(jobs.map((j) => (j.location || '').trim()).filter(Boolean))].sort(),
     [jobs]
   )
-  const industryOptions = useMemo(
-    () => [...new Set(jobs.map((j) => (j.industry || '').trim()).filter(Boolean))].sort(),
-    [jobs]
-  )
+  // Same canonical list the posting form offers, plus any legacy free-text
+  // industry values already on a listing that don't happen to be in it —
+  // so the filter always has something to suggest (unlike Company/Location,
+  // which have no fixed list and are genuinely empty until jobs exist).
+  const industryOptions = useMemo(() => {
+    const extra = jobs.map((j) => (j.industry || '').trim()).filter((v) => v && !INDUSTRIES.includes(v))
+    return [...INDUSTRIES, ...new Set(extra)]
+  }, [jobs])
   const postedOptions = useMemo(
     () => [
       { value: '', label: 'Any time' },
@@ -320,6 +324,7 @@ export default function Jobs({ session, profile, onMessage }) {
           onChange={(v) => set('companies', v)}
           options={companyOptions}
           placeholder="Search or add companies"
+          allowCustom
         />
       </FilterSection>
 
@@ -329,6 +334,7 @@ export default function Jobs({ session, profile, onMessage }) {
           onChange={(v) => set('locations', v)}
           options={locationOptions}
           placeholder="Search or add locations"
+          allowCustom
         />
       </FilterSection>
     </>
