@@ -134,8 +134,13 @@ export default function Home({ session, profile, onMessage }) {
     if (e.pointerType !== 'mouse') return
     const el = communityScrollRef.current
     if (!el) return
-    communityDragRef.current = { down: true, startX: e.clientX, startScroll: el.scrollLeft, moved: false }
-    el.setPointerCapture(e.pointerId)
+    // Note: pointer capture is NOT grabbed here. Capturing on every
+    // mousedown (including a plain click) redirects the click event's
+    // target to this container instead of the card/button underneath,
+    // which silently ate every click on a profile or Message button.
+    // Capture is only grabbed in handleCommunityPointerMove once an
+    // actual drag is confirmed, so plain clicks pass through untouched.
+    communityDragRef.current = { down: true, startX: e.clientX, startScroll: el.scrollLeft, moved: false, pointerId: e.pointerId }
   }
   const handleCommunityPointerMove = (e) => {
     const drag = communityDragRef.current
@@ -143,8 +148,11 @@ export default function Home({ session, profile, onMessage }) {
     const el = communityScrollRef.current
     if (!el) return
     const dx = e.clientX - drag.startX
-    if (Math.abs(dx) > 4) drag.moved = true
-    el.scrollLeft = drag.startScroll - dx
+    if (!drag.moved && Math.abs(dx) > 4) {
+      drag.moved = true
+      try { el.setPointerCapture(drag.pointerId) } catch { /* no-op if already released */ }
+    }
+    if (drag.moved) el.scrollLeft = drag.startScroll - dx
   }
   const endCommunityDrag = () => { communityDragRef.current.down = false }
   const handleCommunityCardClick = (e, action) => {
