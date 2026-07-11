@@ -40,16 +40,16 @@ import Settings from './components/Settings.jsx'
 // left sidebar (see .sidebar in styles.css) rather than the old inline
 // header tab strip.
 const TABS = [
-  { id: 'feed', label: 'Feed', path: '/feed', icon: FeedIcon },
-  { id: 'home', label: 'Home', path: '/home', icon: HomeIcon },
   { id: 'directory', label: 'Eendragters', path: '/directory', icon: PeopleIcon },
+  { id: 'home', label: 'Home', path: '/home', icon: HomeIcon },
+  { id: 'jobs', label: 'Jobs', path: '/jobs', icon: JobsIcon },
+  { id: 'feed', label: 'Feed', path: '/feed', icon: FeedIcon },
   { id: 'mentoring', label: 'Mentoring', path: '/mentoring', icon: MentoringIcon },
+  { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
   { id: 'groups', label: 'Groups', path: '/groups', icon: GroupsIcon },
   { id: 'photos', label: 'Photos', path: '/photos', icon: PhotosIcon },
-  { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
-  { id: 'jobs', label: 'Jobs', path: '/jobs', icon: JobsIcon },
-  { id: 'businesses', label: 'Business Directory', path: '/businesses', icon: BusinessIcon },
   { id: 'merch', label: 'Merchandise', path: '/merch', icon: MerchIcon },
+  { id: 'businesses', label: 'Business Directory', path: '/businesses', icon: BusinessIcon },
 ]
 
 // Admin-only, appended to the nav when the signed-in profile has is_admin
