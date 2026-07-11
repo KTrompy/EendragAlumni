@@ -6668,15 +6668,25 @@ button.delete-danger svg { flex-shrink: 0; }
   line-height: 1.2;
 }
 .home-community-industry {
-  font-size: 11px;
+  /* Smaller than before (was 11px) specifically so words wrap whole at
+     word boundaries instead of splitting mid-word — word-break/overflow-wrap
+     are deliberately left at their normal (no-break) default. If an
+     industry name still can't fit in 2 lines at this size (e.g.
+     "Telecommunications"), it's clamped with an ellipsis rather than
+     letting a single word carry onto a 3rd line or spill out of the card. */
+  font-size: 9.5px;
   color: var(--ink-soft);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   margin: -4px 0 0 0;
   text-align: center;
-  overflow-wrap: break-word;
-  word-break: break-word;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .home-community-message-btn {
   width: 100%;
@@ -6698,13 +6708,15 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .home-community-message-btn:hover { background: var(--orange-dark); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(232, 97, 28, 0.2); }
 
-/* Next-card arrow, floating over the peeking card's right edge, vertically
-   centered on the avatar row (not the full card height, so it doesn't sit
-   awkwardly low next to short cards with no industry text). */
+/* Prev/next arrows, floating over the strip's edges, vertically centered
+   on the avatar row (not the full card height, so they don't sit
+   awkwardly low next to short cards with no industry text). The "prev"
+   arrow only renders once scrolled off the start; "next" only while
+   there's more strip left to reveal — see communityScrollState in
+   Home.jsx. */
 .home-community-scroll-btn {
   position: absolute;
   top: 41px;
-  right: 4px;
   width: 28px;
   height: 28px;
   display: grid;
@@ -6718,6 +6730,8 @@ button.delete-danger svg { flex-shrink: 0; }
   transition: all 0.2s var(--ease);
 }
 .home-community-scroll-btn:hover { background: var(--orange); border-color: var(--orange); color: #fff; }
+.home-community-scroll-btn-next { right: 4px; }
+.home-community-scroll-btn-prev { left: 4px; }
 
 /* "See who's on the platform" nested inside the same My Community card —
    reuses Feed's .whos-online widget but strips its own card chrome so it

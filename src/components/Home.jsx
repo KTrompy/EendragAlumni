@@ -96,6 +96,25 @@ export default function Home({ session, profile, onMessage }) {
   // doesn't also fire its navigate/message action.
   const communityScrollRef = useRef(null)
   const communityDragRef = useRef({ down: false, startX: 0, startScroll: 0, moved: false })
+  // Drives which arrow(s) show: back only once scrolled off the start,
+  // forward only while there's more strip left to reveal.
+  const [communityScrollState, setCommunityScrollState] = useState({ canBack: false, canForward: false })
+
+  const updateCommunityScrollState = () => {
+    const el = communityScrollRef.current
+    if (!el) return
+    setCommunityScrollState({
+      canBack: el.scrollLeft > 4,
+      canForward: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    })
+  }
+
+  useEffect(() => {
+    updateCommunityScrollState()
+    window.addEventListener('resize', updateCommunityScrollState)
+    return () => window.removeEventListener('resize', updateCommunityScrollState)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [community])
 
   const scrollCommunity = (dir) => {
     const el = communityScrollRef.current
@@ -443,6 +462,7 @@ export default function Home({ session, profile, onMessage }) {
                   <div
                     className="home-community-grid"
                     ref={communityScrollRef}
+                    onScroll={updateCommunityScrollState}
                     onPointerDown={handleCommunityPointerDown}
                     onPointerMove={handleCommunityPointerMove}
                     onPointerUp={endCommunityDrag}
@@ -470,10 +490,20 @@ export default function Home({ session, profile, onMessage }) {
                       </div>
                     ))}
                   </div>
-                  {community.length > 2 && (
+                  {communityScrollState.canBack && (
                     <button
                       type="button"
-                      className="home-community-scroll-btn"
+                      className="home-community-scroll-btn home-community-scroll-btn-prev"
+                      onClick={() => scrollCommunity(-1)}
+                      aria-label="Show previous suggested connections"
+                    >
+                      <ChevronLeftIcon />
+                    </button>
+                  )}
+                  {communityScrollState.canForward && (
+                    <button
+                      type="button"
+                      className="home-community-scroll-btn home-community-scroll-btn-next"
                       onClick={() => scrollCommunity(1)}
                       aria-label="Show more suggested connections"
                     >
@@ -611,6 +641,13 @@ function ChevronRightIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 6l6 6-6 6" />
+    </svg>
+  )
+}
+function ChevronLeftIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 6l-6 6 6 6" />
     </svg>
   )
 }
