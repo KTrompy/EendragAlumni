@@ -79,7 +79,14 @@ export default function App() {
   const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
-  const [moreNavOpen, setMoreNavOpen] = useState(false) // desktop sidebar "More" section
+  // Desktop sidebar "More" section. null = no manual choice yet (falls back
+  // to auto-expanding whenever the active page is one of the secondary
+  // tabs); true/false = the person explicitly clicked More/Less, which
+  // wins over the auto-expand — e.g. clicking "Less" while on Mentoring
+  // collapses the list even though Mentoring's own link is inside it.
+  // Reset to null on every navigation so the next page starts from the
+  // same auto-expand default rather than staying manually stuck open/shut.
+  const [moreNavOverride, setMoreNavOverride] = useState(null)
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -102,6 +109,13 @@ export default function App() {
   const [directoryRefetchTrigger, setDirectoryRefetchTrigger] = useState(0) // increment to trigger refetch
   const [profileMenuOpen, setProfileMenuOpen] = useState(false) // header avatar dropdown (Settings/Edit profile/Sign out)
   const profileMenuRef = useRef(null)
+
+  // Clear any manual More/Less click on navigation, so the sidebar's
+  // "More" section goes back to auto-expand-if-relevant for whatever page
+  // you land on next, rather than staying manually forced open/shut.
+  useEffect(() => {
+    setMoreNavOverride(null)
+  }, [location.pathname])
 
   // Lock body scroll while the mobile nav drawer is open, and let Escape
   // close it — same pattern as the filter drawers (DirectoryFilters.jsx,
@@ -271,6 +285,9 @@ export default function App() {
   const primaryNavTabs = navTabs.filter((t) => PRIMARY_TAB_IDS.includes(t.id))
   const secondaryNavTabs = navTabs.filter((t) => !PRIMARY_TAB_IDS.includes(t.id))
   const isSecondaryActive = secondaryNavTabs.some((t) => t.id === activeTabId)
+  // A manual More/Less click always wins; absent one, it auto-expands
+  // whenever you're already on a page that lives inside "More".
+  const moreNavVisible = moreNavOverride !== null ? moreNavOverride : isSecondaryActive
 
   return (
     <div className="app">
@@ -383,15 +400,15 @@ export default function App() {
 
             <button
               className={isSecondaryActive ? 'sidebar-link sidebar-more-toggle active' : 'sidebar-link sidebar-more-toggle'}
-              onClick={() => setMoreNavOpen((o) => !o)}
-              aria-expanded={moreNavOpen || isSecondaryActive}
+              onClick={() => setMoreNavOverride(!moreNavVisible)}
+              aria-expanded={moreNavVisible}
             >
               <MoreIcon />
-              More
-              <ChevronDownIcon className={moreNavOpen || isSecondaryActive ? 'sidebar-more-chevron open' : 'sidebar-more-chevron'} />
+              {moreNavVisible ? 'Less' : 'More'}
+              <ChevronDownIcon className={moreNavVisible ? 'sidebar-more-chevron open' : 'sidebar-more-chevron'} />
             </button>
 
-            {(moreNavOpen || isSecondaryActive) && (
+            {moreNavVisible && (
               <div className="sidebar-more-list">
                 {secondaryNavTabs.map((t) => {
                   const Icon = t.icon
