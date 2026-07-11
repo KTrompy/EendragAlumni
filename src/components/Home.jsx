@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
@@ -109,7 +109,14 @@ export default function Home({ session, profile, onMessage }) {
     })
   }
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) — this measures the scroll strip's
+  // actual DOM width to decide whether the forward arrow should show.
+  // useEffect runs after paint, so the first frame would render with both
+  // arrows hidden and only "correct itself" on the next tick — in
+  // practice invisible until *something* (e.g. the user dragging, which
+  // fires onScroll) forced a recompute. useLayoutEffect runs synchronously
+  // before paint, so the arrow is right from the very first frame.
+  useLayoutEffect(() => {
     updateCommunityScrollState()
     window.addEventListener('resize', updateCommunityScrollState)
     return () => window.removeEventListener('resize', updateCommunityScrollState)
