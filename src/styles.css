@@ -22,7 +22,7 @@
   --radius-lg: 20px;
   --shadow-card: 0 1px 2px rgba(26, 26, 26, 0.05), 0 2px 8px rgba(26, 26, 26, 0.05);
   --shadow-lift: 0 16px 36px rgba(26, 26, 26, 0.14);
-  --display: 'Fraunces', serif;
+  --display: 'Playfair Display', serif;
   --body: 'Inter', sans-serif;
   /* Shared easing for hover/entrance motion — a bit of overshoot-free
      "settle" so interactions feel smooth and connected rather than linear
@@ -6533,6 +6533,16 @@ button.delete-danger svg { flex-shrink: 0; }
   margin: 5px 0 0;
   font-size: 14px;
   color: var(--ink-soft);
+  line-height: 1.4;
+}
+/* The post's own title — bold and dark (unlike the muted, regular-weight
+   occupation line above and content excerpt below) so it visibly reads as
+   a headline rather than blending in as more description text. */
+.home-post-preview-title {
+  margin: 8px 0 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink);
   line-height: 1.4;
 }
 /* Short preview of the post body text — clamped to two lines so a long

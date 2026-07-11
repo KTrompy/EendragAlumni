@@ -383,9 +383,15 @@ export default function Home({ session, profile, onMessage }) {
                                 {p.pinned && <PinIcon />}
                                 <strong>{p.profiles?.full_name || 'Alumnus'}</strong>
                               </span>
-                              <p className="home-post-preview-occupation">{p.profiles?.occupation || p.title || 'Member'}</p>
+                              <p className="home-post-preview-occupation">{p.profiles?.occupation || 'Member'}</p>
                             </div>
                           </div>
+                          {/* Post title gets its own bold line, separate from
+                              the author's occupation above and the plain
+                              content excerpt below — otherwise it read as
+                              just more description text with nothing marking
+                              it as the post's actual title. */}
+                          {p.title && <p className="home-post-preview-title">{p.title}</p>}
                           {text && <p className="home-post-preview-text">{text}</p>}
                         </div>
                         {thumb && (
