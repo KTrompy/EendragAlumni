@@ -5,23 +5,29 @@ import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import { useToast } from './Toast.jsx'
 
-// Albums list — each card shows a 2x2 collage of its most recent photos
-// (falling back to a single placeholder tile for a brand new album) so you
-// get a sense of what's inside before opening it, same idea as the
-// reference's album thumbnails.
 const ALBUMS_SELECT = 'id, title, description, created_at, photos(count)'
 
 export default function Photos({ session }) {
   const [albums, setAlbums] = useState([])
+  const [allPhotos, setAllPhotos] = useState([])
   const [covers, setCovers] = useState({}) // album id -> [url, url, url, url]
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [tab, setTab] = useState('albums') // 'albums' or 'photos'
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('date-desc')
+  const [filterMode, setFilterMode] = useState('all') // 'all' or 'your-groups'
   const navigate = useNavigate()
+  const showToast = useToast()
 
   async function load() {
     setLoading(true)
     const { data } = await supabase.from('photo_albums').select(ALBUMS_SELECT).order('created_at', { ascending: false })
     setAlbums(data || [])
+
+    const { data: photos } = await supabase.from('photos').select('id, url, caption, album_id, created_at').order('created_at', { ascending: false })
+    setAllPhotos(photos || [])
+
     setLoading(false)
   }
 
@@ -46,33 +52,124 @@ export default function Photos({ session }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [albums.map((a) => a.id).join(',')])
 
+  const filteredAlbums = albums.filter((a) => {
+    const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesSearch
+  })
+
+  const sortedAlbums = [...filteredAlbums].sort((a, b) => {
+    switch (sortBy) {
+      case 'date-asc':
+        return new Date(a.created_at) - new Date(b.created_at)
+      case 'title':
+        return a.title.localeCompare(b.title)
+      default: // date-desc
+        return new Date(b.created_at) - new Date(a.created_at)
+    }
+  })
+
+  const filteredPhotos = allPhotos.filter((p) => {
+    const matchesSearch = (p.caption || '').toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesSearch
+  })
+
   return (
-    <section className="panel">
-      <div className="panel-header-row">
+    <section className="panel photos-page">
+      <div className="photos-header">
         <div>
           <h2 className="panel-title">Photos</h2>
           <p className="panel-sub">Campus life, events, reunions — shared albums the whole house can add to.</p>
         </div>
-        <button className="btn primary" onClick={() => setCreating(true)}>+ New album</button>
+      </div>
+
+      <div className="photos-controls">
+        <div className="photos-tabs">
+          <button className={`photos-tab ${tab === 'albums' ? 'active' : ''}`} onClick={() => setTab('albums')}>
+            Albums
+          </button>
+          <button className={`photos-tab ${tab === 'photos' ? 'active' : ''}`} onClick={() => setTab('photos')}>
+            Photos
+          </button>
+        </div>
+
+        <div className="photos-search-bar">
+          <SearchIcon />
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="photos-search-input"
+          />
+        </div>
+      </div>
+
+      <div className="photos-toolbar">
+        <div className="photos-filters">
+          <button className={`photo-filter-btn ${filterMode === 'all' ? 'active' : ''}`} onClick={() => setFilterMode('all')}>
+            ALL
+          </button>
+          <button className={`photo-filter-btn ${filterMode === 'your-groups' ? 'active' : ''}`} onClick={() => setFilterMode('your-groups')}>
+            YOUR GROUPS
+          </button>
+        </div>
+
+        {tab === 'albums' && (
+          <div className="photos-sort">
+            <span className="sort-label">Sort by:</span>
+            <div className="select-wrap">
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="date-desc">Date Created</option>
+                <option value="date-asc">Oldest First</option>
+                <option value="title">Title</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (
-        <LoadingState message="Loading albums…" />
-      ) : albums.length === 0 && (
-        <EmptyState
-          icon="feed"
-          message="No albums yet."
-          subMessage="Start one for a reunion, an event, or just campus life."
-          actionLabel="Create the first album"
-          onAction={() => setCreating(true)}
-        />
-      )}
+        <LoadingState message="Loading…" />
+      ) : tab === 'albums' ? (
+        <>
+          <div className="photos-header-action">
+            <button className="btn primary" onClick={() => setCreating(true)}>+ Create Album</button>
+          </div>
 
-      <div className="album-grid">
-        {albums.map((a) => (
-          <AlbumCard key={a.id} album={a} coverUrls={covers[a.id] || []} onClick={() => navigate(`/photos/${a.id}`)} />
-        ))}
-      </div>
+          {sortedAlbums.length === 0 && !searchQuery ? (
+            <EmptyState
+              icon="feed"
+              message="No albums yet."
+              subMessage="Start one for a reunion, an event, or just campus life."
+              actionLabel="Create the first album"
+              onAction={() => setCreating(true)}
+            />
+          ) : sortedAlbums.length === 0 ? (
+            <EmptyState icon="feed" message="No albums match your search." />
+          ) : (
+            <div className="album-grid-3col">
+              {sortedAlbums.map((a) => (
+                <AlbumCard key={a.id} album={a} coverUrls={covers[a.id] || []} onClick={() => navigate(`/photos/${a.id}`)} />
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {filteredPhotos.length === 0 ? (
+            <EmptyState icon="feed" message={searchQuery ? "No photos match your search." : "No photos yet."} />
+          ) : (
+            <div className="photo-grid">
+              {filteredPhotos.map((p) => (
+                <button key={p.id} className="photo-grid-item" onClick={() => navigate(`/photos/${albums.find(a => a.id === p.album_id)?.id}`)}>
+                  <img src={p.url} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {creating && (
         <CreateAlbumModal
@@ -153,6 +250,15 @@ export function PhotoPlaceholderIcon() {
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" />
       <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
     </svg>
   )
 }
