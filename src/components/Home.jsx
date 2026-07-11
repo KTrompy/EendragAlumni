@@ -428,7 +428,7 @@ export default function Home({ session, profile, onMessage }) {
               )}
 
               <div className="home-community-online">
-                <WhosOnline session={session} onOpenProfile={() => navigate('/directory')} />
+                <WhosOnline session={session} onOpenProfile={(id) => navigate(`/people/${id}`)} />
               </div>
             </div>
           </div>
