@@ -66,4 +66,9 @@ const ICONS = {
       <path d="M20 33h4M40 33h4M20 41h4M40 41h4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   ),
+  merch: (
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22 9L11 17l5 7-4 4v25a2.5 2.5 0 0 0 2.5 2.5h35A2.5 2.5 0 0 0 52 53V28l-4-4 5-7-11-8-4 5h-12z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 }

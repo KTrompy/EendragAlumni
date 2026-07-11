@@ -3676,6 +3676,25 @@ button.delete-danger svg { flex-shrink: 0; }
 .event-card.event-card-editing:hover { transform: none; box-shadow: none; }
 .job-badge.business-featured-tag { background: var(--orange); margin-left: 8px; }
 .business-pin { background: var(--maroon) !important; }
+
+/* ---------- Merchandise (reuses job-card/business-card shape) ---------- */
+.merch-card-cover { position: relative; }
+.merch-image-fallback {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  color: var(--ink-soft); background: var(--card-alt, #F1ECDD);
+}
+.merch-image-fallback-large {
+  display: flex; align-items: center; justify-content: center; min-height: 160px;
+  color: var(--ink-soft); background: var(--card-alt, #F1ECDD);
+}
+.merch-soldout-tag {
+  position: absolute; top: 10px; right: 10px; margin-left: 0;
+  background: var(--ink-soft); color: #fff;
+}
+.merch-price { font-weight: 700; color: var(--orange-dark, var(--orange)); }
+.merch-card-actions { padding: 0 18px 18px 18px; }
+.merch-variant-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.merch-variant-row .select-wrap { min-width: 110px; }
 .map-popup-person .job-logo { width: 34px; height: 34px; border-radius: 8px; font-size: 14px; }
 .event-date-block {
   background: var(--orange);
