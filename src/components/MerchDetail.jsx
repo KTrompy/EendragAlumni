@@ -32,6 +32,8 @@ export default function MerchDetail({ session, profile, onMessage }) {
   const [editing, setEditing] = useState(false)
   const [size, setSize] = useState('')
   const [color, setColor] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [liked, setLiked] = useState(false)
   const isAdmin = !!profile?.is_admin
 
   async function load() {
@@ -113,91 +115,139 @@ export default function MerchDetail({ session, profile, onMessage }) {
   }
 
   return (
-    <section className="panel business-detail-page">
+    <section className="panel merch-detail-page">
       <button className="profile-back-btn" onClick={() => navigate('/merch')}>‹ Merchandise</button>
 
-      <div className="business-detail-layout">
-        <div className="business-detail-main">
-          <div className="business-detail-card">
-            <div className="business-detail-card-head">
-              <h2 className="business-detail-name">
-                {item.name}
-                {!item.is_available && <span className="job-badge merch-soldout-tag">Sold out</span>}
-              </h2>
-              <p className="business-detail-meta">
-                {[item.category, formatPrice(item.price)].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-
-            {item.image_url ? (
-              <div className="business-detail-cover">
-                <img src={item.image_url} alt="" />
-              </div>
-            ) : (
-              <div className="business-detail-cover merch-image-fallback-large" aria-hidden="true"><ShirtIcon /></div>
-            )}
-
-            {item.description && <p style={{ marginTop: 14 }}>{item.description}</p>}
-
-            {(item.sizes?.length > 0 || item.colors?.length > 0) && (
-              <div className="merch-variant-row" style={{ marginTop: 16 }}>
-                {item.sizes?.length > 0 && (
-                  <div className="select-wrap">
-                    <select value={size} onChange={(e) => setSize(e.target.value)} aria-label="Size">
-                      {item.sizes.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                )}
-                {item.colors?.length > 0 && (
-                  <div className="select-wrap">
-                    <select value={color} onChange={(e) => setColor(e.target.value)} aria-label="Colour">
-                      {item.colors.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="business-detail-manage-row">
-              <button className="btn primary" disabled={!item.is_available} onClick={order}>
-                {item.is_available ? 'Order' : 'Sold out'}
-              </button>
-              {isAdmin && (
-                <>
-                  <button className="btn ghost small" onClick={toggleAvailable}>
-                    {item.is_available ? 'Mark sold out' : 'Mark available'}
-                  </button>
-                  <button className="btn ghost small" onClick={() => setEditing(true)}>Edit</button>
-                  <DeleteButton
-                    onConfirm={remove}
-                    label="Delete item"
-                    message="This removes the item from the store. This can't be undone."
-                    className="btn ghost small delete-danger"
-                  >
-                    Delete
-                  </DeleteButton>
-                </>
-              )}
-            </div>
-          </div>
+      <div className="merch-detail-container">
+        <div className="merch-detail-image">
+          {item.image_url ? (
+            <img src={item.image_url} alt={item.name} />
+          ) : (
+            <div className="merch-image-fallback-large" aria-hidden="true"><ShirtIcon /></div>
+          )}
         </div>
 
-        <aside className="business-detail-sidebar">
+        <div className="merch-detail-content">
+          <div>
+            <h2 className="merch-detail-name">
+              {item.name}
+              {!item.is_available && <span className="job-badge merch-soldout-tag">Sold out</span>}
+            </h2>
+            <p className="merch-detail-meta">
+              {[item.category, formatPrice(item.price)].filter(Boolean).join(' · ')}
+            </p>
+            {item.description && <p className="merch-detail-desc">{item.description}</p>}
+          </div>
+
+          <div className="merch-detail-options">
+            {item.colors?.length > 0 && (
+              <div className="merch-option-group">
+                <label className="merch-option-label">COLOUR: {color}</label>
+                <div className="merch-color-options">
+                  {item.colors.map((c) => (
+                    <button
+                      key={c}
+                      className={`merch-color-btn ${color === c ? 'active' : ''}`}
+                      onClick={() => setColor(c)}
+                      title={c}
+                      style={{ backgroundImage: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="${encodeURIComponent(c)}" /></svg>')` }}
+                      aria-label={`Color: ${c}`}
+                    >
+                      {c === 'NAVY' || c === 'navy' ? <NavyPreview /> : c === 'WHITE' || c === 'white' ? <WhitePreview /> : null}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {item.sizes?.length > 0 && (
+              <div className="merch-option-group">
+                <label className="merch-option-label">SIZE:</label>
+                <div className="merch-size-options">
+                  {item.sizes.map((s) => (
+                    <button
+                      key={s}
+                      className={`merch-size-btn ${size === s ? 'active' : ''}`}
+                      onClick={() => setSize(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="merch-option-group">
+              <label className="merch-option-label">QUANTITY:</label>
+              <div className="merch-quantity-picker">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button>
+                <span>{quantity}</span>
+                <button onClick={() => setQuantity(quantity + 1)}>+</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="merch-detail-actions">
+            <button className="btn primary merch-add-btn" disabled={!item.is_available} onClick={order}>
+              {item.is_available ? 'ADD TO BAG' : 'Sold out'}
+            </button>
+            <button className="merch-wishlist-btn" onClick={() => setLiked(!liked)} aria-label="Add to wishlist">
+              <HeartIcon filled={liked} />
+            </button>
+          </div>
+
+          {isAdmin && (
+            <div className="merch-admin-actions">
+              <button className="btn ghost small" onClick={toggleAvailable}>
+                {item.is_available ? 'Mark sold out' : 'Mark available'}
+              </button>
+              <button className="btn ghost small" onClick={() => setEditing(true)}>Edit</button>
+              <DeleteButton
+                onConfirm={remove}
+                label="Delete item"
+                message="This removes the item from the store. This can't be undone."
+                className="btn ghost small delete-danger"
+              >
+                Delete
+              </DeleteButton>
+            </div>
+          )}
+
           {poster?.id && (
-            <div className="feed-widget">
-              <p style={{ marginTop: 0, marginBottom: 10, fontSize: 13, color: 'var(--ink-soft)' }}>Listed by</p>
-              <button className="business-detail-poster" onClick={() => navigate(`/people/${poster.id}`)}>
-                <Avatar url={poster.avatar_url} name={poster.full_name} size={40} />
-                <span className="business-detail-poster-text"><strong>{poster.full_name || 'a member'}</strong></span>
+            <div className="merch-detail-seller">
+              <p className="merch-seller-label">Listed by</p>
+              <button className="merch-seller-card" onClick={() => navigate(`/people/${poster.id}`)}>
+                <Avatar url={poster.avatar_url} name={poster.full_name} size={32} />
+                <span>{poster.full_name || 'a member'}</span>
               </button>
             </div>
           )}
-          <div className="feed-widget business-promote-card">
-            <p>Ideas for what the store should stock next?</p>
-            <button className="btn ghost wide" onClick={() => navigate('/merch')}>Back to Merchandise</button>
-          </div>
-        </aside>
+        </div>
       </div>
     </section>
+  )
+}
+
+function HeartIcon({ filled }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  )
+}
+
+function NavyPreview() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36">
+      <circle cx="18" cy="18" r="14" fill="#001f3f" stroke="#999" strokeWidth="1" />
+    </svg>
+  )
+}
+
+function WhitePreview() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36">
+      <circle cx="18" cy="18" r="14" fill="white" stroke="#999" strokeWidth="1" />
+    </svg>
   )
 }
