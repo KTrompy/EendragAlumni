@@ -96,7 +96,7 @@ input, textarea, select { font: inherit; }
 .header-avatar-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 
 /* ---------- Header profile dropdown (Settings / Edit profile / Sign out) ---------- */
-.profile-menu-wrap { position: relative; }
+.profile-menu-wrap { position: relative; z-index: 10000; }
 .profile-menu-dropdown {
   position: absolute;
   top: calc(100% + 10px);
