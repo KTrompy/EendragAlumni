@@ -399,7 +399,12 @@ export default function App() {
             })}
 
             <button
-              className={isSecondaryActive ? 'sidebar-link sidebar-more-toggle active' : 'sidebar-link sidebar-more-toggle'}
+              // Highlighted only when it's standing in for the active page —
+              // i.e. collapsed, so Events/Mentoring/etc. isn't itself visible
+              // in the list. Once expanded, the real link below carries the
+              // "active" state instead, so only one thing is highlighted at
+              // a time.
+              className={isSecondaryActive && !moreNavVisible ? 'sidebar-link sidebar-more-toggle active' : 'sidebar-link sidebar-more-toggle'}
               onClick={() => setMoreNavOverride(!moreNavVisible)}
               aria-expanded={moreNavVisible}
             >
