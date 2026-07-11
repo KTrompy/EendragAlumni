@@ -6594,7 +6594,11 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .home-community-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0, 1fr) instead of 1fr — grid tracks otherwise size to the
+     intrinsic min-width of their content (e.g. an unbroken word like
+     "ACCOUNTING" in .home-community-reason), which was pushing the grid
+     wider than the 300px sidebar and spilling cards out of the widget. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 .home-community-card {
@@ -6607,6 +6611,7 @@ button.delete-danger svg { flex-shrink: 0; }
   border-radius: var(--radius-sm);
   background: var(--card);
   transition: all 0.2s var(--ease);
+  min-width: 0;
 }
 .home-community-card:hover { border-color: var(--orange); box-shadow: 0 2px 6px rgba(232, 97, 28, 0.08); }
 .home-community-card-identity {
@@ -6641,6 +6646,8 @@ button.delete-danger svg { flex-shrink: 0; }
   letter-spacing: 0.5px;
   margin: -4px 0 0 0;
   text-align: center;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .home-community-message-btn {
   width: 100%;
@@ -6655,6 +6662,10 @@ button.delete-danger svg { flex-shrink: 0; }
   letter-spacing: 0.03em;
   transition: all 0.2s var(--ease);
   cursor: pointer;
+  /* Pushes the button to the bottom of the (grid-stretched) card so it
+     lines up across a row even when one card has no matchReason text
+     and is therefore shorter above the button. */
+  margin-top: auto;
 }
 .home-community-message-btn:hover { background: var(--orange-dark); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(232, 97, 28, 0.2); }
 
