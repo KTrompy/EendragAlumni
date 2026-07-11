@@ -41,7 +41,8 @@ const EMPTY_FILTERS = {
   remoteOnly: false,
   company: '',
   location: '',
-  postedWithin: '', // '' | '7' | '30'
+  industry: '',
+  postedWithin: '', // '' | '7' | '30' | 'custom'
 }
 
 function timeAgo(iso) {
@@ -233,6 +234,18 @@ export default function Jobs({ session, profile, onMessage }) {
     () => [...new Set(jobs.map((j) => (j.location || '').trim()).filter(Boolean))].sort(),
     [jobs]
   )
+  const industryOptions = useMemo(
+    () => [...new Set(jobs.map((j) => (j.industry || '').trim()).filter(Boolean))].sort(),
+    [jobs]
+  )
+  const postedOptions = useMemo(
+    () => [
+      { value: '', label: 'Any time' },
+      { value: '7', label: 'Past week' },
+      { value: '30', label: 'Past month' },
+    ],
+    []
+  )
 
   function set(k, v) { setFilters((f) => ({ ...f, [k]: v })) }
   function clearFilters() { setFilters(EMPTY_FILTERS); setQ('') }
@@ -251,6 +264,7 @@ export default function Jobs({ session, profile, onMessage }) {
     if (filters.remoteOnly && !(j.location || '').toLowerCase().includes('remote')) return false
     if (filters.company && j.company !== filters.company) return false
     if (filters.location && j.location !== filters.location) return false
+    if (filters.industry && j.industry !== filters.industry) return false
     if (filters.postedWithin) {
       const cutoff = Date.now() - Number(filters.postedWithin) * 86400000
       if (new Date(j.created_at).getTime() < cutoff) return false
@@ -283,29 +297,41 @@ export default function Jobs({ session, profile, onMessage }) {
       </FilterSection>
 
       <FilterSection title="Posted">
-        <div className="filter-radio-row">
-          <button className={filters.postedWithin === '' ? 'on' : ''} onClick={() => set('postedWithin', '')}>Any time</button>
-          <button className={filters.postedWithin === '7' ? 'on' : ''} onClick={() => set('postedWithin', '7')}>Past week</button>
-          <button className={filters.postedWithin === '30' ? 'on' : ''} onClick={() => set('postedWithin', '30')}>Past month</button>
+        <div className="select-wrap">
+          <select value={filters.postedWithin} onChange={(e) => set('postedWithin', e.target.value)}>
+            {postedOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
         </div>
+      </FilterSection>
+
+      <FilterSection title="Industry">
+        <ListAutocomplete
+          value={filters.industry}
+          onChange={(v) => set('industry', v)}
+          options={industryOptions}
+          placeholder="Search or type"
+          clearable
+        />
       </FilterSection>
 
       <FilterSection title="Company">
-        <div className="select-wrap">
-          <select value={filters.company} onChange={(e) => set('company', e.target.value)}>
-            <option value="">All companies</option>
-            {companyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
+        <ListAutocomplete
+          value={filters.company}
+          onChange={(v) => set('company', v)}
+          options={companyOptions}
+          placeholder="Search or type"
+          clearable
+        />
       </FilterSection>
 
       <FilterSection title="Location">
-        <div className="select-wrap">
-          <select value={filters.location} onChange={(e) => set('location', e.target.value)}>
-            <option value="">All locations</option>
-            {locationOptions.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
-        </div>
+        <ListAutocomplete
+          value={filters.location}
+          onChange={(v) => set('location', v)}
+          options={locationOptions}
+          placeholder="Search or type"
+          clearable
+        />
       </FilterSection>
     </>
   )
