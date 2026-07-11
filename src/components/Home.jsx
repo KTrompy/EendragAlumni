@@ -383,7 +383,7 @@ export default function Home({ session, profile, onMessage }) {
                                 {p.pinned && <PinIcon />}
                                 <strong>{p.profiles?.full_name || 'Alumnus'}</strong>
                               </span>
-                              <p className="home-post-preview-occupation">{p.profiles?.occupation || 'Member'}</p>
+                              <p className="home-post-preview-occupation">{p.profiles?.occupation || p.title || 'Member'}</p>
                             </div>
                           </div>
                           {text && <p className="home-post-preview-text">{text}</p>}
