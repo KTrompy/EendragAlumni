@@ -398,6 +398,19 @@ input, textarea, select { font: inherit; }
 }
 .sidebar-link.signout { color: var(--ink-soft); }
 .sidebar-link.signout:hover { background: var(--orange-soft); color: var(--danger); }
+
+/* "More" toggle — collapses Mentoring/Events/Groups/Photos/Merchandise
+   (and Admin) out of the always-visible sidebar rail. Reuses .sidebar-link
+   for consistent hover/active styling, just adds the trailing chevron. */
+.sidebar-more-toggle { width: 100%; }
+.sidebar-more-chevron { margin-left: auto; transition: transform 0.18s var(--ease); }
+.sidebar-more-chevron.open { transform: rotate(180deg); }
+.sidebar-more-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 65px); }
 
 .content { flex: 1; padding: 18px 24px 60px; }

@@ -57,6 +57,10 @@ const TABS = [
 // members before the profile loads.
 const ADMIN_TAB = { id: 'admin', label: 'Admin', path: '/admin', icon: AdminIcon }
 
+// Desktop sidebar's five "always visible" tabs — the rest of TABS (and
+// Admin, when present) live behind the sidebar's "More" toggle instead.
+const PRIMARY_TAB_IDS = ['directory', 'home', 'jobs', 'feed', 'businesses']
+
 // The mobile bottom tab bar — a smaller subset of TABS (My profile and Sign
 // out move to the mobile header/avatar instead, so the bar stays to four
 // core sections now that Map lives inside Eendragters).
@@ -75,6 +79,7 @@ export default function App() {
   const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
+  const [moreNavOpen, setMoreNavOpen] = useState(false) // desktop sidebar "More" section
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -258,6 +263,14 @@ export default function App() {
 
   const navTabs = profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS
   const activeTabId = navTabs.find((t) => location.pathname.startsWith(t.path))?.id
+  // Desktop sidebar shows five core sections up front; everything else
+  // (Mentoring/Events/Groups/Photos/Merchandise, plus Admin) collapses
+  // behind a "More" toggle so the rail doesn't run long. Filtering
+  // navTabs (rather than listing IDs in this order) keeps whatever order
+  // TABS already defines.
+  const primaryNavTabs = navTabs.filter((t) => PRIMARY_TAB_IDS.includes(t.id))
+  const secondaryNavTabs = navTabs.filter((t) => !PRIMARY_TAB_IDS.includes(t.id))
+  const isSecondaryActive = secondaryNavTabs.some((t) => t.id === activeTabId)
 
   return (
     <div className="app">
@@ -355,7 +368,7 @@ export default function App() {
             from before this rework, harmless if never toggled there). */}
         <aside className="sidebar" aria-label="Main">
           <nav className="sidebar-nav">
-            {navTabs.map((t) => {
+            {primaryNavTabs.map((t) => {
               const Icon = t.icon
               return (
                 <button
@@ -367,6 +380,33 @@ export default function App() {
                 </button>
               )
             })}
+
+            <button
+              className={isSecondaryActive ? 'sidebar-link sidebar-more-toggle active' : 'sidebar-link sidebar-more-toggle'}
+              onClick={() => setMoreNavOpen((o) => !o)}
+              aria-expanded={moreNavOpen || isSecondaryActive}
+            >
+              <MoreIcon />
+              More
+              <ChevronDownIcon className={moreNavOpen || isSecondaryActive ? 'sidebar-more-chevron open' : 'sidebar-more-chevron'} />
+            </button>
+
+            {(moreNavOpen || isSecondaryActive) && (
+              <div className="sidebar-more-list">
+                {secondaryNavTabs.map((t) => {
+                  const Icon = t.icon
+                  return (
+                    <button
+                      key={t.id}
+                      className={activeTabId === t.id ? 'sidebar-link active' : 'sidebar-link'}
+                      onClick={() => goTo(t.path)}
+                    >
+                      <Icon /> {t.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </nav>
           <div className="sidebar-footer">
             <button
@@ -692,10 +732,19 @@ function MessagesIcon() {
     </svg>
   )
 }
-function ChevronDownIcon() {
+function ChevronDownIcon({ className }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+function MoreIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   )
 }
