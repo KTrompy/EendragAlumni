@@ -7,6 +7,7 @@ import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { Avatar } from './Directory.jsx'
 import ListAutocomplete from './ListAutocomplete.jsx'
+import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
 import { matchReason } from '../icebreaker.js'
@@ -39,10 +40,10 @@ const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
 const EMPTY_FILTERS = {
   type: '',
   remoteOnly: false,
-  company: '',
-  location: '',
-  industry: '',
-  postedWithin: '', // '' | '7' | '30' | 'custom'
+  companies: [],
+  locations: [],
+  industries: [],
+  postedWithin: '', // '' | '7' | '30'
 }
 
 function timeAgo(iso) {
@@ -262,9 +263,9 @@ export default function Jobs({ session, profile, onMessage }) {
     }
     if (filters.type && j.employment_type !== filters.type) return false
     if (filters.remoteOnly && !(j.location || '').toLowerCase().includes('remote')) return false
-    if (filters.company && j.company !== filters.company) return false
-    if (filters.location && j.location !== filters.location) return false
-    if (filters.industry && j.industry !== filters.industry) return false
+    if (filters.companies.length > 0 && !filters.companies.includes(j.company)) return false
+    if (filters.locations.length > 0 && !filters.locations.includes(j.location)) return false
+    if (filters.industries.length > 0 && !filters.industries.includes(j.industry)) return false
     if (filters.postedWithin) {
       const cutoff = Date.now() - Number(filters.postedWithin) * 86400000
       if (new Date(j.created_at).getTime() < cutoff) return false
@@ -305,32 +306,29 @@ export default function Jobs({ session, profile, onMessage }) {
       </FilterSection>
 
       <FilterSection title="Industry">
-        <ListAutocomplete
-          value={filters.industry}
-          onChange={(v) => set('industry', v)}
+        <MultiSelectAutocomplete
+          values={filters.industries}
+          onChange={(v) => set('industries', v)}
           options={industryOptions}
-          placeholder="Search or type"
-          clearable
+          placeholder="Search or add industries"
         />
       </FilterSection>
 
       <FilterSection title="Company">
-        <ListAutocomplete
-          value={filters.company}
-          onChange={(v) => set('company', v)}
+        <MultiSelectAutocomplete
+          values={filters.companies}
+          onChange={(v) => set('companies', v)}
           options={companyOptions}
-          placeholder="Search or type"
-          clearable
+          placeholder="Search or add companies"
         />
       </FilterSection>
 
       <FilterSection title="Location">
-        <ListAutocomplete
-          value={filters.location}
-          onChange={(v) => set('location', v)}
+        <MultiSelectAutocomplete
+          values={filters.locations}
+          onChange={(v) => set('locations', v)}
           options={locationOptions}
-          placeholder="Search or type"
-          clearable
+          placeholder="Search or add locations"
         />
       </FilterSection>
     </>
