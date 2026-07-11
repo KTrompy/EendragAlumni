@@ -84,7 +84,7 @@ input, textarea, select { font: inherit; }
   align-items: center;
   gap: 4px;
   background: none;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border: none;
   padding: 3px 8px 3px 3px;
   border-radius: 999px;
   flex-shrink: 0;
@@ -106,7 +106,7 @@ input, textarea, select { font: inherit; }
   color: var(--ink);
   border-radius: var(--radius);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
-  z-index: 80;
+  z-index: 9999;
   overflow: hidden;
   padding: 6px;
   display: flex;
