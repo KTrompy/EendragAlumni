@@ -64,3 +64,50 @@ export function normalizeExpertise(value) {
   }
   return []
 }
+
+// Experience dates are stored as "YYYY-MM" (from a native <input type="month">).
+// Renders "Jan 2022 – Present" style ranges, or nothing if both are blank.
+// Shared by the profile editor's collapsed entry cards and the read-only
+// person-profile timeline, so the two always agree on formatting.
+export function formatExperienceRange(from, to) {
+  const fmt = (v) => {
+    if (!v) return ''
+    const [y, m] = v.split('-')
+    const d = new Date(Number(y), Number(m) - 1)
+    return isNaN(d) ? v : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  }
+  const fromLabel = fmt(from)
+  const toLabel = to ? fmt(to) : (from ? 'Present' : '')
+  if (!fromLabel && !toLabel) return ''
+  return [fromLabel, toLabel].filter(Boolean).join(' – ')
+}
+
+// LinkedIn-style rough duration ("2 yrs 3 mos") for an experience entry. A
+// blank `to` is treated as ongoing (counts up to today). Returns '' when
+// `from` is missing/unparseable, since a duration without a start point
+// isn't meaningful, or when the range comes out to less than a month.
+export function formatExperienceDuration(from, to) {
+  if (!from) return ''
+  const [fy, fm] = from.split('-').map(Number)
+  if (!fy || !fm) return ''
+
+  let ey, em
+  if (to) {
+    [ey, em] = to.split('-').map(Number)
+    if (!ey || !em) return ''
+  } else {
+    const now = new Date()
+    ey = now.getFullYear()
+    em = now.getMonth() + 1
+  }
+
+  const months = (ey - fy) * 12 + (em - fm) + 1 // inclusive of both start/end months
+  if (months < 1) return ''
+
+  const years = Math.floor(months / 12)
+  const rem = months % 12
+  const parts = []
+  if (years) parts.push(`${years} yr${years === 1 ? '' : 's'}`)
+  if (rem || !years) parts.push(`${rem} mo${rem === 1 ? '' : 's'}`)
+  return parts.join(' ')
+}

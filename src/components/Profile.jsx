@@ -10,7 +10,8 @@ import ListAutocomplete from './ListAutocomplete.jsx'
 import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import ClearableInput from './ClearableInput.jsx'
 import PhoneInput from './PhoneInput.jsx'
-import { normalizeExpertise } from '../utils.js'
+import DeleteButton from './DeleteButton.jsx'
+import { normalizeExpertise, formatExperienceRange, formatExperienceDuration } from '../utils.js'
 
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
@@ -33,6 +34,21 @@ const EMPTY = {
 
 const EMPTY_EXPERIENCE_ENTRY = { title: '', company: '', industry: '', from: '', to: '' }
 
+// Client-only identity for an experience entry — the DB just stores a plain
+// jsonb array with no ids, but the editor needs something stable to key
+// list items and track which card is expanded by, that survives entries
+// being added/removed/reordered. Stripped back out before saving.
+function makeExperienceKey() {
+  return (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `exp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function monthNow() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
   const [form, setForm] = useState(EMPTY)
   const [customIndustry, setCustomIndustry] = useState('')
@@ -46,6 +62,11 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
   const [dirty, setDirty] = useState(false)
   const [showBusinessProfile, setShowBusinessProfile] = useState(false)
+  // Which experience cards are showing the full edit form rather than the
+  // collapsed LinkedIn-style summary. Tracked by each entry's client-only
+  // _key rather than array index, so it doesn't get scrambled when entries
+  // are added, removed or reordered.
+  const [expandedExperience, setExpandedExperience] = useState(() => new Set())
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -71,12 +92,16 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         is_open_to_opportunities: profile.is_open_to_opportunities !== false,
         availability: profile.availability || '',
         geographic_focus: Array.isArray(profile.geographic_focus) ? profile.geographic_focus : [],
-        experience: Array.isArray(profile.experience) ? profile.experience : [],
+        experience: (Array.isArray(profile.experience) ? profile.experience : [])
+          .map((entry) => ({ ...entry, _key: makeExperienceKey() })),
         looking_to_connect: Array.isArray(profile.looking_to_connect) ? profile.looking_to_connect : [],
       })
       if (!isKnownIndustry && profile.industry) setCustomIndustry(profile.industry)
       setCityCoords(null)
       setDirty(false)
+      // Existing entries load collapsed as summary cards; only newly-added
+      // ones (via addExperience) start expanded.
+      setExpandedExperience(new Set())
     }
   }, [profile])
 
@@ -126,22 +151,38 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   // directory card and quick filters) so this can grow without touching
   // those.
   function addExperience() {
-    setForm((f) => ({ ...f, experience: [...f.experience, { ...EMPTY_EXPERIENCE_ENTRY }] }))
+    const entryKey = makeExperienceKey()
+    setForm((f) => ({ ...f, experience: [...f.experience, { ...EMPTY_EXPERIENCE_ENTRY, _key: entryKey }] }))
+    setExpandedExperience((s) => new Set(s).add(entryKey))
     setSaved(false)
     setDirty(true)
   }
-  function removeExperience(index) {
-    setForm((f) => ({ ...f, experience: f.experience.filter((_, i) => i !== index) }))
+  function removeExperience(entryKey) {
+    setForm((f) => ({ ...f, experience: f.experience.filter((e) => e._key !== entryKey) }))
+    setExpandedExperience((s) => {
+      if (!s.has(entryKey)) return s
+      const next = new Set(s)
+      next.delete(entryKey)
+      return next
+    })
     setSaved(false)
     setDirty(true)
   }
-  function setExperienceField(index, key, value) {
+  function setExperienceField(entryKey, key, value) {
     setForm((f) => ({
       ...f,
-      experience: f.experience.map((entry, i) => (i === index ? { ...entry, [key]: value } : entry)),
+      experience: f.experience.map((entry) => (entry._key === entryKey ? { ...entry, [key]: value } : entry)),
     }))
     setSaved(false)
     setDirty(true)
+  }
+  function toggleExperienceExpanded(entryKey) {
+    setExpandedExperience((s) => {
+      const next = new Set(s)
+      if (next.has(entryKey)) next.delete(entryKey)
+      else next.add(entryKey)
+      return next
+    })
   }
 
   const isSA = form.country === 'South Africa'
@@ -219,13 +260,27 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       return false
     }
 
+    // Reorder most-recent-first (current roles, then past roles by end
+    // date) — like LinkedIn, so entries don't just sit in whatever order
+    // they were added, and so the read-only profile timeline reads as a
+    // sensible career history without needing its own sort. `_key` is a
+    // client-only id for tracking which card is expanded in this editor;
+    // strip it before it ever reaches the database.
+    const sortableTo = (e) => (e.to ? e.to : '9999-99') // blank `to` = current, sorts first
+    const sortedExperience = [...cleanedExperience].sort((a, b) => {
+      const byEnd = sortableTo(b).localeCompare(sortableTo(a))
+      if (byEnd !== 0) return byEnd
+      return (b.from || '').localeCompare(a.from || '')
+    })
+    const finalExperience = sortedExperience.map(({ _key, ...entry }) => entry)
+
     setBusy(true)
     const industry = form.industry === 'Other' ? customIndustry.trim() : form.industry
 
     const payload = {
       ...form,
       industry,
-      experience: cleanedExperience,
+      experience: finalExperience,
       grad_year: form.grad_year ? Number(form.grad_year) : null,
       linkedin_url: form.linkedin_url.trim(),
       phone: form.phone.trim(),
@@ -428,28 +483,82 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </div>
       </div>
 
-      {/* Experience Section */}
+      {/* Experience Section — collapsed, LinkedIn-style summary cards that
+          expand into the edit form one at a time, rather than every entry's
+          full form sitting open at once. */}
       <div className="profile-section profile-section-experience">
         <h3 className="profile-section-title"><ExperienceIcon /> Experience</h3>
 
-        {form.experience.map((entry, i) => {
+        {form.experience.length === 0 && (
+          <p className="experience-empty">
+            Add the roles you've held since Eendrag — they'll show up as a career timeline on your profile.
+          </p>
+        )}
+
+        {form.experience.map((entry) => {
           const showCompanyError = !entry.company.trim() && (entry.title.trim() || entry.industry.trim() || entry.from.trim() || entry.to.trim())
+          // An invalid entry (missing the required company name) always
+          // shows expanded so the inline error stays visible — collapsing
+          // it would hide the one thing the person needs to fix.
+          const isExpanded = expandedExperience.has(entry._key) || showCompanyError
+          const isCurrent = !entry.to
+
+          if (!isExpanded) {
+            const range = formatExperienceRange(entry.from, entry.to)
+            const duration = formatExperienceDuration(entry.from, entry.to)
+            return (
+              <div className="experience-summary-card" key={entry._key}>
+                <span className="experience-summary-icon" aria-hidden="true"><ExperienceIcon /></span>
+                <button
+                  type="button"
+                  className="experience-summary-body"
+                  onClick={() => toggleExperienceExpanded(entry._key)}
+                >
+                  <span className="experience-timeline-title">{entry.title || entry.company || 'Untitled role'}</span>
+                  {entry.title && entry.company && <span className="experience-timeline-company">{entry.company}</span>}
+                  <span className="experience-timeline-meta">
+                    {range && <span className="experience-timeline-range">{range}{duration && ` · ${duration}`}</span>}
+                    {entry.industry && <span className="experience-timeline-industry">{entry.industry}</span>}
+                  </span>
+                </button>
+                <div className="experience-summary-actions">
+                  <button
+                    type="button"
+                    className="icon-btn-edit"
+                    onClick={() => toggleExperienceExpanded(entry._key)}
+                    aria-label="Edit experience"
+                    title="Edit"
+                  >
+                    <PencilIcon />
+                  </button>
+                  <DeleteButton
+                    onConfirm={() => removeExperience(entry._key)}
+                    label="Delete experience"
+                    title="Delete this experience entry?"
+                    message="This will remove it from your profile. This can't be undone."
+                    className="icon-btn-delete"
+                  />
+                </div>
+              </div>
+            )
+          }
+
           return (
-            <div className="experience-entry" key={i}>
+            <div className="experience-entry" key={entry._key}>
               <div className="field-row">
                 <label className="field"><span>Title</span>
                   <ClearableInput
                     value={entry.title}
-                    onChange={(e) => setExperienceField(i, 'title', e.target.value)}
-                    onClear={() => setExperienceField(i, 'title', '')}
+                    onChange={(e) => setExperienceField(entry._key, 'title', e.target.value)}
+                    onClear={() => setExperienceField(entry._key, 'title', '')}
                     placeholder="e.g. Marketing Manager"
                   />
                 </label>
                 <label className="field"><span>Company name</span>
                   <ClearableInput
                     value={entry.company}
-                    onChange={(e) => setExperienceField(i, 'company', e.target.value)}
-                    onClear={() => setExperienceField(i, 'company', '')}
+                    onChange={(e) => setExperienceField(entry._key, 'company', e.target.value)}
+                    onClear={() => setExperienceField(entry._key, 'company', '')}
                     placeholder="e.g. Naspers"
                     className={showCompanyError ? 'input-error' : ''}
                   />
@@ -460,7 +569,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               <label className="field"><span>Industry</span>
                 <ListAutocomplete
                   value={entry.industry}
-                  onChange={(v) => setExperienceField(i, 'industry', v)}
+                  onChange={(v) => setExperienceField(entry._key, 'industry', v)}
                   options={INDUSTRIES}
                   placeholder="Search or type an industry"
                   clearable
@@ -473,29 +582,46 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                     type="month"
                     className="experience-date"
                     value={entry.from}
-                    onChange={(e) => setExperienceField(i, 'from', e.target.value)}
+                    onChange={(e) => setExperienceField(entry._key, 'from', e.target.value)}
                   />
                 </label>
                 <label className="field"><span>To</span>
-                  <input
-                    type="month"
-                    className="experience-date"
-                    value={entry.to}
-                    onChange={(e) => setExperienceField(i, 'to', e.target.value)}
-                  />
-                  <span className="hint">Leave blank if this is current</span>
+                  {isCurrent ? (
+                    <div className="experience-present-chip">Present</div>
+                  ) : (
+                    <input
+                      type="month"
+                      className="experience-date"
+                      value={entry.to}
+                      onChange={(e) => setExperienceField(entry._key, 'to', e.target.value)}
+                    />
+                  )}
                 </label>
               </div>
 
-              <button type="button" className="experience-remove" onClick={() => removeExperience(i)}>
-                Remove
-              </button>
+              <label className="experience-current-check">
+                <input
+                  type="checkbox"
+                  checked={isCurrent}
+                  onChange={(e) => setExperienceField(entry._key, 'to', e.target.checked ? '' : monthNow())}
+                />
+                <span>I currently work here</span>
+              </label>
+
+              <div className="experience-entry-actions">
+                <button type="button" className="experience-remove" onClick={() => removeExperience(entry._key)}>
+                  Remove
+                </button>
+                <button type="button" className="experience-done" onClick={() => toggleExperienceExpanded(entry._key)}>
+                  Done
+                </button>
+              </div>
             </div>
           )
         })}
 
         <button type="button" className="experience-add" onClick={addExperience}>
-          + Add
+          <PlusIcon /> Add position
         </button>
       </div>
 
@@ -691,6 +817,23 @@ function ExperienceIcon() {
       <rect x="2" y="7" width="20" height="14" rx="2" />
       <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
       <path d="M2 13h20" />
+    </svg>
+  )
+}
+
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="m15 5 4 4" />
+    </svg>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" />
     </svg>
   )
 }

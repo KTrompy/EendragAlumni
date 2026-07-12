@@ -4672,11 +4672,16 @@ button.delete-danger svg { flex-shrink: 0; }
 .input-clear-wrap input.input-error {
   border-color: var(--danger, #c0392b);
 }
+.experience-entry-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
 .experience-remove {
   background: none;
   border: none;
   padding: 0;
-  margin-bottom: 16px;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -4685,17 +4690,139 @@ button.delete-danger svg { flex-shrink: 0; }
   cursor: pointer;
 }
 .experience-remove:hover { text-decoration: underline; }
+.experience-done {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--orange-dark);
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+.experience-done:hover { opacity: 0.9; }
+/* A static "Present" pill standing in for the To date field once "I
+   currently work here" is checked — same footprint as .experience-date so
+   the two fields in the row don't visually jump around. */
+.experience-present-chip {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--paper);
+}
+.experience-current-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--ink);
+  margin: 4px 0 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.experience-current-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--orange);
+  cursor: pointer;
+}
+
+/* Add position — a dashed, full-width invite rather than a plain text
+   link, so it reads as "drop a new card here" the way LinkedIn's own
+   add-section affordance does. */
 .experience-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm, 12px);
+  padding: 12px;
+  margin-bottom: 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--orange-dark);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.experience-add:hover { background: var(--orange-soft); border-color: var(--orange); }
+
+.experience-empty {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 0 0 14px;
+}
+
+/* Collapsed experience card — a compact "Title @ Company · dates" summary,
+   like a single row of LinkedIn's experience list, with a click target to
+   expand into the full edit form plus dedicated edit/delete controls. Lets
+   people with several roles scan their whole history at once instead of
+   scrolling past every field of every entry. */
+.experience-summary-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 12px);
+  padding: 12px 12px 12px 14px;
+  margin-bottom: 12px;
+  background: var(--card, #fff);
+  transition: border-color 0.12s ease;
+}
+.experience-summary-card:hover { border-color: var(--line-strong); }
+.experience-summary-icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  margin-top: 1px;
+}
+.experience-summary-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
   background: none;
   border: none;
   padding: 0;
-  margin-bottom: 16px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--orange-dark);
+  font: inherit;
   cursor: pointer;
 }
-.experience-add:hover { text-decoration: underline; }
+.experience-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.icon-btn-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.icon-btn-edit:hover { background: var(--orange-soft); color: var(--orange-dark); }
 .field input, .field textarea, .field select {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }

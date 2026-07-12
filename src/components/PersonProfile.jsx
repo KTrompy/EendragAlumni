@@ -5,7 +5,7 @@ import { PhotoBlock } from './Directory.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
-import { normalizeExpertise } from '../utils.js'
+import { normalizeExpertise, formatExperienceRange, formatExperienceDuration } from '../utils.js'
 
 const dash = '—'
 
@@ -33,21 +33,6 @@ function Chips({ items }) {
       ))}
     </ul>
   )
-}
-
-// Experience dates are stored as "YYYY-MM" (from a native <input type="month">).
-// Renders "Jan 2022 – Present" style ranges, or nothing if both are blank.
-function formatExperienceRange(from, to) {
-  const fmt = (v) => {
-    if (!v) return ''
-    const [y, m] = v.split('-')
-    const d = new Date(Number(y), Number(m) - 1)
-    return isNaN(d) ? v : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-  }
-  const fromLabel = fmt(from)
-  const toLabel = to ? fmt(to) : (from ? 'Present' : '')
-  if (!fromLabel && !toLabel) return ''
-  return [fromLabel, toLabel].filter(Boolean).join(' – ')
 }
 
 // Standalone page shown at /people/:personId — replaces the old floating
@@ -215,6 +200,7 @@ export default function PersonProfile({ session, me, onMessage }) {
           <ul className="experience-timeline">
             {experience.map((entry, i) => {
               const range = formatExperienceRange(entry.from, entry.to)
+              const duration = formatExperienceDuration(entry.from, entry.to)
               const isCurrent = !!entry.from && !entry.to
               return (
                 <li className={isCurrent ? 'experience-timeline-entry current' : 'experience-timeline-entry'} key={i}>
@@ -223,7 +209,7 @@ export default function PersonProfile({ session, me, onMessage }) {
                     <div className="experience-timeline-title">{entry.title || 'Role'}</div>
                     {entry.company && <div className="experience-timeline-company">{entry.company}</div>}
                     <div className="experience-timeline-meta">
-                      {range && <span className="experience-timeline-range">{range}</span>}
+                      {range && <span className="experience-timeline-range">{range}{duration && ` · ${duration}`}</span>}
                       {entry.industry && <span className="experience-timeline-industry">{entry.industry}</span>}
                     </div>
                   </div>
