@@ -418,6 +418,12 @@ input, textarea, select { font: inherit; }
 
 .content { flex: 1; padding: 18px 24px 60px; }
 .panel.narrow { max-width: 620px; margin: 0 auto; }
+/* Person-profile page only: sit flush against the sidebar instead of
+   centering in the leftover space beside it — on wide viewports that
+   centering left a large, odd gap between the nav and the profile card.
+   No-op on mobile, where the sidebar is hidden and the column is already
+   full-width regardless of margin. */
+.panel.narrow.person-profile-page { margin: 0; }
 .panel-title {
   position: relative;
   font-family: var(--display);
