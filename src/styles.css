@@ -374,12 +374,11 @@ input, textarea, select { font: inherit; }
   margin: 20px 0;
   padding: 18px 12px;
   overflow-y: auto;
-  /* Shifted rightward and downward via JS on the person-profile page only,
-     to hug the profile card's left edge and the photo's top edge wherever
-     they land (see the sidebarRef effect in App.jsx) — the transition just
-     smooths those shifts out instead of them snapping on route change /
-     window resize. */
-  transition: transform 0.2s ease, top 0.2s ease, height 0.2s ease;
+  /* Shifted rightward via JS on the person-profile page only, to hug the
+     profile card's left edge wherever it lands (see the sidebarRef effect
+     in App.jsx) — the transition just smooths that shift out instead of
+     it snapping on route change / window resize. */
+  transition: transform 0.2s ease;
 }
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
 .sidebar-link {
