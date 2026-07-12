@@ -383,7 +383,7 @@ export default function Home({ session, profile, onMessage }) {
                                 {p.pinned && <PinIcon />}
                                 <strong>{p.profiles?.full_name || 'Alumnus'}</strong>
                               </span>
-                              <p className="home-post-preview-occupation">{p.profiles?.occupation || 'Member'}</p>
+                              {p.profiles?.occupation && <p className="home-post-preview-occupation">{p.profiles.occupation}</p>}
                             </div>
                           </div>
                           {/* Post title gets its own bold line, separate from
