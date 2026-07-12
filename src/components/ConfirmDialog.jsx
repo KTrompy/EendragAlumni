@@ -1,8 +1,18 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 // A styled stand-in for window.confirm() — same modal chrome as ProfileModal,
 // so a destructive action gets an on-brand prompt instead of the browser's
 // native confirm() dialog.
+//
+// Rendered via a portal into document.body rather than in place. DeleteButton
+// (and therefore this dialog) often gets mounted deep inside list rows —
+// e.g. Jobs.jsx's .job-card, which has a `transform` on :hover for the lift
+// effect. A CSS transform on any ancestor creates a new containing block for
+// `position: fixed` children, so without the portal this dialog would get
+// sized/positioned relative to that hovered card instead of the viewport
+// (squished, clipped, or jumping the moment the mouse left the card). Portaling
+// to <body> sidesteps that entirely, regardless of where the button lives.
 export default function ConfirmDialog({
   title = 'Are you sure?',
   message,
@@ -22,7 +32,7 @@ export default function ConfirmDialog({
     }
   }, [onCancel])
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onCancel} role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
       <div className="modal modal-confirm" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -39,6 +49,7 @@ export default function ConfirmDialog({
           <button className="btn danger" onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
