@@ -1453,15 +1453,21 @@ button.delete-danger svg { flex-shrink: 0; }
   position: sticky;
   top: 85px;
   /* Base .filter-panel (the fixed-position mobile drawer) sets `bottom: 0`
-     for its own full-height overlay. That's never meant for this sticky
-     variant, but without an explicit reset it carries over here too — and
-     a sticky element with both `top` and `bottom` set fights itself: once
-     its container's bottom edge nears the viewport (e.g. a short results
-     list), the bottom constraint wins and the panel gets dragged up the
-     page instead of staying pinned at `top`. Resetting it to `auto`
-     leaves only the top constraint in effect, which is what "sticks below
-     the masthead" actually requires. */
+     and `right: 0` for its own full-height overlay. Neither is meant for
+     this sticky variant, but without explicit resets they carry over —
+     `bottom: 0` on a sticky element with `top` set fights itself (the
+     bottom constraint drags the panel up once the container's bottom edge
+     nears the viewport), and `right: 0` can confuse the sticky offset
+     calculation. Resetting both to `auto` leaves only the `top` constraint,
+     which is what "sticks below the masthead" actually requires. */
   bottom: auto;
+  right: auto;
+  /* Base .filter-panel sets z-index: 60 for its mobile-drawer overlay.
+     The masthead is z-index: 50, so the inherited 60 makes this sticky
+     panel render *above* the header when scrolling — the panel literally
+     goes above where it's supposed to. Resetting to 1 keeps it below the
+     masthead while still above regular content within its grid cell. */
+  z-index: 1;
   width: auto;
   max-width: none;
   max-height: calc(100vh - 105px);

@@ -57,8 +57,13 @@ begin
   if not public.is_admin() then
     raise exception 'Admins only';
   end if;
+  -- auth.users.email is `character varying`, not `text` — RETURN QUERY
+  -- requires an exact type match against the declared RETURNS TABLE column
+  -- (unlike a plain SELECT, it won't implicitly widen varchar to text), so
+  -- without this cast Postgres raises "structure of query does not match
+  -- function result type" the moment this runs.
   return query
-    select p.id, u.email, p.full_name, p.grad_year, p.city, p.country, p.approved, p.is_admin, p.created_at
+    select p.id, u.email::text, p.full_name, p.grad_year, p.city, p.country, p.approved, p.is_admin, p.created_at
     from public.profiles p
     join auth.users u on u.id = p.id
     order by p.created_at desc;
