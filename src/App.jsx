@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth.jsx'
@@ -110,6 +110,14 @@ export default function App() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false) // header avatar dropdown (Settings/Edit profile/Sign out)
   const profileMenuRef = useRef(null)
   const sidebarRef = useRef(null)
+  // Tracks whether the <aside ref={attachSidebarRef}> node actually exists
+  // in the DOM yet — see attachSidebarRef below for why this (rather than
+  // just [location.pathname]) is what the repositioning effect depends on.
+  const [sidebarMounted, setSidebarMounted] = useState(false)
+  // Always-current pathname, readable from repositionSidebar without
+  // putting location.pathname in a dependency array — see the note there.
+  const pathnameRef = useRef(location.pathname)
+  pathnameRef.current = location.pathname
 
   // Clear any manual More/Less click on navigation, so the sidebar's
   // "More" section goes back to auto-expand-if-relevant for whatever page
@@ -126,55 +134,67 @@ export default function App() {
   // (rather than hardcoding the same math again in CSS) is what keeps the
   // nav correctly hugging it at any width instead of drifting off by a few
   // pixels or breaking at in-between sizes.
-  useEffect(() => {
-    const isProfileRoute = /^\/people\/[^/]+$/.test(location.pathname)
+  const repositionSidebar = useCallback(() => {
     const sidebarEl = sidebarRef.current
     if (!sidebarEl) return
+    const isProfileRoute = /^\/people\/[^/]+$/.test(pathnameRef.current)
+    if (!isProfileRoute) { sidebarEl.style.transform = ''; return }
 
-    if (!isProfileRoute) {
-      sidebarEl.style.transform = ''
-      return
-    }
-
+    const panelEl = document.querySelector('.person-profile-page')
+    if (!panelEl) { sidebarEl.style.transform = ''; return }
+    // Reset before measuring so the sidebar's own rect reflects its
+    // natural (untransformed) position, not whatever shift was applied on
+    // the previous measurement.
+    sidebarEl.style.transform = ''
+    const sidebarRect = sidebarEl.getBoundingClientRect()
+    const panelRect = panelEl.getBoundingClientRect()
     const GAP = 20 // matches .app-body's own sidebar/content gap
+    const shift = (panelRect.left - GAP) - sidebarRect.right
+    // Only ever move it rightward, toward the content — if this ever comes
+    // out negative (content lands further left than the nav already sits,
+    // e.g. some in-between window width) leave the nav at its normal spot
+    // rather than overlapping the card.
+    if (shift > 0) sidebarEl.style.transform = `translateX(${shift}px)`
+  }, [])
 
-    function reposition() {
-      const panelEl = document.querySelector('.person-profile-page')
-      if (!panelEl) { sidebarEl.style.transform = ''; return }
-      // Reset before measuring so the sidebar's own rect reflects its
-      // natural (untransformed) position, not whatever shift was applied
-      // on the previous measurement.
-      sidebarEl.style.transform = ''
-      const sidebarRect = sidebarEl.getBoundingClientRect()
-      const panelRect = panelEl.getBoundingClientRect()
-      const shift = (panelRect.left - GAP) - sidebarRect.right
-      // Only ever move it rightward, toward the content — if this ever
-      // comes out negative (content lands further left than the nav
-      // already sits, e.g. some in-between window width) leave the nav
-      // at its normal spot rather than overlapping the card.
-      if (shift > 0) sidebarEl.style.transform = `translateX(${shift}px)`
-    }
+  // Callback ref (rather than a plain useRef passed straight to the aside)
+  // so repositioning fires the instant the sidebar node actually mounts —
+  // not only when location.pathname changes. That distinction matters on a
+  // hard refresh landing directly on a profile URL: this component renders
+  // its "Loading…" gate first (see `if (loading) return …` below), so the
+  // very first time an effect keyed on location.pathname would've fired,
+  // the sidebar didn't exist in the DOM yet and there was nothing left to
+  // re-trigger it once loading finished, since the pathname itself never
+  // changes again. Tracking real mount/unmount via sidebarMounted state
+  // instead sidesteps that gap regardless of *why* the sidebar was slow to
+  // appear (auth check, onboarding, anything else upstream of it).
+  const attachSidebarRef = useCallback((node) => {
+    sidebarRef.current = node
+    setSidebarMounted(!!node)
+  }, [])
 
-    reposition()
+  useEffect(() => {
+    if (!sidebarMounted) return undefined
+    repositionSidebar()
 
-    // Covers three ways the card's position can change after this effect
-    // first runs: window resize, the content column itself resizing
+    // Covers the other ways the card's position can change once the
+    // sidebar is up: window resize, the content column itself resizing
     // (ResizeObserver), and the profile fetch's loading → loaded swap,
     // which mounts a fresh .person-profile-page node rather than resizing
     // anything already being observed (MutationObserver).
     const contentEl = document.querySelector('.content')
-    const ro = new ResizeObserver(reposition)
+    const ro = new ResizeObserver(repositionSidebar)
     if (contentEl) ro.observe(contentEl)
-    const mo = new MutationObserver(reposition)
+    const mo = new MutationObserver(repositionSidebar)
     if (contentEl) mo.observe(contentEl, { childList: true, subtree: true })
-    window.addEventListener('resize', reposition)
+    window.addEventListener('resize', repositionSidebar)
 
     return () => {
       ro.disconnect()
       mo.disconnect()
-      window.removeEventListener('resize', reposition)
+      window.removeEventListener('resize', repositionSidebar)
     }
-  }, [location.pathname])
+  }, [location.pathname, sidebarMounted, repositionSidebar])
 
   // Lock body scroll while the mobile nav drawer is open, and let Escape
   // close it — same pattern as the filter drawers (DirectoryFilters.jsx,
@@ -442,7 +462,7 @@ export default function App() {
             Hidden on mobile in favour of the existing bottom tab bar —
             navOpen/hamburger are currently unused on mobile (kept as-is
             from before this rework, harmless if never toggled there). */}
-        <aside className="sidebar" aria-label="Main" ref={sidebarRef}>
+        <aside className="sidebar" aria-label="Main" ref={attachSidebarRef}>
           <nav className="sidebar-nav">
             {primaryNavTabs.map((t) => {
               const Icon = t.icon
