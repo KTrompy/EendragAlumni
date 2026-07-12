@@ -177,7 +177,9 @@ export default function Jobs({ session, profile, onMessage }) {
     let debounceTimer
     const channel = supabase
       .channel('jobs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
+        // Skip reload if this is a deletion we just triggered locally
+        if (payload.eventType === 'DELETE') return
         clearTimeout(debounceTimer)
         debounceTimer = setTimeout(() => loadPage({ replace: true }), 300)
       })
