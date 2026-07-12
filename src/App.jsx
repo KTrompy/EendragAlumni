@@ -109,12 +109,71 @@ export default function App() {
   const [directoryRefetchTrigger, setDirectoryRefetchTrigger] = useState(0) // increment to trigger refetch
   const [profileMenuOpen, setProfileMenuOpen] = useState(false) // header avatar dropdown (Settings/Edit profile/Sign out)
   const profileMenuRef = useRef(null)
+  const sidebarRef = useRef(null)
 
   // Clear any manual More/Less click on navigation, so the sidebar's
   // "More" section goes back to auto-expand-if-relevant for whatever page
   // you land on next, rather than staying manually forced open/shut.
   useEffect(() => {
     setMoreNavOverride(null)
+  }, [location.pathname])
+
+  // Person-profile page only: shift the sidebar to sit flush against the
+  // profile card's left edge instead of its usual fixed spot at the page's
+  // far-left. That card's own horizontal position is computed to center on
+  // the full window (see .person-profile-page in styles.css), so it lands
+  // somewhere different at every window width — measuring it here in JS
+  // (rather than hardcoding the same math again in CSS) is what keeps the
+  // nav correctly hugging it at any width instead of drifting off by a few
+  // pixels or breaking at in-between sizes.
+  useEffect(() => {
+    const isProfileRoute = /^\/people\/[^/]+$/.test(location.pathname)
+    const sidebarEl = sidebarRef.current
+    if (!sidebarEl) return
+
+    if (!isProfileRoute) {
+      sidebarEl.style.transform = ''
+      return
+    }
+
+    const GAP = 20 // matches .app-body's own sidebar/content gap
+
+    function reposition() {
+      const panelEl = document.querySelector('.person-profile-page')
+      if (!panelEl) { sidebarEl.style.transform = ''; return }
+      // Reset before measuring so the sidebar's own rect reflects its
+      // natural (untransformed) position, not whatever shift was applied
+      // on the previous measurement.
+      sidebarEl.style.transform = ''
+      const sidebarRect = sidebarEl.getBoundingClientRect()
+      const panelRect = panelEl.getBoundingClientRect()
+      const shift = (panelRect.left - GAP) - sidebarRect.right
+      // Only ever move it rightward, toward the content — if this ever
+      // comes out negative (content lands further left than the nav
+      // already sits, e.g. some in-between window width) leave the nav
+      // at its normal spot rather than overlapping the card.
+      if (shift > 0) sidebarEl.style.transform = `translateX(${shift}px)`
+    }
+
+    reposition()
+
+    // Covers three ways the card's position can change after this effect
+    // first runs: window resize, the content column itself resizing
+    // (ResizeObserver), and the profile fetch's loading → loaded swap,
+    // which mounts a fresh .person-profile-page node rather than resizing
+    // anything already being observed (MutationObserver).
+    const contentEl = document.querySelector('.content')
+    const ro = new ResizeObserver(reposition)
+    if (contentEl) ro.observe(contentEl)
+    const mo = new MutationObserver(reposition)
+    if (contentEl) mo.observe(contentEl, { childList: true, subtree: true })
+    window.addEventListener('resize', reposition)
+
+    return () => {
+      ro.disconnect()
+      mo.disconnect()
+      window.removeEventListener('resize', reposition)
+    }
   }, [location.pathname])
 
   // Lock body scroll while the mobile nav drawer is open, and let Escape
@@ -383,7 +442,7 @@ export default function App() {
             Hidden on mobile in favour of the existing bottom tab bar —
             navOpen/hamburger are currently unused on mobile (kept as-is
             from before this rework, harmless if never toggled there). */}
-        <aside className="sidebar" aria-label="Main">
+        <aside className="sidebar" aria-label="Main" ref={sidebarRef}>
           <nav className="sidebar-nav">
             {primaryNavTabs.map((t) => {
               const Icon = t.icon
