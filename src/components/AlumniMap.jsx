@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { TILE_URL, TILE_ATTRIBUTION, TILE_SIZE, ZOOM_OFFSET } from '../mapTiles.js'
 import { PhotoBlock, OnlineDot } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -118,10 +119,7 @@ export default function AlumniMap({ session, people, loading, onGoToProfile, hid
       {pinned.length > 0 && (
         <div className="map-shell">
           <MapContainer center={[20, 10]} zoom={2} scrollWheelZoom className="alumni-map">
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} tileSize={TILE_SIZE} zoomOffset={ZOOM_OFFSET} />
             <FitToMarkers points={clusters} />
             {clusters.map((c) => {
               const place = [c.people[0].city, c.people[0].country].filter(Boolean).join(', ')

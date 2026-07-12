@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { TILE_URL, TILE_ATTRIBUTION, TILE_SIZE, ZOOM_OFFSET } from '../mapTiles.js'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -207,10 +208,7 @@ export default function JobDetail({ session, profile, onMessage }) {
               <div className="job-detail-map-section">
                 <div className="job-detail-map">
                   <MapContainer center={[job.lat, job.lng]} zoom={12} scrollWheelZoom={false} dragging={false} className="job-detail-map-inner">
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
+                    <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} tileSize={TILE_SIZE} zoomOffset={ZOOM_OFFSET} />
                     <Marker position={[job.lat, job.lng]} icon={singlePinIcon()} />
                   </MapContainer>
                 </div>

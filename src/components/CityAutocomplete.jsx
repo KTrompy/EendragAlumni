@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 
-// A city input backed by live suggestions from OpenStreetMap's free
-// Nominatim search — the same service geocode.js uses to place pins on the
-// Alumni Map. Only picking a suggestion commits a value — free-typed text
-// is held locally while you type and reverted the moment you click away
-// without picking, so what's saved is always a real, geocodable place and
-// always shows up correctly on the Alumni Map (no more silent typos).
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
+
+// A location input backed by live suggestions from Mapbox's geocoding
+// search — the same service geocode.js uses to place pins on the maps
+// throughout the site. Suggestions range from full street addresses (house
+// number + street) down to city/region/country, so typing "30 Palm Street"
+// and typing just "Cape Town" both work — whatever's precise enough for the
+// field it's in. Only picking a suggestion commits a value — free-typed
+// text is held locally while you type and reverted the moment you click
+// away without picking, so what's saved is always a real, geocodable place
+// and always shows up correctly on the maps (no more silent typos).
 export default function CityAutocomplete({
   value,
   country,
@@ -64,10 +69,15 @@ export default function CityAutocomplete({
     if (q.length < 2) { setSuggestions([]); setLoading(false); return }
 
     async function search(q2) {
-      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(q2)}`
+      if (!MAPBOX_TOKEN) return []
+      const url =
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q2)}.json` +
+        `?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=6` +
+        `&types=address,poi,neighborhood,place,locality,region,country`
       const res = await fetch(url, { headers: { Accept: 'application/json' } })
       if (!res.ok) return []
-      return (await res.json()) || []
+      const data = await res.json()
+      return data?.features || []
     }
 
     debounceRef.current = setTimeout(async () => {
@@ -96,26 +106,17 @@ export default function CityAutocomplete({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, country])
 
-  // Nominatim often returns the same suburb multiple times, once per postal
-  // code subdivision it's split into (that's the "two Milnertons" bug) — from
-  // a "pick your general area" city field, those are indistinguishable and
-  // just look like a broken duplicate. Drop the postcode segment and collapse
-  // anything that becomes identical to one entry.
-  function cleanLabel(row) {
-    const postcode = row.address?.postcode
-    const parts = row.display_name.split(',').map((p) => p.trim()).filter(Boolean)
-    return (postcode ? parts.filter((p) => p !== postcode) : parts).join(', ')
-  }
-
+  // Mapbox occasionally returns near-duplicate labels for the same place
+  // (a suburb under two slightly different name variants). Collapse
+  // anything that becomes identical once lowercased.
   function dedupe(rows) {
     const seen = new Set()
     const out = []
     for (const row of rows) {
-      const label = cleanLabel(row)
-      const key = label.toLowerCase()
+      const key = row.place_name.toLowerCase()
       if (seen.has(key)) continue
       seen.add(key)
-      out.push({ ...row, display_name: label })
+      out.push(row)
     }
     return out
   }
@@ -124,13 +125,15 @@ export default function CityAutocomplete({
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
     // Whatever the suggestion showed in the dropdown is exactly what lands
     // in the textbox — no silent swap to a shorter/different label.
-    setText(row.display_name)
+    setText(row.place_name)
     setNeedsPick(false)
-    onChange(row.display_name)
+    onChange(row.place_name)
     // `label` lets a non-strict caller (e.g. a job's "Location" field) tell
     // whether the text still matches this pick, or has since been edited —
     // existing strict callers just ignore the extra field.
-    onSelectCoords?.({ lat: parseFloat(row.lat), lng: parseFloat(row.lon), label: row.display_name })
+    // Mapbox returns coordinates as [lng, lat] — the opposite order from
+    // the {lat,lng} shape every caller here expects.
+    onSelectCoords?.({ lat: row.center[1], lng: row.center[0], label: row.place_name })
     setSuggestions([])
     setOpen(false)
   }
@@ -171,9 +174,9 @@ export default function CityAutocomplete({
         <ul className="city-suggestions">
           {loading && <li className="city-suggestion-loading">Searching…</li>}
           {!loading && suggestions.map((s) => (
-            <li key={s.place_id}>
+            <li key={s.id}>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(s)}>
-                {s.display_name}
+                {s.place_name}
               </button>
             </li>
           ))}

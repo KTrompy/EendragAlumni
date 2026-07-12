@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { TILE_URL, TILE_ATTRIBUTION, TILE_SIZE, ZOOM_OFFSET } from '../mapTiles.js'
 import { supabase } from '../supabaseClient'
 import { geocodeCity } from '../geocode.js'
+import CityAutocomplete from './CityAutocomplete.jsx'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -354,10 +356,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
               <div className="business-sidebar-map-section">
                 <div className="map-shell">
                   <MapContainer center={[20, 10]} zoom={2} scrollWheelZoom className="alumni-map">
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
+                    <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} tileSize={TILE_SIZE} zoomOffset={ZOOM_OFFSET} />
                     {clusters.map((c) => {
                       const place = [c.items[0].city, c.items[0].country].filter(Boolean).join(', ')
                       return (
@@ -548,8 +547,22 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
   const [isClosing, setIsClosing] = useState(false)
   const logoRef = useRef(null)
   const coverRef = useRef(null)
+  // Coordinates captured straight from a picked CityAutocomplete suggestion
+  // (address or city-level) — see handleLocationCoords. When present and
+  // still matching what's in the field, submit uses these directly instead
+  // of re-geocoding, same pattern as Jobs.jsx's "Post a role" form.
+  const [pickedCoords, setPickedCoords] = useState(
+    isEdit && typeof initial?.lat === 'number' ? { lat: initial.lat, lng: initial.lng } : null
+  )
+  const [pickedLabel, setPickedLabel] = useState(isEdit ? initial?.city || '' : '')
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })) }
+
+  function handleLocationCoords(payload) {
+    if (!payload) { setPickedCoords(null); setPickedLabel(''); return }
+    setPickedCoords({ lat: payload.lat, lng: payload.lng })
+    setPickedLabel(payload.label)
+  }
 
   useEffect(() => {
     if (isEdit) return
@@ -649,12 +662,17 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
       const finalLogoUrl = logoFile ? await uploadLogo() : logoUrl
       const finalCoverUrl = coverFile ? await uploadCover() : coverUrl
 
-      // Re-geocode only when the city/country actually changed (or a brand
-      // new listing) — same "don't hit Nominatim on every unrelated edit"
-      // rule Profile.jsx already follows for people's pins.
+      // Prefer coordinates captured straight from a picked suggestion —
+      // already a confirmed, geocodable place/address, no need to look it
+      // up again. Otherwise fall back to re-geocoding only when the
+      // city/country actually changed (or this is a brand new listing),
+      // same "don't hit the API on every unrelated edit" rule Profile.jsx
+      // follows for people's pins.
       let coords = { lat: initial?.lat ?? null, lng: initial?.lng ?? null }
       const cityChanged = !isEdit || form.city !== initial?.city || form.country !== initial?.country
-      if (cityChanged && form.city.trim()) {
+      if (pickedCoords && form.city.trim() === pickedLabel.trim()) {
+        coords = pickedCoords
+      } else if (cityChanged && form.city.trim()) {
         const geo = await geocodeCity(form.city, form.country)
         coords = { lat: geo?.lat ?? null, lng: geo?.lng ?? null }
       } else if (cityChanged && !form.city.trim()) {
@@ -765,7 +783,14 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
 
           <div className="field-row" style={{ marginTop: 14 }}>
             <label className="field"><span>Location</span>
-              <input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Stellenbosch" />
+              <CityAutocomplete
+                value={form.city}
+                country={form.country}
+                onChange={(v) => set('city', v)}
+                onSelectCoords={handleLocationCoords}
+                placeholder="Street address, or just a city"
+              />
+              <span className="hint">Start typing and choose from suggestions — a full address pins your listing more precisely</span>
             </label>
             <label className="field"><span>Country</span>
               <div className="select-wrap">

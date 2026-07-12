@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { TILE_URL, TILE_ATTRIBUTION, TILE_SIZE, ZOOM_OFFSET } from '../mapTiles.js'
 import { supabase } from '../supabaseClient'
 import { geocodeCity } from '../geocode.js'
 import { Avatar } from './Directory.jsx'
@@ -480,10 +481,7 @@ export default function Events({ session, profile, onMessage }) {
             </div>
             <div className="events-mini-map">
               <MapContainer center={mapCenter} zoom={mapMatches.length ? 9 : 6} scrollWheelZoom={false} className="events-mini-map-inner">
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} tileSize={TILE_SIZE} zoomOffset={ZOOM_OFFSET} />
                 {mapMatches.map((e) => (
                   <Marker key={e.id} position={[e.lat, e.lng]} icon={eventPinIcon()} eventHandlers={{ click: () => focusEvent(e.id) }} />
                 ))}

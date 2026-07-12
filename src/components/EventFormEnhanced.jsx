@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { geocodeCity } from '../geocode.js'
+import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
 import DateTimePicker from './DateTimePicker.jsx'
 import RichTextToolbarExtended from './RichTextToolbarExtended.jsx'
@@ -14,6 +15,16 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
   const [startDate, setStartDate] = useState(initial?.event_start_time ? new Date(initial.event_start_time) : null)
   const [endDate, setEndDate] = useState(initial?.event_end_time ? new Date(initial.event_end_time) : null)
   const [location, setLocation] = useState(initial?.location || '')
+  // Coordinates captured straight from a picked CityAutocomplete suggestion
+  // (address or city-level) — see handleLocationCoords. When present and
+  // still matching what's in the field, submit uses these directly instead
+  // of re-geocoding, same pattern as Jobs.jsx's "Post a role" form. Venue
+  // names ("Eendrag, Stellenbosch") won't always be in Mapbox's suggestions,
+  // so this field stays non-strict — free-typed text is still saved as-is.
+  const [pickedCoords, setPickedCoords] = useState(
+    isEdit && typeof initial?.lat === 'number' ? { lat: initial.lat, lng: initial.lng } : null
+  )
+  const [pickedLabel, setPickedLabel] = useState('')
   const [eventUrl, setEventUrl] = useState(initial?.event_url || '')
   const [description, setDescription] = useState(initial?.description || '')
   const [registrationLimit, setRegistrationLimit] = useState(initial?.max_registrations === null ? 'unlimited' : 'limited')
@@ -38,6 +49,12 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
   function handleCancel() {
     setIsClosing(true)
     setTimeout(onCancel, 200)
+  }
+
+  function handleLocationCoords(payload) {
+    if (!payload) { setPickedCoords(null); setPickedLabel(''); return }
+    setPickedCoords({ lat: payload.lat, lng: payload.lng })
+    setPickedLabel(payload.label)
   }
 
   function handleImageSelect(e) {
@@ -98,12 +115,17 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
     setError(null)
 
     try {
-      // Geocode location if it changed
+      // Prefer coordinates captured straight from a picked suggestion —
+      // already a confirmed, geocodable place/address, no need to look it
+      // up again. Otherwise fall back to re-geocoding only when the
+      // location text actually changed.
       const trimmedLocation = location.trim()
       let coords = { lat: initial?.lat ?? null, lng: initial?.lng ?? null }
       const locationChanged = !isEdit || trimmedLocation !== (initial?.location || '')
 
-      if (locationChanged && trimmedLocation) {
+      if (pickedCoords && trimmedLocation === pickedLabel.trim()) {
+        coords = pickedCoords
+      } else if (locationChanged && trimmedLocation) {
         const geo = await geocodeCity(trimmedLocation, '')
         coords = { lat: geo?.lat ?? null, lng: geo?.lng ?? null }
       } else if (locationChanged && !trimmedLocation) {
@@ -190,10 +212,12 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
           <div className="field-row">
             <label className="field">
               <span>Location</span>
-              <input
+              <CityAutocomplete
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={setLocation}
+                onSelectCoords={handleLocationCoords}
                 placeholder="Eendrag, Stellenbosch"
+                strict={false}
               />
             </label>
             <label className="field">
