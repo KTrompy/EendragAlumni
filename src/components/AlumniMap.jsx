@@ -118,7 +118,15 @@ export default function AlumniMap({ session, people, loading, onGoToProfile, hid
 
       {pinned.length > 0 && (
         <div className="map-shell">
-          <MapContainer center={[20, 10]} zoom={2} scrollWheelZoom className="alumni-map">
+          <MapContainer
+            center={[20, 10]}
+            zoom={2}
+            minZoom={2}
+            maxBounds={[[-90, -180], [90, 180]]}
+            maxBoundsViscosity={1.0}
+            scrollWheelZoom
+            className="alumni-map"
+          >
             <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} tileSize={TILE_SIZE} zoomOffset={ZOOM_OFFSET} />
             <FitToMarkers points={clusters} />
             {clusters.map((c) => {
