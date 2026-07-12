@@ -35,6 +35,15 @@
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
+/* Site-wide smooth scroll — anchor jumps and any scrollIntoView/scrollTo
+   calls (Home's community carousel already opts in per-widget, Events and
+   Messages both jump to a specific card/message on open) glide instead of
+   snapping. No route-level scroll resets rely on this being instant, so
+   there's no navigation feeling sluggish as a side effect. Reduced-motion
+   users still get an instant jump (see the prefers-reduced-motion query
+   near the bottom of this file, which forces scroll-behavior back to
+   auto for everyone who's asked for less motion). */
+html { scroll-behavior: smooth; }
 body {
   font-family: var(--body);
   color: var(--ink);
@@ -76,6 +85,7 @@ input, textarea, select { font: inherit; }
   border-radius: var(--radius-sm);
   display: flex;
   flex-shrink: 0;
+  transition: background 0.15s ease;
 }
 .header-icon-btn:hover { background: rgba(255, 255, 255, 0.1); }
 .header-icon-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
@@ -422,6 +432,13 @@ input, textarea, select { font: inherit; }
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 65px); }
 
 .content { flex: 1; padding: 18px 24px 60px; }
+/* Every top-level page is a `.panel` (Home, Feed, Jobs, Events, Directory,
+   Profile, etc.) — a small shared fade-in here means navigating between
+   them always feels like a continuous transition rather than an abrupt
+   swap, instead of that only being true on the handful of pages that
+   opted into their own "animation: fade-in" individually (profile-page
+   and others below still do — harmless, just redundant with this). */
+.panel { animation: fade-in 0.3s var(--ease); }
 .panel.narrow { max-width: 620px; margin: 0 auto; }
 /* Person-profile page only: center relative to the whole page (nav +
    content), not just the leftover content column to the right of the nav.
@@ -872,13 +889,13 @@ input, textarea, select { font: inherit; }
    buttons, and post-action buttons alike) reads as red/destructive at a
    glance, on both desktop and mobile — not just on hover, since touch has
    no hover state to reveal it. */
-.delete-danger { color: var(--danger); }
+.delete-danger { color: var(--danger); transition: background 0.15s ease, color 0.15s ease; }
 .btn.ghost.delete-danger { border-color: var(--danger); }
 .delete-danger:hover:not(:disabled) { background: rgba(163, 51, 39, 0.12); color: var(--danger); }
 .btn.ghost.delete-danger:hover:not(:disabled) { background: var(--danger); color: #fff; }
 button.delete-danger svg { flex-shrink: 0; }
 
-.link-btn { background: none; border: none; color: var(--orange); font-weight: 600; padding: 4px; }
+.link-btn { background: none; border: none; color: var(--orange); font-weight: 600; padding: 4px; transition: color 0.15s ease; }
 .link-btn:hover { color: var(--orange-dark); }
 .link-btn.small { font-size: 12.5px; margin-left: auto; color: var(--ink-soft); }
 .link-btn.small:hover { color: var(--danger); }
