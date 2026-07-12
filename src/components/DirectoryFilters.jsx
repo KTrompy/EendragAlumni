@@ -241,7 +241,7 @@ export function DirectoryFilterPanel({ f }) {
         </div>
       </FilterSection>
 
-      <FilterSection title="Find or offer help" defaultOpen={false}>
+      <FilterSection title="Skills & services" defaultOpen={false}>
         <MultiSelectAutocomplete
           options={SERVICES_OFFERED}
           values={f.draftFilters.services}
