@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { Avatar } from './Directory.jsx'
+import { PhotoBlock } from './Directory.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
@@ -130,40 +130,45 @@ export default function PersonProfile({ session, me, onMessage }) {
 
   return (
     <section className="panel narrow profile-page person-profile-page">
-      <div className="profile-header-with-back">
-        <button className="profile-back-btn" onClick={() => navigate(-1)} aria-label="Back">
-          ← Back
-        </button>
-        <div>
-          <h2 className="panel-title">
-            {p.full_name || 'Alumnus'}
-            {isMe && <span className="person-name-you">You</span>}
-          </h2>
-          {roleLine && <p className="panel-sub">{roleLine}</p>}
-        </div>
-        <div className="profile-header-actions">
-          {!isMe && (
-            <>
-              <button className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
-                <MessageIcon />
-              </button>
-              {p.linkedin_url && (
-                <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer" className="header-icon-btn profile-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
-                  <LinkedInIcon />
-                </a>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      <button className="profile-back-btn profile-back-standalone" onClick={() => navigate(-1)} aria-label="Back">
+        ← Back
+      </button>
 
-      {/* Photo hero — same treatment as the "My profile" page, minus the
-          upload controls since this isn't editable. */}
-      <div className="profile-photo-section">
-        <div className="profile-photo-card">
-          <Avatar url={p.avatar_url} name={p.full_name} size={120} />
+      {/* Side-by-side hero: a large real photo on the left (instead of the
+          small circular avatar this used to show) with name, role, location
+          and actions alongside it on the right — stacks on mobile. */}
+      <div className="profile-hero">
+        <div className="profile-hero-photo">
+          <PhotoBlock url={p.avatar_url} name={p.full_name} className="profile-hero-photo-img" />
+        </div>
+
+        <div className="profile-hero-body">
+          <div className="profile-hero-top">
+            <div>
+              <h2 className="panel-title profile-hero-name">
+                {p.full_name || 'Alumnus'}
+                {isMe && <span className="person-name-you">You</span>}
+              </h2>
+              {roleLine && <p className="panel-sub profile-hero-role">{roleLine}</p>}
+            </div>
+            <div className="profile-header-actions">
+              {!isMe && (
+                <>
+                  <button className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
+                    <MessageIcon />
+                  </button>
+                  {p.linkedin_url && (
+                    <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer" className="header-icon-btn profile-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
+                      <LinkedInIcon />
+                    </a>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
           {locationLine && (
-            <p className="profile-card-location">
+            <p className="profile-card-location profile-hero-location">
               <LocationIcon /> {locationLine}
             </p>
           )}
