@@ -119,13 +119,19 @@ export default function App() {
   }, [location.pathname])
 
   // Person-profile page only: shift the sidebar to sit flush against the
-  // profile card's left edge instead of its usual fixed spot at the page's
-  // far-left. That card's own horizontal position is computed to center on
-  // the full window (see .person-profile-page in styles.css), so it lands
-  // somewhere different at every window width — measuring it here in JS
-  // (rather than hardcoding the same math again in CSS) is what keeps the
-  // nav correctly hugging it at any width instead of drifting off by a few
-  // pixels or breaking at in-between sizes.
+  // profile card's left edge (horizontally) and line its top up with the
+  // top of the profile photo (vertically) instead of its usual fixed spot
+  // at the page's far-left, top: 85px. The card's own horizontal position
+  // is computed to center on the full window (see .person-profile-page in
+  // styles.css), so it lands somewhere different at every window width —
+  // measuring it here in JS (rather than hardcoding the same math again in
+  // CSS) is what keeps the nav correctly hugging it at any width instead of
+  // drifting off by a few pixels or breaking at in-between sizes. The
+  // vertical shift is a one-time offset added to its normal sticky "top"
+  // (not something that re-tracks the photo while scrolling — the photo
+  // scrolls away like normal content while the nav stays sticky, same as
+  // before, it just starts lower so the back button ends up sitting above
+  // it rather than beside it).
   useEffect(() => {
     const isProfileRoute = /^\/people\/[^/]+$/.test(location.pathname)
     const sidebarEl = sidebarRef.current
@@ -133,32 +139,64 @@ export default function App() {
 
     if (!isProfileRoute) {
       sidebarEl.style.transform = ''
+      sidebarEl.style.top = ''
+      sidebarEl.style.height = ''
       return
     }
 
     const GAP = 20 // matches .app-body's own sidebar/content gap
+    // .sidebar's own CSS values (top: 85px; height: calc(100vh - 105px)) —
+    // kept in sync with styles.css so the extra vertical shift below stacks
+    // on top of the right base instead of assuming a stale one.
+    const BASE_TOP = 85
+    const BASE_HEIGHT = 'calc(100vh - 105px)'
 
     function reposition() {
       const panelEl = document.querySelector('.person-profile-page')
-      if (!panelEl) { sidebarEl.style.transform = ''; return }
+      if (!panelEl) {
+        sidebarEl.style.transform = ''
+        sidebarEl.style.top = ''
+        sidebarEl.style.height = ''
+        return
+      }
       // Reset before measuring so the sidebar's own rect reflects its
-      // natural (untransformed) position, not whatever shift was applied
+      // natural (un-overridden) position, not whatever shift was applied
       // on the previous measurement.
       sidebarEl.style.transform = ''
+      sidebarEl.style.top = ''
+      sidebarEl.style.height = ''
+
       const sidebarRect = sidebarEl.getBoundingClientRect()
       const panelRect = panelEl.getBoundingClientRect()
-      const shift = (panelRect.left - GAP) - sidebarRect.right
+
+      // Horizontal: hug the card's left edge.
       // Only ever move it rightward, toward the content — if this ever
       // comes out negative (content lands further left than the nav
       // already sits, e.g. some in-between window width) leave the nav
       // at its normal spot rather than overlapping the card.
-      if (shift > 0) sidebarEl.style.transform = `translateX(${shift}px)`
+      const shiftX = (panelRect.left - GAP) - sidebarRect.right
+      if (shiftX > 0) sidebarEl.style.transform = `translateX(${shiftX}px)`
+
+      // Vertical: line the nav's top up with the photo's top. Same
+      // rightward-only logic applied downward — only ever push it lower,
+      // never higher than its normal 85px.
+      const photoEl = document.querySelector('.profile-hero-photo')
+      if (photoEl) {
+        const shiftY = photoEl.getBoundingClientRect().top - sidebarRect.top
+        if (shiftY > 0) {
+          sidebarEl.style.top = `${BASE_TOP + shiftY}px`
+          // Shrinks by the same amount so the bottom edge (and its normal
+          // 20px clearance above the page bottom) stays put — the nav just
+          // gets shorter, rather than overflowing past where it used to end.
+          sidebarEl.style.height = `calc(${BASE_HEIGHT} - ${shiftY}px)`
+        }
+      }
     }
 
     reposition()
 
-    // Covers three ways the card's position can change after this effect
-    // first runs: window resize, the content column itself resizing
+    // Covers the ways the card/photo's position can change after this
+    // effect first runs: window resize, the content column itself resizing
     // (ResizeObserver), and the profile fetch's loading → loaded swap,
     // which mounts a fresh .person-profile-page node rather than resizing
     // anything already being observed (MutationObserver).
