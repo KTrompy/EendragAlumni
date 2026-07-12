@@ -490,21 +490,28 @@ export default function Home({ session, profile, onMessage }) {
                     onPointerLeave={endCommunityDrag}
                   >
                     {community.map((m) => (
-                      <div key={m.id} className="home-community-card">
-                        <button
-                          className="home-community-card-identity"
-                          onClick={(e) => handleCommunityCardClick(e, () => navigate(`/people/${m.id}`))}
-                          title={[m.occupation, m.company].filter(Boolean).join(' @ ')}
-                        >
+                      <div
+                        key={m.id}
+                        className="home-community-card"
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => handleCommunityCardClick(e, () => navigate(`/people/${m.id}`))}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) navigate(`/people/${m.id}`) }}
+                        title={[m.occupation, m.company].filter(Boolean).join(' @ ')}
+                      >
+                        <div className="home-community-card-identity">
                           <Avatar url={m.avatar_url} name={m.full_name} size={54} />
                           <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
-                        </button>
+                        </div>
                         {m.industry && (
                           <p className="home-community-industry">{m.industry}</p>
                         )}
                         <button
                           className="home-community-message-btn"
-                          onClick={(e) => handleCommunityCardClick(e, () => onMessage?.(m, buildIcebreaker(profile, m)))}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCommunityCardClick(e, () => onMessage?.(m, buildIcebreaker(profile, m)))
+                          }}
                         >
                           Message
                         </button>

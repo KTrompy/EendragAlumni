@@ -6501,19 +6501,22 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-feed-layout .feed-widget-viewall { font-size: 13.5px; padding: 12px 4px 8px; }
 .home-feed-layout .empty.small { font-size: 14px; padding: 10px 0; }
 
-.home-post-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.home-post-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+/* Each post is its own card (background + border) rather than a hairline
+   row, so posts read as distinct blocks and the avatar/thumbnail always
+   have breathing room instead of sitting flush against the widget edge. */
 .home-post-preview {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
-  cursor: pointer;
+  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  transition: background 0.2s var(--ease);
+  cursor: pointer;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
 }
-.home-post-preview:hover { background: var(--paper); }
-.home-post-preview:last-child { border-bottom: none; padding-bottom: 8px; }
+.home-post-preview:hover { background: var(--orange-soft); border-color: var(--orange); }
 .home-post-preview-body { flex: 1; min-width: 0; }
 .home-post-preview-header {
   display: flex;
@@ -6660,6 +6663,10 @@ button.delete-danger svg { flex-shrink: 0; }
      content area with roughly half of the 3rd peeking past the edge. */
   flex: 0 0 102px;
   scroll-snap-align: start;
+  /* Whole card navigates to the profile (see onClick in Home.jsx) — only
+     the Message button opts out via stopPropagation — so the pointer
+     cursor belongs on the card itself, not just the identity button. */
+  cursor: pointer;
 }
 .home-community-card:hover { border-color: var(--orange); box-shadow: 0 2px 6px rgba(232, 97, 28, 0.08); }
 .home-community-card-identity {
@@ -6688,11 +6695,11 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .home-community-industry {
   /* Smaller than before (was 11px) specifically so words wrap whole at
-     word boundaries instead of splitting mid-word — word-break/overflow-wrap
-     are deliberately left at their normal (no-break) default. If an
-     industry name still can't fit in 2 lines at this size (e.g.
-     "Telecommunications"), it's clamped with an ellipsis rather than
-     letting a single word carry onto a 3rd line or spill out of the card. */
+     word boundaries in the common case. If an industry name still can't
+     fit in 2 lines at this size (e.g. "Telecommunications"), it's clamped
+     with an ellipsis rather than letting a single word carry onto a 3rd
+     line — overflow-wrap below is only a fallback for the rarer case of
+     one word alone being wider than the card. */
   font-size: 9.5px;
   color: var(--ink-soft);
   font-weight: 600;
@@ -6706,6 +6713,14 @@ button.delete-danger svg { flex-shrink: 0; }
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Width constrained to the card's own content box (not just hugging
+     its text) plus a little side padding, so a long single word never
+     runs out to — or past — the card's border. overflow-wrap is the
+     safety net for the rare word that still doesn't fit at 2 lines. */
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 3px;
+  overflow-wrap: break-word;
 }
 .home-community-message-btn {
   width: 100%;
