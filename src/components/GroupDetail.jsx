@@ -8,6 +8,7 @@ import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
+import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
@@ -795,6 +796,9 @@ function GroupPostItem({ post: p, session, isAdmin, liked, onLike, onDelete, onE
           <button className="post-action" onClick={onMessage}>
             <MessageIcon /> Message
           </button>
+        )}
+        {p.author_id !== session.user.id && (
+          <ReportButton session={session} entityType="group_post" entityId={p.id} className="post-action" />
         )}
       </div>
 

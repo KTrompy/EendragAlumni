@@ -11,13 +11,13 @@ function timeAgo(iso) {
 
 // Where a notification should take you when clicked — matches the tabs
 // this app already has (see App.jsx TABS).
-const ENTITY_TAB = { post: 'feed', event: 'events', conversation: null }
+const ENTITY_TAB = { post: 'feed', event: 'events', conversation: null, mentoring_match: 'mentoring' }
 
 // Bell + dropdown in the header. Polls once on mount, then stays live via
 // Supabase realtime (new row insert) so a badge appears without a refresh —
 // this is the app's only cross-feature "something happened" signal, so it
-// intentionally covers likes/comments/RSVPs/messages in one place instead
-// of each feature inventing its own alert.
+// intentionally covers likes/comments/RSVPs/messages/mentoring match
+// requests in one place instead of each feature inventing its own alert.
 export default function NotificationBell({ session, onNavigate }) {
   const [items, setItems] = useState([])
   const [open, setOpen] = useState(false)

@@ -5,6 +5,7 @@ import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
+import ReportButton from './ReportButton.jsx'
 import { Avatar } from './Directory.jsx'
 import ListAutocomplete from './ListAutocomplete.jsx'
 import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
@@ -535,6 +536,9 @@ export default function Jobs({ session, profile, onMessage }) {
                   <button className="btn ghost small" onClick={() => shareJob(j)}>
                     {copiedId === j.id ? 'Copied!' : 'Share'}
                   </button>
+                  {!isMine && (
+                    <ReportButton session={session} entityType="job" entityId={j.id} className="btn ghost small" />
+                  )}
                   {isMine && (
                     <button className="btn ghost small" onClick={() => setEditingId(j.id)}>
                       Edit

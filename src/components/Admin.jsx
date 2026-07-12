@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -8,6 +9,7 @@ import { Avatar } from './Directory.jsx'
 
 const SUBTABS = [
   { id: 'pending', label: 'Pending approval' },
+  { id: 'reports', label: 'Reports' },
   { id: 'members', label: 'Members' },
   { id: 'posts', label: 'Posts' },
   { id: 'jobs', label: 'Jobs' },
@@ -62,6 +64,12 @@ export default function Admin({ session }) {
   const [loadingMembers, setLoadingMembers] = useState(true)
   const [memberError, setMemberError] = useState(null)
   const [counts, setCounts] = useState({})
+  const [openReportsCount, setOpenReportsCount] = useState(0)
+
+  async function loadOpenReportsCount() {
+    const { count } = await supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'open')
+    setOpenReportsCount(count || 0)
+  }
 
   async function loadMembers() {
     setLoadingMembers(true)
@@ -83,6 +91,7 @@ export default function Admin({ session }) {
   useEffect(() => {
     loadMembers()
     loadCounts()
+    loadOpenReportsCount()
   }, [])
 
   // Optimistic toggle, rolled back (via a full reload) if the write fails —
@@ -111,6 +120,7 @@ export default function Admin({ session }) {
       <div className="admin-stats-row">
         <StatCard label="Members" value={members.length} />
         <StatCard label="Pending" value={pending.length} highlight={pending.length > 0} />
+        <StatCard label="Open reports" value={openReportsCount} highlight={openReportsCount > 0} />
         <StatCard label="Posts" value={counts.posts} />
         <StatCard label="Jobs" value={counts.jobs} />
         <StatCard label="Events" value={counts.events} />
@@ -134,6 +144,9 @@ export default function Admin({ session }) {
             {t.id === 'pending' && pending.length > 0 && (
               <span className="admin-subtab-badge">{pending.length}</span>
             )}
+            {t.id === 'reports' && openReportsCount > 0 && (
+              <span className="admin-subtab-badge">{openReportsCount}</span>
+            )}
           </button>
         ))}
       </div>
@@ -156,6 +169,7 @@ export default function Admin({ session }) {
       {subtab === 'pending' && (
         <PendingList loading={loadingMembers} pending={pending} onApprove={(id) => setApproved(id, true)} />
       )}
+      {subtab === 'reports' && <ReportsModeration onCountChange={setOpenReportsCount} />}
       {subtab === 'members' && (
         <MembersTable
           loading={loadingMembers}
@@ -216,6 +230,119 @@ function PendingList({ loading, pending, onApprove }) {
           <button className="btn primary small" onClick={() => onApprove(m.id)}>Approve</button>
         </li>
       ))}
+    </ul>
+  )
+}
+
+/* ---------- Reports (member-filed flags on posts/jobs/businesses/profiles) ---------- */
+const REPORT_ENTITY_LABELS = { post: 'Feed post', job: 'Job listing', business: 'Business listing', profile: 'Member profile', group_post: 'Group post' }
+// Group posts don't have their own standalone route (they only exist
+// nested inside a group's detail page, and the report doesn't carry which
+// group), so there's no "View" link for that one entity type — the
+// reason/detail text is still enough for an admin to know what to look
+// for. Every other type maps straight to the same route the rest of the
+// app already uses for it.
+const REPORT_ENTITY_PATH = {
+  post: (id) => `/feed/${id}`,
+  job: (id) => `/jobs/${id}`,
+  business: (id) => `/businesses/${id}`,
+  profile: (id) => `/people/${id}`,
+}
+const REPORT_REASON_LABELS = { spam: 'Spam or misleading', harassment: 'Harassment or abuse', inappropriate: 'Inappropriate content', scam: 'Scam or fraud', other: 'Something else' }
+
+function ReportsModeration({ onCountChange }) {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+
+  async function load() {
+    const { data } = await supabase
+      .from('reports')
+      .select('id, entity_type, entity_id, reason, details, status, created_at, reporter:profiles!reports_reporter_id_fkey ( full_name )')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    setItems(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function setStatus(id, status) {
+    const { error } = await supabase.from('reports').update({ status }).eq('id', id)
+    if (error) { load(); return }
+    setItems((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, status } : r))
+      onCountChange?.(next.filter((r) => r.status === 'open').length)
+      return next
+    })
+  }
+
+  if (loading) return <LoadingState message="Loading reports…" />
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon="feed"
+        message="No reports filed."
+        subMessage="Flags members submit on posts, jobs, businesses and profiles will show up here."
+      />
+    )
+  }
+
+  const open = items.filter((r) => r.status === 'open')
+  const resolved = items.filter((r) => r.status !== 'open')
+
+  return (
+    <>
+      {open.length > 0 && (
+        <>
+          <h3 className="admin-list-heading">Needs review</h3>
+          <ReportList items={open} onSetStatus={setStatus} navigate={navigate} />
+        </>
+      )}
+      {resolved.length > 0 && (
+        <>
+          <h3 className="admin-list-heading">Resolved</h3>
+          <ReportList items={resolved} onSetStatus={setStatus} navigate={navigate} />
+        </>
+      )}
+    </>
+  )
+}
+
+function ReportList({ items, onSetStatus, navigate }) {
+  return (
+    <ul className="admin-list">
+      {items.map((r) => {
+        const path = REPORT_ENTITY_PATH[r.entity_type]?.(r.entity_id)
+        return (
+          <li className="admin-row" key={r.id}>
+            <div className="admin-row-info">
+              <span className="admin-row-name">
+                {REPORT_ENTITY_LABELS[r.entity_type] || r.entity_type}
+                <span
+                  className={r.status === 'open' ? 'admin-badge pending' : r.status === 'dismissed' ? 'admin-badge' : 'admin-badge approved'}
+                  style={{ marginLeft: 8 }}
+                >
+                  {r.status === 'open' ? 'Open' : r.status === 'dismissed' ? 'Dismissed' : 'Reviewed'}
+                </span>
+              </span>
+              <span className="admin-row-meta">
+                {REPORT_REASON_LABELS[r.reason] || r.reason} · Reported by {r.reporter?.full_name || 'a member'} · {timeAgo(r.created_at)}
+              </span>
+              {r.details && <p className="admin-row-preview">{truncate(r.details)}</p>}
+            </div>
+            <div className="admin-row-actions">
+              {path && <button className="btn ghost small" onClick={() => navigate(path)}>View</button>}
+              {r.status !== 'reviewed' && (
+                <button className="btn ghost small" onClick={() => onSetStatus(r.id, 'reviewed')}>Mark reviewed</button>
+              )}
+              {r.status !== 'dismissed' && (
+                <button className="btn ghost small" onClick={() => onSetStatus(r.id, 'dismissed')}>Dismiss</button>
+              )}
+            </div>
+          </li>
+        )
+      })}
     </ul>
   )
 }

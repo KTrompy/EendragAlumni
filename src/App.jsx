@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth.jsx'
+import ResetPassword from './components/ResetPassword.jsx'
+import GlobalSearch from './components/GlobalSearch.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Home from './components/Home.jsx'
 import Feed from './components/Feed.jsx'
@@ -79,6 +81,13 @@ export default function App() {
   const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
+  const [searchOpen, setSearchOpen] = useState(false) // header site-wide search modal
+  // True the instant Supabase fires PASSWORD_RECOVERY (someone clicked the
+  // reset-password link from Auth.jsx's "Forgot password?" flow) — that
+  // event carries a real session, so without this flag the check below
+  // would just drop them straight into the normal signed-in app instead of
+  // letting them set a new password first.
+  const [recoveryMode, setRecoveryMode] = useState(false)
   // Desktop sidebar "More" section. null = no manual choice yet (falls back
   // to auto-expanding whenever the active page is one of the secondary
   // tabs); true/false = the person explicitly clicked More/Less, which
@@ -278,18 +287,46 @@ export default function App() {
       setSession(data.session)
       setLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true)
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
     if (!session) { setProfile(null); return }
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single()
-      .then(({ data }) => setProfile(data))
+    let cancelled = false
+
+    // Same auth-not-settled race documented in Home.jsx's dashboard load:
+    // this effect fires the instant `session` changes (including on
+    // TOKEN_REFRESHED / re-focus, not just initial sign-in), which can
+    // race the underlying supabase-js client's auth header still being
+    // attached to outgoing requests. When that happens the `to
+    // authenticated` RLS policy on profiles silently matches nothing,
+    // .single() comes back as a "no rows" error, and setProfile(null)
+    // makes the whole app render as a blank/0%-complete profile (see
+    // Home's "Good afternoon, there" banner) until a manual refresh gives
+    // the client time to settle. Awaiting getSession() first, plus one
+    // retry on error, closes that window instead.
+    async function load(isRetry = false) {
+      await supabase.auth.getSession()
+      if (cancelled) return
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+      if (cancelled) return
+      if (error && !isRetry) {
+        await new Promise((r) => setTimeout(r, 600))
+        if (!cancelled) await load(true)
+        return
+      }
+      setProfile(data || null)
+    }
+    load()
+    return () => { cancelled = true }
   }, [session])
 
   // Heartbeat: writes last_seen every few minutes while the app is open (and
@@ -338,6 +375,7 @@ export default function App() {
   }
 
   if (loading) return <div className="center-page">Loading…</div>
+  if (recoveryMode) return <ResetPassword onDone={() => setRecoveryMode(false)} />
   if (!session) return <Auth />
 
   if (showOnboarding) {
@@ -381,6 +419,15 @@ export default function App() {
           </div>
 
           <div className="masthead-actions">
+            <button
+              className="header-icon-btn"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+              title="Search"
+            >
+              <HeaderSearchIcon />
+            </button>
+
             <button
               className="header-icon-btn"
               onClick={() => setMessagesOpen((o) => !o)}
@@ -643,6 +690,8 @@ export default function App() {
         </>
       )}
 
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+
       <FloatingMessages
         session={session}
         profile={profile}
@@ -824,6 +873,14 @@ function SignOutIcon() {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="M16 17l5-5-5-5" />
       <path d="M21 12H9" />
+    </svg>
+  )
+}
+function HeaderSearchIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.35-4.35" />
     </svg>
   )
 }

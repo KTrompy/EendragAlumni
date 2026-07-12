@@ -11,6 +11,7 @@ import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
+import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
 import { useIsWide } from '../utils.js'
 import { COUNTRIES } from '../constants.js'
@@ -497,6 +498,9 @@ function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpen, on
             )}
             {!isMine && (
               <button className="btn ghost small" onClick={onMessage}>Message about this business</button>
+            )}
+            {!isMine && (
+              <ReportButton session={session} entityType="business" entityId={b.id} className="btn ghost small" />
             )}
             {isMine && (
               <button className="btn ghost small" onClick={() => setEditingId(b.id)}>Edit</button>

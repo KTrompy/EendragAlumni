@@ -1134,6 +1134,7 @@ button.delete-danger svg { flex-shrink: 0; }
   margin: 4px 0 26px;
 }
 .auth-card .link-btn { display: block; margin: 12px auto 0; }
+.auth-forgot-link { display: block !important; margin: -6px 0 6px auto !important; font-size: 12.5px; }
 .auth-note {
   font-size: 12.5px;
   color: var(--ink-soft);
@@ -2482,6 +2483,70 @@ button.delete-danger svg { flex-shrink: 0; }
   margin-top: 8px;
 }
 .industry-other-row input { flex: 1; }
+
+/* ---------- Global search (header search icon) ---------- */
+.global-search-backdrop { align-items: flex-start; padding-top: 90px; }
+.global-search-modal {
+  max-width: 560px;
+  border-top: none;
+}
+.global-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+.global-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--ink);
+  background: none;
+}
+.global-search-input::placeholder { color: var(--ink-soft); }
+.global-search-input-wrap .modal-close { color: var(--ink-soft); }
+.global-search-input-wrap .modal-close:hover { color: var(--maroon); }
+.global-search-results {
+  overflow-y: auto;
+  padding: 8px 0 14px;
+}
+.global-search-results .empty.small { padding: 24px 18px; text-align: center; }
+.global-search-group h4 {
+  margin: 10px 18px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--orange-dark);
+}
+.global-search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.global-search-result:hover { background: var(--paper); }
+.global-search-result span { display: flex; flex-direction: column; min-width: 0; }
+.global-search-result strong { font-size: 14px; color: var(--ink); }
+.global-search-result em {
+  font-style: normal;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* ---------- Profile modal: business-card-style header ---------- */
 /* Photo sits beside the name/role/location instead of alone on its own
@@ -5993,6 +6058,15 @@ button.delete-danger svg { flex-shrink: 0; }
   line-height: 1.5;
 }
 
+.admin-list-heading {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin: 18px 0 8px;
+}
+.admin-list-heading:first-child { margin-top: 0; }
 .admin-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .admin-row {
   background: var(--card);

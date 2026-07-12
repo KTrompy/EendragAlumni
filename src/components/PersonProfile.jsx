@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
+import ReportButton from './ReportButton.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import { normalizeExpertise, formatExperienceRange, formatExperienceDuration } from '../utils.js'
 
@@ -147,6 +148,7 @@ export default function PersonProfile({ session, me, onMessage }) {
                       <LinkedInIcon />
                     </a>
                   )}
+                  <ReportButton session={session} entityType="profile" entityId={p.id} className="header-icon-btn" label="" title="Report member" />
                 </>
               )}
             </div>

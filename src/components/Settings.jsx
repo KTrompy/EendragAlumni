@@ -10,15 +10,17 @@ const SETTINGS_TABS = [
 ]
 
 // Real categories only — these are the notification types Eendrag Hub
-// actually generates today (see the notify_* triggers in schema-update-9
-// and schema-update-21). No group-invite / mentoring-milestone / business
-// / admin-broadcast rows, because those features don't send notifications
-// yet — adding them here would just be UI with nothing behind it.
+// actually generates today (see the notify_* triggers in schema-update-9,
+// schema-update-21, and schema-update-28 for mentoring). No group-invite /
+// business / admin-broadcast rows, because those features don't send
+// notifications yet — adding them here would just be UI with nothing
+// behind it.
 const NOTIF_CATEGORIES = [
   { key: 'notify_message', label: 'Someone sends you a message' },
   { key: 'notify_post_activity', label: 'Someone likes or comments on your post' },
   { key: 'notify_event_rsvp', label: "Someone RSVPs to an event you created" },
   { key: 'notify_event_comment', label: 'Someone comments on an event you created' },
+  { key: 'notify_mentoring', label: 'A mentoring match is requested or responded to' },
 ]
 
 const PRIVACY_FIELDS = [
@@ -182,7 +184,7 @@ function NotificationsTab({ session }) {
       .eq('user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => {
-        setPrefs(data || { notify_message: true, notify_post_activity: true, notify_event_rsvp: true, notify_event_comment: true })
+        setPrefs(data || { notify_message: true, notify_post_activity: true, notify_event_rsvp: true, notify_event_comment: true, notify_mentoring: true })
         setLoading(false)
       })
   }, [session.user.id])

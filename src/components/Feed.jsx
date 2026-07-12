@@ -6,6 +6,7 @@ import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
+import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
@@ -903,6 +904,9 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
           >
             <MessageIcon /> Message
           </button>
+        )}
+        {p.author_id !== session.user.id && (
+          <ReportButton session={session} entityType="post" entityId={p.id} className="post-action" />
         )}
       </div>
 
