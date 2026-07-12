@@ -1434,6 +1434,15 @@ button.delete-danger svg { flex-shrink: 0; }
   gap: 24px;
   align-items: start;
   margin-top: 16px;
+  /* Give the sticky sidebar room to actually stick. The grid's height is
+     the max of its two children (align-items: start), so on pages with a
+     short results list the grid ends up the same height as the sidebar —
+     leaving zero scroll range for `position: sticky`, so the sidebar just
+     travels with the grid and disappears once you scroll past it. Padding
+     the grid to at least a viewport height keeps the sticky element within
+     range for the full scrollable page. The .sidebar (left nav) works for
+     the same reason — .app-main sets a matching min-height on its side. */
+  min-height: calc(100vh - 180px);
 }
 .directory-main { min-width: 0; }
 /* Sticks in place at a fixed offset below the masthead while the results
@@ -1671,7 +1680,10 @@ button.delete-danger svg { flex-shrink: 0; }
 .person-row-chevron { color: var(--line-strong); display: flex; margin-left: 4px; }
 
 @media (max-width: 900px) {
-  .directory-layout { grid-template-columns: 1fr; }
+  /* Single column on narrow screens — the sidebar collapses out of the
+     grid, so the desktop min-height (added to give sticky room) would just
+     leave empty space at the bottom of short pages. Reset it here. */
+  .directory-layout { grid-template-columns: 1fr; min-height: 0; }
 }
 @media (max-width: 640px) {
   .person-row { flex-wrap: wrap; padding: 14px; }
@@ -2567,6 +2579,10 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-columns: 1fr 280px;
   gap: 18px;
   align-items: start;
+  /* See .directory-layout for the rationale — the grid needs a min-height
+     so the sticky sidebar has a scroll range instead of getting locked to
+     the grid's (potentially short) height. */
+  min-height: calc(100vh - 180px);
 }
 .feed-main { min-width: 0; }
 .feed-sidebar {
@@ -2587,7 +2603,10 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-feed-layout .feed-main { display: flex; flex-direction: column; gap: 26px; }
 .home-feed-layout .feed-sidebar { gap: 20px; }
 @media (max-width: 960px) {
-  .feed-layout { grid-template-columns: 1fr; }
+  /* See .directory-layout mobile override — reset the desktop min-height
+     added to give the sticky sidebar room, otherwise short single-column
+     pages get extra empty space at the bottom. */
+  .feed-layout { grid-template-columns: 1fr; min-height: 0; }
   .feed-sidebar { position: static; }
 }
 
@@ -5117,10 +5136,14 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-columns: 1fr 300px;
   gap: 18px;
   align-items: start;
+  /* See .directory-layout — min-height so the sticky sidebar has scroll
+     range even when the events list is short. */
+  min-height: calc(100vh - 180px);
 }
 .events-sidebar { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 85px; }
 @media (max-width: 960px) {
-  .events-layout { grid-template-columns: 1fr; }
+  /* Reset desktop sticky-room min-height on single-column mobile layout. */
+  .events-layout { grid-template-columns: 1fr; min-height: 0; }
   .events-sidebar { position: static; }
 }
 .events-post-btn { text-transform: uppercase; letter-spacing: 0.04em; font-weight: 800; }
@@ -6197,10 +6220,14 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-columns: 1fr 300px;
   gap: 18px;
   align-items: start;
+  /* See .directory-layout — min-height so the sticky sidebar stays pinned
+     rather than scrolling out with the grid on shorter listings. */
+  min-height: calc(100vh - 180px);
 }
 .business-detail-sidebar { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 85px; }
 @media (max-width: 960px) {
-  .business-detail-layout { grid-template-columns: 1fr; }
+  /* Reset desktop sticky-room min-height on single-column mobile layout. */
+  .business-detail-layout { grid-template-columns: 1fr; min-height: 0; }
   .business-detail-sidebar { position: static; }
 }
 
@@ -6353,11 +6380,15 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-columns: 1fr 280px;
   gap: 24px;
   align-items: start;
+  /* See .directory-layout — min-height so the sticky sidebar stays pinned
+     rather than scrolling out with the grid on shorter listings. */
+  min-height: calc(100vh - 180px);
 }
 .job-detail-main { min-width: 0; }
 .job-detail-sidebar { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 85px; }
 @media (max-width: 960px) {
-  .job-detail-layout { grid-template-columns: 1fr; }
+  /* Reset desktop sticky-room min-height on single-column mobile layout. */
+  .job-detail-layout { grid-template-columns: 1fr; min-height: 0; }
   .job-detail-sidebar { position: static; }
 }
 
