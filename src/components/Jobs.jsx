@@ -174,11 +174,18 @@ export default function Jobs({ session, profile, onMessage }) {
   useEffect(() => {
     loadFirstPage()
     loadSavedIds()
+    let debounceTimer
     const channel = supabase
       .channel('jobs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => loadPage({ replace: true }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => loadPage({ replace: true }), 300)
+      })
       .subscribe()
-    return () => supabase.removeChannel(channel)
+    return () => {
+      clearTimeout(debounceTimer)
+      supabase.removeChannel(channel)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
