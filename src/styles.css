@@ -418,12 +418,16 @@ input, textarea, select { font: inherit; }
 
 .content { flex: 1; padding: 18px 24px 60px; }
 .panel.narrow { max-width: 620px; margin: 0 auto; }
-/* Person-profile page only: sit flush against the sidebar instead of
-   centering in the leftover space beside it — on wide viewports that
-   centering left a large, odd gap between the nav and the profile card.
-   No-op on mobile, where the sidebar is hidden and the column is already
-   full-width regardless of margin. */
-.panel.narrow.person-profile-page { margin: 0; }
+/* Person-profile page only: center relative to the whole page (nav +
+   content), not just the leftover content column to the right of the nav.
+   `margin: 0 auto` above only centers within that narrower column, which
+   visibly shifts the card right of the page's true center — this nudges
+   it back left by half the sidebar's 216px width + 20px gap (118px) so
+   its middle lines up with the middle of the browser window instead.
+   Reset at the same breakpoint the sidebar itself hides at (720px, see
+   .sidebar/.app-body below) since there's no nav offset to correct for
+   on mobile. */
+.panel.narrow.person-profile-page { transform: translateX(-118px); }
 .panel-title {
   position: relative;
   font-family: var(--display);
@@ -5517,6 +5521,7 @@ button.delete-danger svg { flex-shrink: 0; }
   .sidebar { display: none; }
   .app-body { display: block; }
   .app-main { min-height: 0; }
+  .panel.narrow.person-profile-page { transform: none; }
   .masthead-inner {
     display: grid;
     grid-template-columns: 1fr auto;
