@@ -5741,6 +5741,28 @@ button.delete-danger svg { flex-shrink: 0; }
 .admin-badge.pending { background: var(--orange-soft); color: var(--orange-dark); }
 .admin-badge.admin { background: var(--maroon); color: #fff; }
 
+/* Shown in place of the old one-line error whenever the members RPC fails
+   because a schema-update migration hasn't been run yet — the small red
+   line was easy to miss and gave no next step, so this spells out exactly
+   what to do instead of just reporting that something's broken. */
+.admin-setup-banner {
+  background: var(--orange-soft);
+  border: 1px solid var(--orange);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  color: var(--maroon-dark);
+}
+.admin-setup-banner strong { display: block; margin-bottom: 4px; }
+.admin-setup-banner p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.5; }
+.admin-setup-banner code {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12.5px;
+}
+.admin-setup-banner-detail { color: var(--ink-soft); font-size: 12px !important; }
+
 @media (max-width: 560px) {
   .admin-row { flex-wrap: wrap; }
   .admin-row-actions { width: 100%; justify-content: flex-start; }

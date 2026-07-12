@@ -12,6 +12,11 @@ const SUBTABS = [
   { id: 'posts', label: 'Posts' },
   { id: 'jobs', label: 'Jobs' },
   { id: 'events', label: 'Events' },
+  { id: 'businesses', label: 'Businesses' },
+  { id: 'merch', label: 'Merchandise' },
+  { id: 'groups', label: 'Groups' },
+  { id: 'photos', label: 'Photos' },
+  { id: 'mentoring', label: 'Mentoring' },
 ]
 
 function timeAgo(iso) {
@@ -35,12 +40,28 @@ function truncate(text, n = 140) {
   return t.length > n ? t.slice(0, n).trimEnd() + '…' : t
 }
 
+function formatPrice(price) {
+  const n = Number(price)
+  return `R${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+const COUNT_TABLES = [
+  ['posts', 'posts'],
+  ['jobs', 'jobs'],
+  ['events', 'events'],
+  ['businesses', 'businesses'],
+  ['merch', 'merchandise'],
+  ['groups', 'groups'],
+  ['photos', 'photo_albums'],
+  ['mentoring', 'mentoring_programs'],
+]
+
 export default function Admin({ session }) {
   const [subtab, setSubtab] = useState('pending')
   const [members, setMembers] = useState([])
   const [loadingMembers, setLoadingMembers] = useState(true)
   const [memberError, setMemberError] = useState(null)
-  const [counts, setCounts] = useState({ posts: null, jobs: null, events: null })
+  const [counts, setCounts] = useState({})
 
   async function loadMembers() {
     setLoadingMembers(true)
@@ -50,13 +71,18 @@ export default function Admin({ session }) {
     setLoadingMembers(false)
   }
 
+  async function loadCounts() {
+    const results = await Promise.all(
+      COUNT_TABLES.map(([, table]) => supabase.from(table).select('*', { count: 'exact', head: true }))
+    )
+    const next = {}
+    COUNT_TABLES.forEach(([key], i) => { next[key] = results[i].count })
+    setCounts(next)
+  }
+
   useEffect(() => {
     loadMembers()
-    Promise.all([
-      supabase.from('posts').select('*', { count: 'exact', head: true }),
-      supabase.from('jobs').select('*', { count: 'exact', head: true }),
-      supabase.from('events').select('*', { count: 'exact', head: true }),
-    ]).then(([p, j, e]) => setCounts({ posts: p.count, jobs: j.count, events: e.count }))
+    loadCounts()
   }, [])
 
   // Optimistic toggle, rolled back (via a full reload) if the write fails —
@@ -75,6 +101,7 @@ export default function Admin({ session }) {
   }
 
   const pending = useMemo(() => members.filter((m) => !m.approved), [members])
+  const needsSetup = !!memberError && (memberError.includes('does not exist') || memberError.includes('function'))
 
   return (
     <section className="panel">
@@ -87,6 +114,11 @@ export default function Admin({ session }) {
         <StatCard label="Posts" value={counts.posts} />
         <StatCard label="Jobs" value={counts.jobs} />
         <StatCard label="Events" value={counts.events} />
+        <StatCard label="Businesses" value={counts.businesses} />
+        <StatCard label="Merchandise" value={counts.merch} />
+        <StatCard label="Groups" value={counts.groups} />
+        <StatCard label="Photo albums" value={counts.photos} />
+        <StatCard label="Mentoring" value={counts.mentoring} />
       </div>
 
       <div className="admin-subtabs" role="tablist" aria-label="Admin sections">
@@ -106,12 +138,19 @@ export default function Admin({ session }) {
         ))}
       </div>
 
-      {memberError && (
-        <p className="form-error">
-          {memberError.includes('does not exist') || memberError.includes('function')
-            ? "Couldn't load members — run schema-update-8.sql in the Supabase SQL Editor first."
-            : memberError}
-        </p>
+      {needsSetup ? (
+        <div className="admin-setup-banner">
+          <strong>One-time setup needed</strong>
+          <p>
+            The admin tools (approving members, granting admin access) rely on a database migration
+            that hasn't been run yet. Open the Supabase dashboard for this project, go to the
+            <strong> SQL Editor</strong>, and run <code>schema-update-8.sql</code> from the project
+            folder — it's safe to re-run if you're not sure whether it already went through.
+          </p>
+          <p className="admin-setup-banner-detail">Error detail: {memberError}</p>
+        </div>
+      ) : memberError && (
+        <p className="form-error">{memberError}</p>
       )}
 
       {subtab === 'pending' && (
@@ -129,6 +168,11 @@ export default function Admin({ session }) {
       {subtab === 'posts' && <PostsModeration />}
       {subtab === 'jobs' && <JobsModeration />}
       {subtab === 'events' && <EventsModeration />}
+      {subtab === 'businesses' && <BusinessesModeration />}
+      {subtab === 'merch' && <MerchModeration />}
+      {subtab === 'groups' && <GroupsModeration />}
+      {subtab === 'photos' && <PhotosModeration />}
+      {subtab === 'mentoring' && <MentoringModeration />}
     </section>
   )
 }
@@ -137,7 +181,7 @@ export default function Admin({ session }) {
 function StatCard({ label, value, highlight }) {
   return (
     <div className={highlight ? 'admin-stat-card highlight' : 'admin-stat-card'}>
-      <span className="admin-stat-value">{value === null ? '–' : value}</span>
+      <span className="admin-stat-value">{value === null || value === undefined ? '–' : value}</span>
       <span className="admin-stat-label">{label}</span>
     </div>
   )
@@ -402,6 +446,275 @@ function EventsModeration() {
             </span>
           </div>
           <DeleteButton onConfirm={() => remove(e.id)} label="Delete event" message="This removes the event and everyone's RSVPs. This can't be undone." />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/* ---------- Businesses moderation ---------- */
+function BusinessesModeration() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  async function load() {
+    const { data } = await supabase
+      .from('businesses')
+      .select('id, name, category, city, country, promoted, created_at, profiles!businesses_owner_id_fkey ( full_name )')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    setItems(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function remove(id) {
+    await supabase.from('businesses').delete().eq('id', id)
+    setItems((prev) => prev.filter((b) => b.id !== id))
+  }
+
+  async function togglePromote(b) {
+    const next = !b.promoted
+    setItems((prev) => prev.map((x) => (x.id === b.id ? { ...x, promoted: next } : x)))
+    const { error } = await supabase.from('businesses').update({ promoted: next }).eq('id', b.id)
+    if (error) setItems((prev) => prev.map((x) => (x.id === b.id ? { ...x, promoted: !next } : x)))
+  }
+
+  if (loading) return <LoadingState message="Loading businesses…" />
+  if (items.length === 0) return <EmptyState icon="business" message="No businesses listed yet." />
+
+  return (
+    <ul className="admin-list">
+      {items.map((b) => (
+        <li className="admin-row" key={b.id}>
+          <div className="admin-row-info">
+            <span className="admin-row-name">
+              {b.name}
+              {b.promoted && <span className="admin-badge admin" style={{ marginLeft: 8 }}>Featured</span>}
+            </span>
+            <span className="admin-row-meta">
+              {b.category} · Listed by {b.profiles?.full_name || 'a member'}
+              {(b.city || b.country) ? ` · ${[b.city, b.country].filter(Boolean).join(', ')}` : ''}
+              {' · '}{timeAgo(b.created_at)}
+            </span>
+          </div>
+          <div className="admin-row-actions">
+            <button className="btn ghost small" onClick={() => togglePromote(b)}>
+              {b.promoted ? 'Unfeature' : 'Feature'}
+            </button>
+            <DeleteButton onConfirm={() => remove(b.id)} label="Delete business" message="This removes the business listing. This can't be undone." />
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/* ---------- Merchandise moderation ---------- */
+function MerchModeration() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  async function load() {
+    const { data } = await supabase
+      .from('merchandise')
+      .select('id, name, price, category, is_available, created_at, profiles!merchandise_created_by_fkey ( full_name )')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    setItems(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function remove(id) {
+    await supabase.from('merchandise').delete().eq('id', id)
+    setItems((prev) => prev.filter((i) => i.id !== id))
+  }
+
+  async function toggleAvailable(item) {
+    const next = !item.is_available
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_available: next } : i)))
+    const { error } = await supabase.from('merchandise').update({ is_available: next }).eq('id', item.id)
+    if (error) setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_available: !next } : i)))
+  }
+
+  if (loading) return <LoadingState message="Loading merchandise…" />
+  if (items.length === 0) return <EmptyState icon="merch" message="No merchandise listed yet." />
+
+  return (
+    <ul className="admin-list">
+      {items.map((i) => (
+        <li className="admin-row" key={i.id}>
+          <div className="admin-row-info">
+            <span className="admin-row-name">
+              {i.name}
+              {!i.is_available && <span className="admin-badge pending" style={{ marginLeft: 8 }}>Sold out</span>}
+            </span>
+            <span className="admin-row-meta">
+              {i.category} · {formatPrice(i.price)} · Added by {i.profiles?.full_name || 'an admin'} · {timeAgo(i.created_at)}
+            </span>
+          </div>
+          <div className="admin-row-actions">
+            <button className="btn ghost small" onClick={() => toggleAvailable(i)}>
+              {i.is_available ? 'Mark sold out' : 'Mark available'}
+            </button>
+            <DeleteButton onConfirm={() => remove(i.id)} label="Delete item" message="This removes the item from the store. This can't be undone." />
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/* ---------- Groups moderation ---------- */
+function GroupsModeration() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  async function load() {
+    const { data } = await supabase
+      .from('groups')
+      .select('id, name, description, created_at, profiles!groups_created_by_fkey ( full_name ), members:group_members(count)')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    setItems(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function remove(id) {
+    await supabase.from('groups').delete().eq('id', id)
+    setItems((prev) => prev.filter((g) => g.id !== id))
+  }
+
+  if (loading) return <LoadingState message="Loading groups…" />
+  if (items.length === 0) return <EmptyState icon="groups" message="No groups yet." />
+
+  return (
+    <ul className="admin-list">
+      {items.map((g) => {
+        const memberCount = g.members?.[0]?.count ?? 0
+        return (
+          <li className="admin-row" key={g.id}>
+            <div className="admin-row-info">
+              <span className="admin-row-name">{g.name}</span>
+              <span className="admin-row-meta">
+                {memberCount} {memberCount === 1 ? 'member' : 'members'} · Created by {g.profiles?.full_name || 'a member'} · {timeAgo(g.created_at)}
+              </span>
+              {g.description && <p className="admin-row-preview">{truncate(g.description)}</p>}
+            </div>
+            <DeleteButton onConfirm={() => remove(g.id)} label="Delete group" message="This removes the group, its posts and its member list. This can't be undone." />
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/* ---------- Photos moderation ---------- */
+function PhotosModeration() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  async function load() {
+    const { data } = await supabase
+      .from('photo_albums')
+      .select('id, title, description, created_at, profiles!photo_albums_created_by_fkey ( full_name ), photos(count)')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    setItems(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function remove(id) {
+    await supabase.from('photo_albums').delete().eq('id', id)
+    setItems((prev) => prev.filter((a) => a.id !== id))
+  }
+
+  if (loading) return <LoadingState message="Loading albums…" />
+  if (items.length === 0) return <EmptyState icon="feed" message="No photo albums yet." />
+
+  return (
+    <ul className="admin-list">
+      {items.map((a) => {
+        const photoCount = a.photos?.[0]?.count ?? 0
+        return (
+          <li className="admin-row" key={a.id}>
+            <div className="admin-row-info">
+              <span className="admin-row-name">{a.title}</span>
+              <span className="admin-row-meta">
+                {photoCount} {photoCount === 1 ? 'photo' : 'photos'} · Created by {a.profiles?.full_name || 'a member'} · {timeAgo(a.created_at)}
+              </span>
+            </div>
+            <DeleteButton onConfirm={() => remove(a.id)} label="Delete album" message="This removes the album and every photo in it. This can't be undone." />
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/* ---------- Mentoring moderation ---------- */
+function MentoringModeration() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  async function load() {
+    const { data } = await supabase
+      .from('mentoring_programs')
+      .select('id, title, description, status, start_date, end_date, created_at, profiles!mentoring_programs_owner_id_fkey ( full_name )')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    setItems(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function remove(id) {
+    await supabase.from('mentoring_programs').delete().eq('id', id)
+    setItems((prev) => prev.filter((p) => p.id !== id))
+  }
+
+  async function toggleStatus(program) {
+    const next = program.status === 'active' ? 'closed' : 'active'
+    setItems((prev) => prev.map((p) => (p.id === program.id ? { ...p, status: next } : p)))
+    const { error } = await supabase.from('mentoring_programs').update({ status: next }).eq('id', program.id)
+    if (error) setItems((prev) => prev.map((p) => (p.id === program.id ? { ...p, status: program.status } : p)))
+  }
+
+  if (loading) return <LoadingState message="Loading mentoring programs…" />
+  if (items.length === 0) return <EmptyState icon="groups" message="No mentoring programs yet." />
+
+  return (
+    <ul className="admin-list">
+      {items.map((p) => (
+        <li className="admin-row" key={p.id}>
+          <div className="admin-row-info">
+            <span className="admin-row-name">
+              {p.title}
+              <span className={p.status === 'active' ? 'admin-badge approved' : 'admin-badge pending'} style={{ marginLeft: 8 }}>
+                {p.status === 'active' ? 'Active' : 'Closed'}
+              </span>
+            </span>
+            <span className="admin-row-meta">
+              Run by {p.profiles?.full_name || 'an admin'}
+              {p.start_date ? ` · Starts ${new Date(p.start_date).toLocaleDateString()}` : ''}
+              {p.end_date ? ` · Ends ${new Date(p.end_date).toLocaleDateString()}` : ''}
+            </span>
+            {p.description && <p className="admin-row-preview">{truncate(p.description)}</p>}
+          </div>
+          <div className="admin-row-actions">
+            <button className="btn ghost small" onClick={() => toggleStatus(p)}>
+              {p.status === 'active' ? 'Close program' : 'Reopen program'}
+            </button>
+            <DeleteButton onConfirm={() => remove(p.id)} label="Delete program" message="This removes the program and its participant sign-ups. This can't be undone." />
+          </div>
         </li>
       ))}
     </ul>
