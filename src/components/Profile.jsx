@@ -9,6 +9,7 @@ import CountryAutocomplete from './CountryAutocomplete.jsx'
 import ListAutocomplete from './ListAutocomplete.jsx'
 import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import ClearableInput from './ClearableInput.jsx'
+import PhoneInput from './PhoneInput.jsx'
 import { normalizeExpertise } from '../utils.js'
 
 const EMPTY = {
@@ -538,13 +539,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </label>
 
         <label className="field"><span>Phone number</span>
-          <ClearableInput
-            type="tel"
-            value={form.phone}
-            onChange={(e) => set('phone', e.target.value)}
-            onClear={() => set('phone', '')}
-            placeholder="+27 …"
-          />
+          <PhoneInput value={form.phone} onChange={(v) => set('phone', v)} />
           <span className="hint">Who can see this is controlled in Settings → Privacy.</span>
         </label>
       </div>
