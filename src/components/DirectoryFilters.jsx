@@ -201,12 +201,13 @@ export function DirectoryFilterPanel({ f }) {
         </div>
       </FilterSection>
 
-      <FilterSection title="Affiliation">
-        <div className="filter-radio-row">
-          <button className={f.draftFilters.status === STATUS.ALL ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALL)}>All</button>
-          <button className={f.draftFilters.status === STATUS.CURRENT ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.CURRENT)}>In house</button>
-          <button className={f.draftFilters.status === STATUS.ALUMNI ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALUMNI)}>Alumni</button>
-        </div>
+      <FilterSection title="Industry">
+        <MultiSelectAutocomplete
+          options={INDUSTRIES}
+          values={f.draftFilters.industries}
+          onChange={(v) => f.setDraft('industries', v)}
+          placeholder="All industries — start typing to add one"
+        />
       </FilterSection>
 
       <FilterSection title="Location">
@@ -256,13 +257,12 @@ export function DirectoryFilterPanel({ f }) {
         </label>
       </FilterSection>
 
-      <FilterSection title="Industry" defaultOpen={false}>
-        <MultiSelectAutocomplete
-          options={INDUSTRIES}
-          values={f.draftFilters.industries}
-          onChange={(v) => f.setDraft('industries', v)}
-          placeholder="All industries — start typing to add one"
-        />
+      <FilterSection title="Affiliation" defaultOpen={false}>
+        <div className="filter-radio-row">
+          <button className={f.draftFilters.status === STATUS.ALL ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALL)}>All</button>
+          <button className={f.draftFilters.status === STATUS.CURRENT ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.CURRENT)}>In house</button>
+          <button className={f.draftFilters.status === STATUS.ALUMNI ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALUMNI)}>Alumni</button>
+        </div>
       </FilterSection>
     </>
   )
