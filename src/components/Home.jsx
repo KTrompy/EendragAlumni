@@ -165,8 +165,23 @@ export default function Home({ session, profile, onMessage }) {
   }
 
   useEffect(() => {
-    async function load() {
+    let cancelled = false
+
+    async function load(isRetry = false) {
       setLoading(true)
+
+      // Confirm the client's session/auth state is fully settled before
+      // firing this whole batch of RLS-protected queries. Firing them the
+      // instant this component mounts can race a session that's still
+      // being restored right after a fresh page load: the queries don't
+      // error in that case, the `to authenticated` RLS policies on
+      // profiles/posts/businesses/etc. just silently match nothing, so
+      // every widget below renders its empty state even though the data is
+      // there. A manual refresh only "fixes" it by giving the client more
+      // time to settle before the same queries fire again — this await
+      // (plus the retry-once fallback below) closes that window instead.
+      await supabase.auth.getSession()
+      if (cancelled) return
       const uid = session.user.id
 
       // Suggested connections for "My Community — Strengthen Your Network":
@@ -239,10 +254,7 @@ export default function Home({ session, profile, onMessage }) {
               .limit(6)
           : Promise.resolve({ data: [] }),
       ])
-
-      setRecentPosts(posts || [])
-      setUpcomingEvent(events?.[0] || null)
-      setBadges(badgeDefs || [])
+      if (cancelled) return
 
       const groups = (memberships || []).map((m) => m.groups).filter(Boolean)
       const withLatestPost = await Promise.all(groups.map(async (g) => {
@@ -255,16 +267,6 @@ export default function Home({ session, profile, onMessage }) {
           .maybeSingle()
         return { ...g, latestPost: latest || null }
       }))
-      setMyGroups(withLatestPost)
-
-      const earned = new Set()
-      if (pct === 100) earned.add('profile_complete')
-      if ((postsCount || 0) > 0) earned.add('first_post')
-      if (groups.length > 0) earned.add('joined_group')
-      if ((rsvpCount || 0) > 0) earned.add('event_goer')
-      if ((photosCount || 0) > 0) earned.add('photo_sharer')
-      if ((mentoringCount || 0) > 0) earned.add('mentor_connect')
-      setEarnedKeys(earned)
 
       let communityList = matchedCommunity || []
       if (communityList.length === 0) {
@@ -277,7 +279,6 @@ export default function Home({ session, profile, onMessage }) {
           .limit(6)
         communityList = fallback || []
       }
-      setCommunity(communityList)
 
       let businessList = matchedBusinesses || []
       if (businessList.length === 0) {
@@ -289,11 +290,43 @@ export default function Home({ session, profile, onMessage }) {
           .limit(6)
         businessList = fallback || []
       }
+      if (cancelled) return
+
+      // Community and Businesses both always fall back to "most recently
+      // added" when there's no direct profile match (see the comments
+      // above), so in a real, populated directory there's no legitimate
+      // way for *both* to come back completely empty at once. Seeing that
+      // combination is a much stronger signal that we hit the
+      // auth-not-settled race described above than that this genuinely is
+      // an empty community — worth one automatic retry, after giving the
+      // client a beat to finish settling, before showing the wrong empty
+      // state to the person.
+      if (!isRetry && communityList.length === 0 && businessList.length === 0) {
+        await new Promise((r) => setTimeout(r, 600))
+        if (!cancelled) await load(true)
+        return
+      }
+
+      setRecentPosts(posts || [])
+      setUpcomingEvent(events?.[0] || null)
+      setBadges(badgeDefs || [])
+      setMyGroups(withLatestPost)
+      setCommunity(communityList)
       setNearbyBusinesses(businessList)
+
+      const earned = new Set()
+      if (pct === 100) earned.add('profile_complete')
+      if ((postsCount || 0) > 0) earned.add('first_post')
+      if (groups.length > 0) earned.add('joined_group')
+      if ((rsvpCount || 0) > 0) earned.add('event_goer')
+      if ((photosCount || 0) > 0) earned.add('photo_sharer')
+      if ((mentoringCount || 0) > 0) earned.add('mentor_connect')
+      setEarnedKeys(earned)
 
       setLoading(false)
     }
     load()
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user.id])
 
