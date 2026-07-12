@@ -3080,6 +3080,14 @@ button.delete-danger svg { flex-shrink: 0; }
    the app — so the feed doesn't feel like a visually separate part of
    the product from Directory/Jobs. */
 .post:hover { border-color: var(--line-strong); box-shadow: var(--shadow-lift); }
+/* Briefly marks the post a /feed/:postId deep link (e.g. Home's "Recent
+   feed posts" widget) scrolled you to — same treatment as
+   .event-card-highlighted so a landed-on card and a landed-on event read
+   the same way. */
+.post-highlighted {
+  outline: 2px solid var(--orange);
+  outline-offset: 3px;
+}
 .post-head {
   display: flex;
   align-items: flex-start;

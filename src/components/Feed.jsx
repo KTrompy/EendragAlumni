@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
@@ -99,6 +99,8 @@ export default function Feed({ session, profile, onMessage }) {
   const showToast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
+  const { postId } = useParams() // set when someone opens a shared/deep-linked /feed/:postId link
+  const scrolledRef = useRef(false)
   const isAdmin = !!profile?.is_admin
 
   // Home's "Start sharing" button deep-links here with { openComposer: true }
@@ -113,6 +115,22 @@ export default function Feed({ session, profile, onMessage }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state])
+
+  // Home's "Recent feed posts" widget (and any other shared /feed/:postId
+  // link) should land you on that exact post, scrolled into view and
+  // briefly highlighted — same pattern as Events' /events/:eventId deep
+  // link — rather than just dumping you at the top of the feed. Pinned
+  // posts load in full up front and regular posts load newest-first, so the
+  // target post is virtually always already present after the first page
+  // loads; scrolledRef just keeps this from re-firing on every re-render.
+  useEffect(() => {
+    if (!postId || loading || scrolledRef.current) return
+    const el = document.getElementById(`post-${postId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      scrolledRef.current = true
+    }
+  }, [postId, loading, posts, pinnedPosts])
 
   // Fetches one PAGE_SIZE page of posts, replacing the list (first load, or
   // a realtime insert/delete elsewhere resetting to the top) or appending to
@@ -270,6 +288,7 @@ export default function Feed({ session, profile, onMessage }) {
       session,
       profile,
       isAdmin,
+      highlighted: String(p.id) === postId,
       liked: myLikes.has(p.id),
       onLike: () => toggleLike(p.id),
       onDelete: () => removePost(p.id),
@@ -693,7 +712,7 @@ function Composer({ session, profile, onPosted, openRef }) {
 }
 
 /* ---------- Post item ---------- */
-function PostItem({ post: p, session, profile, isAdmin, liked, onLike, onDelete, onEdit, onTogglePin, onImageClick, onMessage, onOpenProfile }) {
+function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLike, onDelete, onEdit, onTogglePin, onImageClick, onMessage, onOpenProfile }) {
   const [showComments, setShowComments] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -743,7 +762,7 @@ function PostItem({ post: p, session, profile, isAdmin, liked, onLike, onDelete,
   ].filter(Boolean).join(' · ')
 
   return (
-    <li className={p.pinned ? 'post post-pinned' : 'post'}>
+    <li id={`post-${p.id}`} className={['post', p.pinned && 'post-pinned', highlighted && 'post-highlighted'].filter(Boolean).join(' ')}>
       {p.pinned && <span className="post-pinned-tag"><PinIcon /> Pinned Post</span>}
       <div className="post-head">
         <button

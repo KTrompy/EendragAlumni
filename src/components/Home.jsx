@@ -370,10 +370,10 @@ export default function Home({ session, profile, onMessage }) {
                       <li
                         key={p.id}
                         className="home-post-preview"
-                        onClick={() => navigate('/feed')}
+                        onClick={() => navigate(`/feed/${p.id}`)}
                         role="button"
                         tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === 'Enter') navigate('/feed') }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/feed/${p.id}`) }}
                       >
                         <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={54} />
                         <div className="home-post-preview-body">

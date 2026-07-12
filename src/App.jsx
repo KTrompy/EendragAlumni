@@ -526,6 +526,7 @@ export default function App() {
               <Route path="/home" element={<Home session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/directory" element={<People session={session} onMessage={openMessage} onGoToProfile={() => goTo('/profile')} refetchTrigger={directoryRefetchTrigger} />} />
               <Route path="/feed" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/feed/:postId" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/groups" element={<Groups session={session} />} />
               <Route path="/groups/:groupId" element={<GroupDetail session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/photos" element={<Photos session={session} />} />
