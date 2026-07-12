@@ -1443,6 +1443,16 @@ button.delete-danger svg { flex-shrink: 0; }
 .filter-panel.persistent {
   position: sticky;
   top: 85px;
+  /* Base .filter-panel (the fixed-position mobile drawer) sets `bottom: 0`
+     for its own full-height overlay. That's never meant for this sticky
+     variant, but without an explicit reset it carries over here too — and
+     a sticky element with both `top` and `bottom` set fights itself: once
+     its container's bottom edge nears the viewport (e.g. a short results
+     list), the bottom constraint wins and the panel gets dragged up the
+     page instead of staying pinned at `top`. Resetting it to `auto`
+     leaves only the top constraint in effect, which is what "sticks below
+     the masthead" actually requires. */
+  bottom: auto;
   width: auto;
   max-width: none;
   max-height: calc(100vh - 105px);
