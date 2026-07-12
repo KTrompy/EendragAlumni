@@ -2534,11 +2534,12 @@ button.delete-danger svg { flex-shrink: 0; }
   position: sticky;
   top: 85px;
 }
-/* Home dashboard only: wider sidebar column and more breathing room between
-   stacked sections, so "Recent posts / My Groups / Businesses" and the
-   sidebar widgets each read as distinct blocks instead of running together. */
+/* Home dashboard only: even 50/50 split between the feed column and the
+   sidebar, and more breathing room between stacked sections, so "Recent
+   posts / My Groups / Businesses" and the sidebar widgets each read as
+   distinct blocks instead of running together. */
 .home-feed-layout {
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 1fr;
   gap: 28px;
 }
 .home-feed-layout .feed-main { display: flex; flex-direction: column; gap: 26px; }
