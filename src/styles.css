@@ -7434,6 +7434,43 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--ink-soft);
   text-transform: uppercase;
 }
+.select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--maroon);
+  border-bottom: 2px solid var(--maroon);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+.select-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 7px 34px 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.select-wrap select:hover { border-color: var(--orange); }
+.select-wrap select:focus {
+  outline: none;
+  border-color: var(--maroon);
+  box-shadow: 0 0 0 3px rgba(90, 26, 43, 0.12);
+}
 .photos-header-action {
   margin-bottom: 20px;
 }
