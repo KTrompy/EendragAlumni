@@ -2528,14 +2528,44 @@ button.delete-danger svg { flex-shrink: 0; }
    breathing room throughout than the denser "edit my profile" page that
    shares most of these classes, since there's no form chrome competing
    for space here. ---------- */
-.person-profile-page .profile-section { padding: 26px 28px 22px; margin-bottom: 22px; }
+.person-profile-page .profile-section { padding: 26px 28px 22px; margin-bottom: 18px; }
 .person-profile-page .profile-fact-strip { gap: 22px; padding: 20px 0; }
 .person-profile-page .profile-card-section + .profile-card-section { margin-top: 28px; }
-.person-profile-page .profile-card-section-title { font-size: 13px; margin-bottom: 14px; }
+/* Every card gets a small orange bullet ahead of its title — same visual
+   language as the "edit my profile" page's .profile-section-title, so a
+   glance down the left edge of the page tells you where each section
+   starts without having to read the label text itself. */
+.person-profile-page .profile-card-section-title {
+  font-size: 13px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.person-profile-page .profile-card-section-title::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--orange);
+  flex-shrink: 0;
+}
 .person-profile-page .profile-card-bio { font-size: 15px; line-height: 1.7; }
 .person-profile-page .profile-photo-card { padding: 40px 28px; gap: 16px; }
 .person-profile-page .profile-card-subsection { margin-top: 20px; }
 .person-profile-page .profile-actions { margin-top: 24px; gap: 14px; }
+/* Contact / Business profile cards put a heading directly above the fact
+   strip, so the strip's own top border would just draw a second line right
+   under the title — drop it there and keep only the bottom rule that
+   separates the strip from whatever subsections follow. */
+.person-profile-page .profile-fact-strip-noborder { border-top: none; padding-top: 0; }
+/* A hairline between each business-profile subsection (expertise, services,
+   categories, geographic focus) so groups of chips read as separate lists
+   rather than one continuous run once there's more than one of them. */
+.person-profile-page .profile-card-subsection + .profile-card-subsection {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
 .modal-chips {
   display: flex;
   flex-wrap: wrap;

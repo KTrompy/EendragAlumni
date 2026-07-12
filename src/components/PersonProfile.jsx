@@ -178,7 +178,13 @@ export default function PersonProfile({ session, me, onMessage }) {
         </div>
       </div>
 
-      <div className="profile-section">
+      {/* Each block below used to live inside one big shared card, which
+          made About/Contact/Experience/Business profile blur together with
+          nothing but a small uppercase label to tell them apart. Giving each
+          its own .profile-section card (bordered, shadowed, its own fade-in
+          stagger) makes the page scannable at a glance instead of reading
+          as one long wall of facts. */}
+      <div className="profile-section profile-overview-section">
         <div className="profile-fact-strip">
           <Fact label="Year left / leaving Eendrag" value={p.grad_year || dash} />
           <Fact label="Degree studied" value={p.degree || dash} />
@@ -191,94 +197,94 @@ export default function PersonProfile({ session, me, onMessage }) {
             <p className="profile-card-bio">{p.bio}</p>
           </div>
         )}
-
-        {(contact?.phone || contact?.email) && (
-          <div className="profile-card-section">
-            <h3 className="profile-card-section-title">Contact</h3>
-            <div className="profile-fact-strip">
-              {contact.phone && <Fact label="Phone" value={contact.phone} />}
-              {contact.email && <Fact label="Email" value={contact.email} />}
-            </div>
-          </div>
-        )}
-
-        {experience.length > 0 && (
-          <div className="profile-card-section profile-card-section-experience">
-            <h3 className="profile-card-section-title">Experience</h3>
-            <ul className="experience-timeline">
-              {experience.map((entry, i) => {
-                const range = formatExperienceRange(entry.from, entry.to)
-                const isCurrent = !!entry.from && !entry.to
-                return (
-                  <li className={isCurrent ? 'experience-timeline-entry current' : 'experience-timeline-entry'} key={i}>
-                    <span className="experience-timeline-marker" aria-hidden="true" />
-                    <div className="experience-timeline-content">
-                      <div className="experience-timeline-title">{entry.title || 'Role'}</div>
-                      {entry.company && <div className="experience-timeline-company">{entry.company}</div>}
-                      <div className="experience-timeline-meta">
-                        {range && <span className="experience-timeline-range">{range}</span>}
-                        {entry.industry && <span className="experience-timeline-industry">{entry.industry}</span>}
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        )}
-
-        {hasBusinessProfile && (
-          <div className="profile-card-section">
-            <h3 className="profile-card-section-title">Business profile</h3>
-
-            <div className="profile-fact-strip">
-              <Fact label="Open to opportunities" value={p.is_open_to_opportunities ? 'Yes' : 'Not right now'} />
-              {p.availability && <Fact label="Availability" value={p.availability} />}
-              {p.business_website && (
-                <div className="profile-fact">
-                  <span className="profile-fact-label">Website</span>
-                  <a
-                    className="profile-fact-value"
-                    href={p.business_website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {p.business_website.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
-            </div>
-
-            {expertise.length > 0 && (
-              <div className="profile-card-subsection">
-                <span className="profile-fact-label">Main areas of expertise</span>
-                <Chips items={expertise} />
-              </div>
-            )}
-
-            {servicesOffered.length > 0 && (
-              <div className="profile-card-subsection">
-                <span className="profile-fact-label">Can offer other Eendragters</span>
-                <Chips items={servicesOffered} />
-              </div>
-            )}
-
-            {businessCategories.length > 0 && (
-              <div className="profile-card-subsection">
-                <span className="profile-fact-label">Business categories</span>
-                <Chips items={businessCategories} />
-              </div>
-            )}
-
-            {geographicFocus.length > 0 && (
-              <div className="profile-card-subsection">
-                <span className="profile-fact-label">Geographic focus</span>
-                <Chips items={geographicFocus} />
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      {(contact?.phone || contact?.email) && (
+        <div className="profile-section">
+          <h3 className="profile-card-section-title">Contact</h3>
+          <div className="profile-fact-strip profile-fact-strip-noborder">
+            {contact.phone && <Fact label="Phone" value={contact.phone} />}
+            {contact.email && <Fact label="Email" value={contact.email} />}
+          </div>
+        </div>
+      )}
+
+      {experience.length > 0 && (
+        <div className="profile-section profile-card-section-experience">
+          <h3 className="profile-card-section-title">Experience</h3>
+          <ul className="experience-timeline">
+            {experience.map((entry, i) => {
+              const range = formatExperienceRange(entry.from, entry.to)
+              const isCurrent = !!entry.from && !entry.to
+              return (
+                <li className={isCurrent ? 'experience-timeline-entry current' : 'experience-timeline-entry'} key={i}>
+                  <span className="experience-timeline-marker" aria-hidden="true" />
+                  <div className="experience-timeline-content">
+                    <div className="experience-timeline-title">{entry.title || 'Role'}</div>
+                    {entry.company && <div className="experience-timeline-company">{entry.company}</div>}
+                    <div className="experience-timeline-meta">
+                      {range && <span className="experience-timeline-range">{range}</span>}
+                      {entry.industry && <span className="experience-timeline-industry">{entry.industry}</span>}
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
+      {hasBusinessProfile && (
+        <div className="profile-section">
+          <h3 className="profile-card-section-title">Business profile</h3>
+
+          <div className="profile-fact-strip profile-fact-strip-noborder">
+            <Fact label="Open to opportunities" value={p.is_open_to_opportunities ? 'Yes' : 'Not right now'} />
+            {p.availability && <Fact label="Availability" value={p.availability} />}
+            {p.business_website && (
+              <div className="profile-fact">
+                <span className="profile-fact-label">Website</span>
+                <a
+                  className="profile-fact-value"
+                  href={p.business_website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {p.business_website.replace(/^https?:\/\//, '')}
+                </a>
+              </div>
+            )}
+          </div>
+
+          {expertise.length > 0 && (
+            <div className="profile-card-subsection">
+              <span className="profile-fact-label">Main areas of expertise</span>
+              <Chips items={expertise} />
+            </div>
+          )}
+
+          {servicesOffered.length > 0 && (
+            <div className="profile-card-subsection">
+              <span className="profile-fact-label">Can offer other Eendragters</span>
+              <Chips items={servicesOffered} />
+            </div>
+          )}
+
+          {businessCategories.length > 0 && (
+            <div className="profile-card-subsection">
+              <span className="profile-fact-label">Business categories</span>
+              <Chips items={businessCategories} />
+            </div>
+          )}
+
+          {geographicFocus.length > 0 && (
+            <div className="profile-card-subsection">
+              <span className="profile-fact-label">Geographic focus</span>
+              <Chips items={geographicFocus} />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="profile-actions">
         {p.linkedin_url && (
