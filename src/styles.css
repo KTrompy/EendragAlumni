@@ -4611,6 +4611,14 @@ button.delete-danger svg { flex-shrink: 0; }
 /* Same reasoning as Career above — Experience's own per-entry Industry
    autocomplete needs to float over the Location card that follows it. */
 .profile-section-experience { position: relative; z-index: 6; }
+/* Connect sits below all three of the above but above Business Profile —
+   its phone country dropdown was rendering underneath the Business Profile
+   card and the sticky Save bar for the same reason (see comment above):
+   an unpositioned sibling later in the DOM paints over an absolutely
+   positioned dropdown that's trapped inside an earlier, animated section's
+   own stacking context. Highest number here since nothing needs to float
+   over Connect itself. */
+.profile-section-connect { position: relative; z-index: 8; }
 /* Stagger each card's entrance slightly so the page feels like it's
    settling into place rather than popping in all at once. */
 .profile-section:nth-of-type(1) { animation-delay: 0.02s; }

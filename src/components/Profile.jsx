@@ -525,7 +525,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       </div>
 
       {/* Connect Section */}
-      <div className="profile-section">
+      <div className="profile-section profile-section-connect">
         <h3 className="profile-section-title">Connect</h3>
 
         <label className="field"><span>LinkedIn URL</span>
