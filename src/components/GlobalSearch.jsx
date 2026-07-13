@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 
+// Parsed via DOMParser into a detached document rather than assigned to a
+// live element's innerHTML — a detached document never loads its
+// resources, so an untrusted payload like <img src=x onerror=alert(1)>
+// can't fire its handler while we're just extracting text.
 function plainText(html) {
-  const div = document.createElement('div')
-  div.innerHTML = html || ''
-  return div.textContent || ''
+  return new DOMParser().parseFromString(html || '', 'text/html').body.textContent || ''
 }
 
 function truncate(text, max = 80) {

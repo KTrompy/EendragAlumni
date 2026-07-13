@@ -55,10 +55,12 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString()
 }
 
+// Parsed via DOMParser into a detached document rather than assigned to a
+// live element's innerHTML — a detached document never loads its
+// resources, so an untrusted payload like <img src=x onerror=alert(1)>
+// can't fire its handler while we're just extracting text.
 function plainText(html) {
-  const div = document.createElement('div')
-  div.innerHTML = html || ''
-  return div.textContent || ''
+  return new DOMParser().parseFromString(html || '', 'text/html').body.textContent || ''
 }
 
 function hasText(html) {
@@ -287,7 +289,15 @@ export default function Jobs({ session, profile, onMessage }) {
     return true
   })
 
-  const activeFilterCount = Object.values(filters).filter((v) => v !== '' && v !== false).length
+  // Array-type filters (companies/locations/industries) default to `[]`,
+  // which is truthy and passes the plain `!== ''` / `!== false` checks —
+  // without the Array.isArray branch, the badge always counted those 3 as
+  // "active" even when nothing was picked, and "Load more" stayed hidden
+  // below (it's gated on activeFilterCount === 0).
+  const activeFilterCount = Object.values(filters).filter((v) => {
+    if (Array.isArray(v)) return v.length > 0
+    return v !== '' && v !== false
+  }).length
 
   // Shared between the persistent "Filter by" sidebar (wide screens) and the
   // slide-in drawer (narrow) — same fields either way, just a different shell.

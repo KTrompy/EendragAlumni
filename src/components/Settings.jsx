@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../supabaseClient'
+import { supabase, deleteOwnAccount } from '../supabaseClient'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import LoadingState from './LoadingState.jsx'
 
@@ -110,13 +110,22 @@ function AccountTab({ session, profile, onSaved }) {
   async function deleteAccount() {
     setDeleting(true)
     setDeleteError(null)
-    const { error } = await supabase.rpc('delete_own_account')
+    // Was calling the delete_own_account() DB RPC, which schema-update-3.sql
+    // documents as SUPERSEDED: hosted Supabase silently no-ops a plain SQL
+    // DELETE against auth.users even from a SECURITY DEFINER function, so
+    // this returned success without actually deleting the account. Now
+    // uses the same Edge-Function-backed helper Profile.jsx uses — see
+    // deleteOwnAccount() in supabaseClient.js.
+    const { error } = await deleteOwnAccount()
     if (error) {
       setDeleteError(error.message)
       setDeleting(false)
       return
     }
     await supabase.auth.signOut()
+    // Without this, the app was left rendering a signed-out user's stale
+    // state — same reload Profile.jsx's delete flow already does.
+    window.location.reload()
   }
 
   return (

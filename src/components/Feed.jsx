@@ -34,18 +34,18 @@ function timeAgo(iso) {
 
 // Does the HTML contain anything besides whitespace/empty tags? Used so an
 // empty WYSIWYG editor (e.g. "<div><br></div>") doesn't count as content.
+// Parsed via DOMParser into a detached document rather than assigned to a
+// live element's innerHTML — a detached document never loads its
+// resources, so an untrusted payload like <img src=x onerror=alert(1)>
+// can't fire its handler while we're just extracting text.
 function hasText(html) {
-  const div = document.createElement('div')
-  div.innerHTML = html || ''
-  return div.textContent.trim().length > 0
+  return new DOMParser().parseFromString(html || '', 'text/html').body.textContent.trim().length > 0
 }
 
 // Strips tags for search matching — post content is stored as sanitized
 // HTML, so a plain substring match needs the text content, not the markup.
 function plainText(html) {
-  const div = document.createElement('div')
-  div.innerHTML = html || ''
-  return div.textContent || ''
+  return new DOMParser().parseFromString(html || '', 'text/html').body.textContent || ''
 }
 
 function postMatches(p, needle) {

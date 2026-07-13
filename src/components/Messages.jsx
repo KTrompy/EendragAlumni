@@ -60,15 +60,16 @@ export default function Messages({ session, profile, initialTarget, initialDraft
       .in('conversation_id', ids)
       .neq('user_id', me)
 
-    const { data: recent } = await supabase
-      .from('messages')
-      .select('conversation_id, content, created_at, sender_id')
-      .in('conversation_id', ids)
-      .order('created_at', { ascending: false })
+    // Server-side "one row per conversation" via last_messages_for_conversations
+    // (see schema-update-29.sql) — the old version fetched every message in
+    // every one of the user's conversations with no .limit() just to find
+    // the latest per thread client-side; a user with 20 conversations of
+    // 500 messages each was pulling 10,000 rows to render 20 preview lines.
+    const { data: recent } = await supabase.rpc('last_messages_for_conversations', { conv_ids: ids })
 
     const lastByConv = {}
     for (const m of recent || []) {
-      if (!lastByConv[m.conversation_id]) lastByConv[m.conversation_id] = m
+      lastByConv[m.conversation_id] = m
     }
 
     const built = (others || []).map((r) => ({

@@ -140,6 +140,15 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
 
       const payload = {
         title: title.trim(),
+        // Events.jsx (listing, sorting, calendar, Home.jsx's "upcoming
+        // event" widget) all still query/sort on the original event_date
+        // column, which is NOT NULL at the DB level — event_start_time/
+        // event_end_time were added later for the richer edit form but
+        // never wired back into event_date. Without this, every new/edited
+        // event either fails to insert (NOT NULL violation) or, if the
+        // constraint were ever relaxed, would silently vanish from every
+        // listing that filters/sorts on event_date. Keep both in sync.
+        event_date: startDate.toISOString(),
         event_start_time: startDate.toISOString(),
         event_end_time: endDate?.toISOString() || null,
         location: trimmedLocation,

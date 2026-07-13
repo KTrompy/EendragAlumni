@@ -23,17 +23,17 @@ const MAX_COVER_SIZE = 5 * 1024 * 1024
 
 // Does the HTML contain anything besides whitespace/empty tags? Used so an
 // empty WYSIWYG description doesn't pass validation as "filled in".
+// Parsed via DOMParser into a detached document rather than assigned to a
+// live element's innerHTML — a detached document never loads its
+// resources, so an untrusted payload like <img src=x onerror=alert(1)>
+// can't fire its handler while we're just extracting text.
 function hasText(html) {
-  const div = document.createElement('div')
-  div.innerHTML = html || ''
-  return div.textContent.trim().length > 0
+  return new DOMParser().parseFromString(html || '', 'text/html').body.textContent.trim().length > 0
 }
 
 // Strips tags for search matching and the card's plain-text excerpt.
 function plainText(html) {
-  const div = document.createElement('div')
-  div.innerHTML = html || ''
-  return div.textContent || ''
+  return new DOMParser().parseFromString(html || '', 'text/html').body.textContent || ''
 }
 
 function truncate(text, max = 140) {

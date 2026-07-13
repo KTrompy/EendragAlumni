@@ -27,15 +27,47 @@ export default function FloatingMessages({
 
   useEffect(() => {
     refreshUnread()
-    // Broad subscription (not scoped to a single conversation) so the badge
-    // updates the moment any new message lands, even for threads that
-    // aren't currently open.
-    const channel = supabase
-      .channel('unread-messages-badge')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, refreshUnread)
-      .subscribe()
-    return () => supabase.removeChannel(channel)
-  }, [])
+    let channel
+    let cancelled = false
+    let debounceTimer
+
+    // The subscription used to have no filter at all, so every message
+    // inserted by *any* user platform-wide fired refreshUnread() (an RPC
+    // call) in every open browser tab — with 100 concurrent users that's
+    // ~100 RPCs/minute per tab for messages that mostly don't even belong
+    // to that user. Scope the subscription to just this user's own
+    // conversations, and debounce so a burst of messages in one thread
+    // collapses into a single refresh.
+    async function subscribe() {
+      const { data } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', session.user.id)
+      if (cancelled) return
+      const ids = (data || []).map((r) => r.conversation_id)
+      if (ids.length === 0) return // no conversations yet — nothing to listen for
+
+      channel = supabase
+        .channel('unread-messages-badge')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=in.(${ids.join(',')})` },
+          () => {
+            clearTimeout(debounceTimer)
+            debounceTimer = setTimeout(refreshUnread, 300)
+          }
+        )
+        .subscribe()
+    }
+    subscribe()
+
+    return () => {
+      cancelled = true
+      clearTimeout(debounceTimer)
+      if (channel) supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.user.id])
 
   // "Send a message" elsewhere in the app hands us a target profile — pop
   // the panel open to receive it.

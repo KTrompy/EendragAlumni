@@ -25,7 +25,8 @@ const PAGE_SIZE = 20
 const DEFAULT_MAP_CENTER = [-33.9321, 18.8602]
 
 const EVENTS_SELECT = `
-  id, title, description, event_date, location, created_by, lat, lng,
+  id, title, description, event_date, event_start_time, event_end_time, event_url,
+  image_url, max_registrations, location, created_by, lat, lng, updated_at,
   profiles!events_created_by_fkey ( full_name ),
   rsvps:event_rsvps(count),
   comments:event_comments(count)

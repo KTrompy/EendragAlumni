@@ -23,6 +23,16 @@ export default function BusinessDescriptionEditor({ value, onChange, placeholder
   const [active, setActive] = useState({ bold: false, italic: false, underline: false, ul: false, ol: false })
   const [showEmoji, setShowEmoji] = useState(false)
 
+  // Seed the contentEditable div with whatever's already in `value` on
+  // mount — contentEditable isn't a controlled input, so without this the
+  // editor renders blank even when editing a business that already has a
+  // description, and the very first keystroke would silently blow away the
+  // real content the moment onChange fires with just the new text.
+  useEffect(() => {
+    if (ref.current) ref.current.innerHTML = value || ''
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Only force the DOM to match `value` when the parent has reset it to
   // empty (e.g. after a successful save) — re-syncing every keystroke would
   // fight the browser's own cursor position.

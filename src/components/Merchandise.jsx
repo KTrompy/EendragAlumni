@@ -38,10 +38,12 @@ const MERCH_SELECT =
 
 const EMPTY_FILTERS = { category: '' }
 
+// Parsed via DOMParser into a detached document rather than assigned to a
+// live element's innerHTML — a detached document never loads its
+// resources, so an untrusted payload like <img src=x onerror=alert(1)>
+// can't fire its handler while we're just extracting text.
 function plainText(html) {
-  const div = document.createElement('div')
-  div.innerHTML = html || ''
-  return div.textContent || ''
+  return new DOMParser().parseFromString(html || '', 'text/html').body.textContent || ''
 }
 
 function formatPrice(price) {

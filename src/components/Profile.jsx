@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '../supabaseClient'
+import { supabase, deleteOwnAccount } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, BUSINESS_CATEGORIES, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
@@ -329,12 +329,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     setBusy(true)
     setError(null)
 
-    // This calls a server-side Edge Function (using the Admin API) to
-    // actually remove the auth user — not just the profile row. Deleting
-    // the auth user cascades to delete all of the account's data. Once
-    // it's gone, signing in again with the same email requires signing
-    // up from scratch.
-    const { error } = await supabase.functions.invoke('delete-account')
+    // Calls a server-side Edge Function (using the Admin API) to actually
+    // remove the auth user — not just the profile row. Deleting the auth
+    // user cascades to delete all of the account's data. Once it's gone,
+    // signing in again with the same email requires signing up from
+    // scratch. See deleteOwnAccount() in supabaseClient.js — Settings.jsx
+    // uses this same helper so the two "Delete account" entry points in
+    // the app can't drift out of sync again.
+    const { error } = await deleteOwnAccount()
 
     if (error) {
       setError(error.message)
