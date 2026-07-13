@@ -259,16 +259,27 @@ export default function Home({ session, profile, onMessage }) {
       if (cancelled) return
 
       const groups = (memberships || []).map((m) => m.groups).filter(Boolean)
-      const withLatestPost = await Promise.all(groups.map(async (g) => {
-        const { data: latest } = await supabase
+      // One query for every joined group's latest post, instead of a
+      // separate round trip per group (at most 6 here, since memberships
+      // is already capped above, but the old per-group query pattern still
+      // meant "Load Home" fired 1 + N requests where N only grows with how
+      // many groups someone's in). Ordered newest-first and capped well
+      // above what a person's joined-group count could realistically need,
+      // then reduced to one row per group_id client-side.
+      const groupIds = groups.map((g) => g.id)
+      let latestByGroup = {}
+      if (groupIds.length > 0) {
+        const { data: recentGroupPosts } = await supabase
           .from('group_posts')
-          .select('title, content, created_at')
-          .eq('group_id', g.id)
+          .select('group_id, title, content, created_at')
+          .in('group_id', groupIds)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        return { ...g, latestPost: latest || null }
-      }))
+          .limit(200)
+        for (const post of recentGroupPosts || []) {
+          if (!(post.group_id in latestByGroup)) latestByGroup[post.group_id] = post
+        }
+      }
+      const withLatestPost = groups.map((g) => ({ ...g, latestPost: latestByGroup[g.id] || null }))
 
       let communityList = matchedCommunity || []
       if (communityList.length === 0) {

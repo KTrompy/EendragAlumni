@@ -45,12 +45,20 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
     onChange(next)
   }
   function setHour(h) {
-    const next = value ? new Date(value) : new Date()
+    // Without a day already picked, there's nothing to attach a time to —
+    // silently substituting today (the old behaviour) meant changing just
+    // the time, before ever touching the calendar, quietly picked "today"
+    // with no indication that's what happened. The time selects are
+    // disabled until a day is chosen (see the JSX below) so this path
+    // shouldn't normally run, but guard it anyway.
+    if (!value) return
+    const next = new Date(value)
     next.setHours(Number(h))
     onChange(next)
   }
   function setMinute(m) {
-    const next = value ? new Date(value) : new Date()
+    if (!value) return
+    const next = new Date(value)
     next.setMinutes(Number(m))
     onChange(next)
   }
@@ -113,7 +121,7 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
           <div className="dtp-time-row">
             <span className="dtp-time-label">Time</span>
             <div className="select-wrap dtp-time-select">
-              <select value={hour} onChange={(e) => setHour(e.target.value)}>
+              <select value={hour} onChange={(e) => setHour(e.target.value)} disabled={!value}>
                 {Array.from({ length: 24 }, (_, h) => (
                   <option key={h} value={h}>{pad(h)}</option>
                 ))}
@@ -121,13 +129,14 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
             </div>
             <span>:</span>
             <div className="select-wrap dtp-time-select">
-              <select value={minute} onChange={(e) => setMinute(e.target.value)}>
+              <select value={minute} onChange={(e) => setMinute(e.target.value)} disabled={!value}>
                 {[0, 15, 30, 45].map((m) => (
                   <option key={m} value={m}>{pad(m)}</option>
                 ))}
               </select>
             </div>
           </div>
+          {!value && <p className="dtp-hint">Pick a day first, then set the time.</p>}
 
           <div className="dtp-footer">
             <button type="button" className="btn primary small" onClick={() => setOpen(false)}>Done</button>

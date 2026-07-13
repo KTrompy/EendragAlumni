@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -9,6 +9,7 @@ import DeleteButton from './DeleteButton.jsx'
 import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
+import { useObjectUrl, useObjectUrls } from '../utils.js'
 
 // Full profile shape needed for the "click a name → open their profile"
 // modal — same fields Directory/Jobs pull for the same purpose, so a post
@@ -96,6 +97,12 @@ export default function Feed({ session, profile, onMessage }) {
   const [myLikes, setMyLikes] = useState(new Set())
   const [lightbox, setLightbox] = useState(null)
   const [query, setQuery] = useState('')
+  // Search results fetched straight from the database (debounced), rather
+  // than only filtering whatever page of `posts` happens to be loaded —
+  // otherwise a match from before the currently-loaded page was invisible
+  // until "Load more" had been clicked all the way back to it.
+  const [searchResults, setSearchResults] = useState(null) // null = not searching
+  const [searching, setSearching] = useState(false)
   const composerOpenRef = useRef(null)
   const showToast = useToast()
   const navigate = useNavigate()
@@ -244,13 +251,20 @@ export default function Feed({ session, profile, onMessage }) {
   }
 
   async function removePost(id) {
+    const target = posts.find((p) => p.id === id) || pinnedPosts.find((p) => p.id === id)
     const { error } = await supabase.from('posts').delete().eq('id', id)
     if (error) {
       showToast('Could not delete post.', { type: 'error' })
       return
     }
     setPosts((prev) => prev.filter((p) => p.id !== id))
+    setPinnedPosts((prev) => prev.filter((p) => p.id !== id))
     showToast('Post deleted')
+    // Best-effort: the row is gone either way, but this keeps its images/
+    // video from sitting in storage forever as an orphan nothing else will
+    // ever reference again.
+    if (target?.image_urls?.length) deleteStorageFilesFromUrls('post-images', target.image_urls)
+    if (target?.video_url) deleteStorageFilesFromUrls('post-videos', target.video_url)
   }
 
   async function editPost(id, { title, content }) {
@@ -295,9 +309,31 @@ export default function Feed({ session, profile, onMessage }) {
   }
 
   const needle = query.trim().toLowerCase()
-  const shown = needle
-    ? posts.filter((p) => postMatches(p, needle))
-    : posts
+
+  // Debounced server-side search — title/content across every post, not
+  // just the page(s) already loaded into `posts`. `%`/`_` are ILIKE
+  // wildcards, so they're stripped/escaped the same way GlobalSearch.jsx
+  // handles them, and `,()` are stripped since they'd otherwise break the
+  // .or() filter's own syntax.
+  useEffect(() => {
+    if (!needle) { setSearchResults(null); setSearching(false); return }
+    setSearching(true)
+    const safe = needle.replace(/[,()%]/g, ' ').replace(/_/g, '\\_').trim()
+    const like = `%${safe}%`
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('posts')
+        .select(POSTS_SELECT)
+        .or(`title.ilike.${like},content.ilike.${like}`)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      setSearchResults(data || [])
+      setSearching(false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [needle])
+
+  const shown = needle ? (searchResults || []) : posts
 
   // Clicking a name/avatar anywhere in the feed (author, commenter, "Who's
   // online", "Recent members") goes to that person's standalone profile
@@ -376,7 +412,11 @@ export default function Feed({ session, profile, onMessage }) {
             />
           )}
 
-          {!loading && posts.length > 0 && shown.length === 0 && (
+          {needle && searching && (
+            <p className="empty small">Searching…</p>
+          )}
+
+          {!loading && needle && !searching && shown.length === 0 && (
             <p className="empty small">No posts match "{query}".</p>
           )}
 
@@ -424,6 +464,12 @@ function Composer({ session, profile, onPosted, openRef }) {
   const fileRef = useRef(null)
   const videoFileRef = useRef(null)
   const showToast = useToast()
+  // Object URLs for the image/video previews below — created once per
+  // file (rather than inline in JSX on every render) and revoked when the
+  // file list changes or this composer unmounts, so picking/removing
+  // photos repeatedly doesn't leak a growing pile of blob URLs.
+  const previewUrls = useObjectUrls(files)
+  const videoPreviewUrl = useObjectUrl(videoFile)
   // Text-only draft autosave — closing the modal or a phone locking mid-post
   // used to just lose whatever was typed. Attached photos/video can't
   // round-trip through localStorage, so only title/body are persisted.
@@ -551,6 +597,7 @@ function Composer({ session, profile, onPosted, openRef }) {
 
   async function publish() {
     if (!canSubmit) return
+    if (body.length > 4000) { setError('Post is too long — please trim it below 4000 characters.'); return }
     setBusy(true); setError(null)
     try {
       const image_urls = files.length ? await uploadAll() : []
@@ -698,7 +745,7 @@ function Composer({ session, profile, onPosted, openRef }) {
               <div className="composer-video-row">
                 <div className="composer-video-preview-wrap">
                   <video controls width="100%">
-                    <source src={URL.createObjectURL(videoFile)} />
+                    <source src={videoPreviewUrl} />
                     Your browser doesn't support video playback
                   </video>
                   <button
@@ -716,7 +763,7 @@ function Composer({ session, profile, onPosted, openRef }) {
               <div className="composer-previews">
                 {files.map((f, i) => (
                   <div className="composer-preview" key={i}>
-                    <img src={URL.createObjectURL(f)} alt="" />
+                    <img src={previewUrls[i]} alt="" />
                     <button onClick={() => removeFile(i)} aria-label="Remove image">×</button>
                   </div>
                 ))}
@@ -765,6 +812,10 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
   async function saveEdit() {
     if (!hasText(editBody) && images.length === 0 && !p.video_url) {
       setEditError('A post needs some text.')
+      return
+    }
+    if (editBody.length > 4000) {
+      setEditError('Post is too long — please trim it below 4000 characters.')
       return
     }
     setEditBusy(true); setEditError(null)
@@ -959,7 +1010,19 @@ function Comments({ postId, session, profile, onOpenProfile }) {
     setItems(data || [])
   }
 
-  useEffect(() => { load() }, [postId])
+  // Live so a comment thread left open updates as other people reply,
+  // instead of only refreshing when you post/delete your own comment —
+  // "*" (not just INSERT) so a delete elsewhere also disappears live
+  // rather than lingering until this component happens to reload.
+  useEffect(() => {
+    load()
+    const channel = supabase
+      .channel(`post-comments-${postId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_comments', filter: `post_id=eq.${postId}` }, load)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId])
 
   async function send() {
     if (!draft.trim()) return

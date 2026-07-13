@@ -46,3 +46,37 @@ export function isAuthError(error) {
 export function isNetworkError(error) {
   return !!error && !error.code && !error.status
 }
+
+// Best-effort cleanup for storage files whose owning row (a post, a group,
+// a business listing, a merch item, a photo, …) has just been deleted.
+// Every upload flow in this app (post-images, post-videos, avatars,
+// group-covers, business-logos/covers, merch-images, photos) writes to a
+// public bucket and saves the resulting public URL on the row — but
+// nothing removed the underlying file once that row went away, so deleted
+// posts/listings/albums left their images and videos behind in storage
+// forever. This takes one or more of those public URLs, works out each
+// one's storage path, and removes them from `bucket`.
+//
+// Deliberately swallows errors and never throws: cleanup here is a nice-to-
+// have, not something that should turn "delete this post" into a visible
+// failure for the person doing it just because a storage call hiccupped.
+export async function deleteStorageFilesFromUrls(bucket, urls) {
+  const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean)
+  if (list.length === 0) return
+  const marker = `/storage/v1/object/public/${bucket}/`
+  const paths = list
+    .map((url) => {
+      const idx = url.indexOf(marker)
+      if (idx === -1) return null
+      // Strip the marker prefix and any `?t=...`/query string cache-buster
+      // some upload flows append to the public URL.
+      return decodeURIComponent(url.slice(idx + marker.length).split('?')[0])
+    })
+    .filter(Boolean)
+  if (paths.length === 0) return
+  try {
+    await supabase.storage.from(bucket).remove(paths)
+  } catch {
+    // Best-effort — see comment above.
+  }
+}

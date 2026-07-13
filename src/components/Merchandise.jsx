@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
@@ -26,11 +26,12 @@ export const MERCH_CATEGORIES = ['Apparel', 'Drinkware', 'Accessories', 'Station
 const SIZE_SUGGESTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One size']
 
 // Fallback contact when a listing's creator account no longer exists (rare —
-// only happens if an admin who posted an item is later removed). Same
-// placeholder address Donate.jsx uses for the "no real payment flow yet"
-// contact-the-committee path, kept consistent rather than inventing a
-// second one.
-const FALLBACK_CONTACT_EMAIL = 'alumni@eendrag.example.com'
+// only happens if an admin who posted an item is later removed). Same real
+// contact address Donate.jsx and the site footer use for "get in touch",
+// kept consistent rather than inventing a second one — the previous
+// alumni@eendrag.example.com placeholder was never a real inbox, so an
+// order routed here would have silently gone nowhere.
+const FALLBACK_CONTACT_EMAIL = 'kyletrompeter0@gmail.com'
 
 const MERCH_SELECT =
   'id, name, description, price, category, sizes, colors, image_url, is_available, created_by, created_at, ' +
@@ -85,10 +86,12 @@ export default function Merchandise({ session, profile, onMessage }) {
   }, [])
 
   async function removeItem(id) {
+    const target = items.find((i) => i.id === id)
     const { error } = await supabase.from('merchandise').delete().eq('id', id)
     if (error) { showToast('Could not delete item.', { type: 'error' }); return }
     setItems((prev) => prev.filter((i) => i.id !== id))
     showToast('Item deleted')
+    if (target?.image_url) deleteStorageFilesFromUrls('merch-images', target.image_url)
   }
 
   async function toggleAvailable(item) {

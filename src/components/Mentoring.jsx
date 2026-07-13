@@ -61,10 +61,26 @@ export default function Mentoring({ session, profile, onMessage }) {
         .or(`mentor_id.eq.${session.user.id},mentee_id.eq.${session.user.id}`),
     ])
 
-    const withCounts = await Promise.all((progs || []).map(async (p) => {
-      const { data: count } = await supabase.rpc('mentoring_match_count', { pid: p.id })
-      return { ...p, matchCount: count ?? 0 }
-    }))
+    // Batched into a single RPC call rather than one mentoring_match_count
+    // round trip per program (see schema-update-32.sql) — falls back to the
+    // old per-program calls if that migration hasn't been run yet in this
+    // Supabase project, so this doesn't just break for anyone who hasn't
+    // re-run the SQL editor script.
+    const programIds = (progs || []).map((p) => p.id)
+    let countByProgram = {}
+    if (programIds.length > 0) {
+      const { data: counts, error: countsErr } = await supabase.rpc('mentoring_match_counts', { pids: programIds })
+      if (!countsErr) {
+        countByProgram = Object.fromEntries((counts || []).map((c) => [c.program_id, c.cnt]))
+      } else {
+        const fallback = await Promise.all(programIds.map(async (pid) => {
+          const { data: count } = await supabase.rpc('mentoring_match_count', { pid })
+          return [pid, count ?? 0]
+        }))
+        countByProgram = Object.fromEntries(fallback)
+      }
+    }
+    const withCounts = (progs || []).map((p) => ({ ...p, matchCount: countByProgram[p.id] ?? 0 }))
 
     setPrograms(withCounts)
     setParticipants(parts || [])

@@ -32,7 +32,7 @@ export default function Donate() {
         Reach out and we'll walk you through the options.
       </p>
 
-      <a className="btn primary" href="mailto:alumni@eendrag.example.com?subject=Supporting Eendrag">
+      <a className="btn primary" href="mailto:kyletrompeter0@gmail.com?subject=Supporting Eendrag">
         Get in touch
       </a>
 

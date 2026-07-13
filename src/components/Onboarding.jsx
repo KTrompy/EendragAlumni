@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import {
   INDUSTRIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED,
   AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS,
 } from '../constants.js'
 import { geocodeCity } from '../geocode.js'
-import { normalizeExpertise } from '../utils.js'
+import { normalizeExpertise, isValidGradYear, isSafeHttpUrl } from '../utils.js'
 import { Avatar } from './Directory.jsx'
 import PhotoCropper from './PhotoCropper.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
@@ -26,29 +26,49 @@ const QUESTION_KEYS = [
 ]
 const STEPS = ['intro', ...QUESTION_KEYS, 'done']
 
+// Closing the tab (or the phone locking) partway through used to lose
+// every answer given so far, since the only write happened at the very end
+// (see finishSave). Progress is now mirrored to localStorage as it's
+// entered, and restored on mount if the person comes back before finishing
+// — same idea as Feed's post-composer draft autosave.
+function draftKeyFor(userId) { return `eendrag-onboarding-draft-${userId}` }
+
+// Reads whatever draft (if any) was saved for this user, so both initial
+// state values below can pull from the same parsed object without hitting
+// localStorage/JSON.parse twice.
+function loadDraft(userId) {
+  try {
+    return JSON.parse(localStorage.getItem(draftKeyFor(userId)) || 'null')
+  } catch {
+    return null
+  }
+}
+
 export default function Onboarding({ session, profile, onDone }) {
-  const [stepIndex, setStepIndex] = useState(0)
-  const [form, setForm] = useState({
-    full_name: profile?.full_name || '',
-    is_current_resident: !!profile?.is_current_resident,
-    grad_year: profile?.grad_year || '',
-    degree: profile?.degree || '',
-    industry: INDUSTRIES.includes(profile?.industry) ? profile.industry : (profile?.industry ? 'Other' : ''),
-    occupation: profile?.occupation || '',
-    company: profile?.company || '',
-    country: profile?.country || 'South Africa',
-    city: profile?.city || '',
-    linkedin_url: profile?.linkedin_url || '',
-    bio: profile?.bio || '',
-    is_open_to_opportunities: profile?.is_open_to_opportunities !== false,
-    availability: profile?.availability || '',
-    expertise: normalizeExpertise(profile?.expertise),
-    services_offered: Array.isArray(profile?.services_offered) ? profile.services_offered : [],
-    geographic_focus: Array.isArray(profile?.geographic_focus) ? profile.geographic_focus : [],
-    business_website: profile?.business_website || '',
-  })
+  const draftKey = draftKeyFor(session.user.id)
+  const draft = loadDraft(session.user.id)
+  const [stepIndex, setStepIndex] = useState(() => (Number.isInteger(draft?.stepIndex) ? draft.stepIndex : 0))
+  const [form, setForm] = useState(() => ({
+    full_name: draft?.form?.full_name ?? (profile?.full_name || ''),
+    is_current_resident: draft?.form?.is_current_resident ?? !!profile?.is_current_resident,
+    grad_year: draft?.form?.grad_year ?? (profile?.grad_year || ''),
+    degree: draft?.form?.degree ?? (profile?.degree || ''),
+    industry: draft?.form?.industry ?? (INDUSTRIES.includes(profile?.industry) ? profile.industry : (profile?.industry ? 'Other' : '')),
+    occupation: draft?.form?.occupation ?? (profile?.occupation || ''),
+    company: draft?.form?.company ?? (profile?.company || ''),
+    country: draft?.form?.country ?? (profile?.country || 'South Africa'),
+    city: draft?.form?.city ?? (profile?.city || ''),
+    linkedin_url: draft?.form?.linkedin_url ?? (profile?.linkedin_url || ''),
+    bio: draft?.form?.bio ?? (profile?.bio || ''),
+    is_open_to_opportunities: draft?.form?.is_open_to_opportunities ?? (profile?.is_open_to_opportunities !== false),
+    availability: draft?.form?.availability ?? (profile?.availability || ''),
+    expertise: draft?.form?.expertise ?? normalizeExpertise(profile?.expertise),
+    services_offered: draft?.form?.services_offered ?? (Array.isArray(profile?.services_offered) ? profile.services_offered : []),
+    geographic_focus: draft?.form?.geographic_focus ?? (Array.isArray(profile?.geographic_focus) ? profile.geographic_focus : []),
+    business_website: draft?.form?.business_website ?? (profile?.business_website || ''),
+  }))
   const [customIndustry, setCustomIndustry] = useState(
-    profile?.industry && !INDUSTRIES.includes(profile.industry) ? profile.industry : ''
+    draft?.customIndustry ?? (profile?.industry && !INDUSTRIES.includes(profile.industry) ? profile.industry : '')
   )
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || null)
   const [cropFile, setCropFile] = useState(null)
@@ -62,6 +82,26 @@ export default function Onboarding({ session, profile, onDone }) {
 
   const currentKey = STEPS[stepIndex]
   const questionIndex = QUESTION_KEYS.indexOf(currentKey)
+
+  // Mirror answers to localStorage as they're entered (debounced), so
+  // closing the tab or the phone locking mid-way doesn't throw away
+  // everything answered so far — only avatarUrl/cropFile are left out,
+  // same as Feed's draft autosave, since an image can't round-trip through
+  // localStorage.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({ stepIndex, form, customIndustry }))
+      } catch {
+        // storage full/unavailable — draft just won't persist this time
+      }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [draftKey, stepIndex, form, customIndustry])
+
+  function clearDraft() {
+    try { localStorage.removeItem(draftKey) } catch { /* ignore */ }
+  }
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setEmptyNotice(false) }
   function onEnter(e) { if (e.key === 'Enter') handleContinue() }
@@ -103,6 +143,22 @@ export default function Onboarding({ session, profile, onDone }) {
     }
   }
 
+  // Format problems (not just "empty") for the current question — a bad
+  // grad year or a non-http(s) link shouldn't be allowed through just
+  // because something was typed. Returns a message, or null if fine.
+  function currentFormatError() {
+    if (currentKey === 'year' && form.grad_year && !isValidGradYear(form.grad_year)) {
+      return `Enter a year between 1961 and ${new Date().getFullYear() + 1}.`
+    }
+    if (currentKey === 'linkedin' && !isSafeHttpUrl(form.linkedin_url)) {
+      return 'That should start with http:// or https://.'
+    }
+    if (currentKey === 'website' && !isSafeHttpUrl(form.business_website)) {
+      return 'That should start with http:// or https://.'
+    }
+    return null
+  }
+
   // "Continue" nudges you to fill the field in (or explicitly hit Skip)
   // instead of silently letting an empty answer slide through.
   function handleContinue() {
@@ -110,6 +166,12 @@ export default function Onboarding({ session, profile, onDone }) {
       setEmptyNotice(true)
       return
     }
+    const formatError = questionIndex >= 0 ? currentFormatError() : null
+    if (formatError) {
+      setError(formatError)
+      return
+    }
+    setError(null)
     advance()
   }
 
@@ -196,6 +258,7 @@ export default function Onboarding({ session, profile, onDone }) {
       return
     }
     if (currentKey === 'done') {
+      clearDraft()
       onDone(savedProfile || profile)
       return
     }

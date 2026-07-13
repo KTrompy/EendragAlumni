@@ -48,7 +48,13 @@ export default function GlobalSearch({ open, onClose }) {
     }
     setLoading(true)
     const timer = setTimeout(async () => {
-      const safe = needle.replace(/[,()%]/g, ' ').trim()
+      // `,()` are stripped (rather than escaped) since they'd otherwise
+      // break the .or() filter's own syntax. `%` and `_` are ILIKE
+      // wildcards — `%` is stripped the same way, and `_` is backslash-
+      // escaped (not stripped) so "j_hn" only matches a literal underscore
+      // instead of also matching "john" via `_`'s "any single character"
+      // meaning.
+      const safe = needle.replace(/[,()%]/g, ' ').replace(/_/g, '\\_').trim()
       const like = `%${safe}%`
       const [{ data: people }, { data: posts }, { data: jobs }, { data: businesses }] = await Promise.all([
         supabase.from('profiles').select('id, full_name, avatar_url, occupation, company')

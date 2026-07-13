@@ -4,6 +4,7 @@ import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 
 const GROUP_GAP_MS = 5 * 60 * 1000 // new avatar/gap if >5 min since the same sender's last message
+const PAGE_SIZE = 40 // messages loaded per page — see the load/loadOlder split below
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso)) / 1000)
@@ -43,7 +44,16 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   const [draft, setDraft] = useState('')
   const [error, setError] = useState(null)
   const [threadQuery, setThreadQuery] = useState('')
+  const [hasMoreOlder, setHasMoreOlder] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
   const bottomRef = useRef(null)
+  const chatScrollRef = useRef(null)
+  // Whether the next `messages` update should auto-scroll to the bottom.
+  // True on opening a thread or sending/receiving while already near the
+  // bottom; explicitly false when prepending older history, so scrolling up
+  // to read past messages doesn't get yanked back down by someone else's
+  // new message elsewhere in the thread.
+  const shouldAutoScrollRef = useRef(true)
   const me = session.user.id
 
   async function loadThreads() {
@@ -108,15 +118,27 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   }, [initialTarget])
 
   useEffect(() => {
-    if (!activeId) { setMessages([]); return }
+    if (!activeId) { setMessages([]); setHasMoreOlder(false); return }
     let cancelled = false
+    shouldAutoScrollRef.current = true // always land at the bottom when opening a thread
 
+    // Only the most recent PAGE_SIZE messages load up front — see loadOlder
+    // for how earlier history is fetched on demand. Previously this loaded
+    // every message in the conversation with no limit at all, so a
+    // years-old, thousand-message thread pulled its entire history just to
+    // open the panel.
     supabase
       .from('messages')
       .select('id, sender_id, content, created_at')
       .eq('conversation_id', activeId)
-      .order('created_at')
-      .then(({ data }) => { if (!cancelled) setMessages(data || []) })
+      .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE)
+      .then(({ data }) => {
+        if (cancelled) return
+        const page = (data || []).slice().reverse()
+        setMessages(page)
+        setHasMoreOlder((data || []).length === PAGE_SIZE)
+      })
 
     const channel = supabase
       .channel(`conv-${activeId}`)
@@ -124,6 +146,13 @@ export default function Messages({ session, profile, initialTarget, initialDraft
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeId}` },
         (payload) => {
+          // Auto-scroll for a new message only if we were already near the
+          // bottom, or it's our own outgoing message — otherwise someone
+          // scrolled up to read earlier messages would get pulled back down
+          // every time anyone in the conversation sends something.
+          const el = chatScrollRef.current
+          const nearBottom = !el || (el.scrollHeight - el.scrollTop - el.clientHeight < 120)
+          shouldAutoScrollRef.current = nearBottom || payload.new.sender_id === me
           setMessages((m) => [...m, payload.new])
           loadThreads()
           // A message arriving while this thread is the open one counts as
@@ -134,7 +163,35 @@ export default function Messages({ session, profile, initialTarget, initialDraft
       .subscribe()
 
     return () => { cancelled = true; supabase.removeChannel(channel) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId])
+
+  // Fetches the next page of earlier history above what's currently loaded,
+  // preserving the reader's visual scroll position (rather than jumping)
+  // by measuring the scroll container's height before/after prepending.
+  async function loadOlder() {
+    if (!activeId || messages.length === 0 || loadingOlder) return
+    setLoadingOlder(true)
+    const el = chatScrollRef.current
+    const prevScrollTop = el?.scrollTop ?? 0
+    const prevScrollHeight = el?.scrollHeight ?? 0
+    const oldestCreatedAt = messages[0].created_at
+    const { data } = await supabase
+      .from('messages')
+      .select('id, sender_id, content, created_at')
+      .eq('conversation_id', activeId)
+      .lt('created_at', oldestCreatedAt)
+      .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE)
+    const older = (data || []).slice().reverse()
+    shouldAutoScrollRef.current = false
+    setMessages((m) => [...older, ...m])
+    setHasMoreOlder((data || []).length === PAGE_SIZE)
+    setLoadingOlder(false)
+    requestAnimationFrame(() => {
+      if (el) el.scrollTop = prevScrollTop + (el.scrollHeight - prevScrollHeight)
+    })
+  }
 
   // Opening a thread clears its unread count.
   function markRead(conversationId) {
@@ -146,6 +203,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   }, [activeId])
 
   useEffect(() => {
+    if (!shouldAutoScrollRef.current) return
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
@@ -267,7 +325,14 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                   )}
                 </div>
               </div>
-              <div className="chat-scroll">
+              <div className="chat-scroll" ref={chatScrollRef}>
+                {hasMoreOlder && (
+                  <div className="load-more-row">
+                    <button className="btn ghost small" onClick={loadOlder} disabled={loadingOlder}>
+                      {loadingOlder ? 'Loading…' : 'Load older messages'}
+                    </button>
+                  </div>
+                )}
                 {messages.map((m, i) => {
                   const mine = m.sender_id === me
                   const prev = messages[i - 1]

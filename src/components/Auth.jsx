@@ -10,6 +10,27 @@ export default function Auth() {
   const [notice, setNotice] = useState(null)
   const [error, setError] = useState(null)
 
+  // Basic shape check — not trying to fully validate email syntax (the
+  // server/Supabase does that), just catching the obvious "field left
+  // blank" or "no @ at all" cases before spending a network round trip.
+  function validate() {
+    const cleanEmail = email.trim()
+    if (!cleanEmail) return 'Enter your email address.'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return 'Enter a valid email address.'
+    if (mode !== 'forgot') {
+      if (!password) return 'Enter your password.'
+      if (mode === 'signup' && password.length < 6) return 'Password must be at least 6 characters.'
+    }
+    return null
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const problem = validate()
+    if (problem) { setError(problem); setNotice(null); return }
+    submit()
+  }
+
   async function submit() {
     setBusy(true); setError(null); setNotice(null)
     try {
@@ -47,47 +68,49 @@ export default function Auth() {
         <h1 className="auth-title">Eendrag Alumni</h1>
         <p className="auth-sub">Character · Style · Pride · Since 1961</p>
 
-        <label className="field">
-          <span>Email</span>
-          <ClearableInput
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onClear={() => setEmail('')}
-            placeholder="you@example.com"
-            autoComplete="email"
-          />
-        </label>
-        {mode !== 'forgot' && (
+        <form onSubmit={handleSubmit} noValidate>
           <label className="field">
-            <span>Password</span>
+            <span>Email</span>
             <ClearableInput
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onClear={() => setPassword('')}
-              placeholder="At least 6 characters"
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onClear={() => setEmail('')}
+              placeholder="you@example.com"
+              autoComplete="email"
             />
           </label>
-        )}
+          {mode !== 'forgot' && (
+            <label className="field">
+              <span>Password</span>
+              <ClearableInput
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onClear={() => setPassword('')}
+                placeholder="At least 6 characters"
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              />
+            </label>
+          )}
 
-        {mode === 'signin' && (
-          <button
-            type="button"
-            className="link-btn auth-forgot-link"
-            onClick={() => { setMode('forgot'); setError(null); setNotice(null) }}
-          >
-            Forgot password?
+          {mode === 'signin' && (
+            <button
+              type="button"
+              className="link-btn auth-forgot-link"
+              onClick={() => { setMode('forgot'); setError(null); setNotice(null) }}
+            >
+              Forgot password?
+            </button>
+          )}
+
+          {error && <p className="form-error">{error}</p>}
+          {notice && <p className="form-notice">{notice}</p>}
+
+          <button type="submit" className="btn primary wide" disabled={busy}>
+            {busy ? 'One moment…' : mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
           </button>
-        )}
-
-        {error && <p className="form-error">{error}</p>}
-        {notice && <p className="form-notice">{notice}</p>}
-
-        <button className="btn primary wide" onClick={submit} disabled={busy}>
-          {busy ? 'One moment…' : mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
-        </button>
+        </form>
 
         {mode === 'forgot' ? (
           <button

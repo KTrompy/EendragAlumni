@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase, deleteOwnAccount } from '../supabaseClient'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import LoadingState from './LoadingState.jsx'
+import { useToast } from './Toast.jsx'
 
 const SETTINGS_TABS = [
   { id: 'account', label: 'Account' },
@@ -68,6 +69,7 @@ export default function Settings({ session, profile, onSaved }) {
 
 /* ---------- Account ---------- */
 function AccountTab({ session, profile, onSaved }) {
+  const showToast = useToast()
   const [language, setLanguage] = useState(profile?.language || 'en')
   const [email, setEmail] = useState(session.user.email || '')
   const [emailMsg, setEmailMsg] = useState(null)
@@ -81,9 +83,15 @@ function AccountTab({ session, profile, onSaved }) {
   const [deleting, setDeleting] = useState(false)
 
   async function saveLanguage(next) {
+    const prev = language
     setLanguage(next)
-    const { data } = await supabase.from('profiles').update({ language: next }).eq('id', session.user.id).select().single()
-    if (data) onSaved?.(data)
+    const { data, error } = await supabase.from('profiles').update({ language: next }).eq('id', session.user.id).select().single()
+    if (error) {
+      setLanguage(prev)
+      showToast('Could not save language preference.', { type: 'error' })
+      return
+    }
+    onSaved?.(data)
   }
 
   async function saveEmail() {
@@ -206,6 +214,7 @@ function AccountTab({ session, profile, onSaved }) {
 
 /* ---------- Notifications ---------- */
 function NotificationsTab({ session }) {
+  const showToast = useToast()
   const [prefs, setPrefs] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -222,6 +231,7 @@ function NotificationsTab({ session }) {
   }, [session.user.id])
 
   async function toggle(key) {
+    const prev = prefs
     const next = { ...prefs, [key]: !prefs[key] }
     setPrefs(next)
     // Upsert the whole row, not just the one changed column. When a
@@ -230,7 +240,11 @@ function NotificationsTab({ session }) {
     // table's column defaults are — which may not match the "all on"
     // defaults this UI assumes, silently flipping toggles the person never
     // touched.
-    await supabase.from('notification_preferences').upsert({ user_id: session.user.id, ...next })
+    const { error } = await supabase.from('notification_preferences').upsert({ user_id: session.user.id, ...next })
+    if (error) {
+      setPrefs(prev)
+      showToast('Could not save notification preference.', { type: 'error' })
+    }
   }
 
   if (loading) return <LoadingState message="Loading your notification settings…" />
@@ -277,9 +291,15 @@ function Toggle({ checked, onChange, disabled }) {
 
 /* ---------- Privacy ---------- */
 function PrivacyTab({ session, profile, onSaved }) {
+  const showToast = useToast()
+
   async function setValue(key, value) {
-    const { data } = await supabase.from('profiles').update({ [key]: value }).eq('id', session.user.id).select().single()
-    if (data) onSaved?.(data)
+    const { data, error } = await supabase.from('profiles').update({ [key]: value }).eq('id', session.user.id).select().single()
+    if (error) {
+      showToast('Could not save privacy setting.', { type: 'error' })
+      return
+    }
+    onSaved?.(data)
   }
 
   return (

@@ -19,6 +19,10 @@ export default function Groups({ session }) {
   const [myGroupIds, setMyGroupIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  // Tracks in-flight join requests so a fast double-click can't fire the
+  // insert twice before the first optimistic update (which flips myGroupIds
+  // and hides the Join button) has a chance to re-render.
+  const [joiningIds, setJoiningIds] = useState(new Set())
   const navigate = useNavigate()
   const showToast = useToast()
 
@@ -36,8 +40,11 @@ export default function Groups({ session }) {
   useEffect(() => { load() }, [])
 
   async function joinGroup(id) {
+    if (joiningIds.has(id)) return
+    setJoiningIds((prev) => new Set(prev).add(id))
     setMyGroupIds((prev) => new Set(prev).add(id))
     const { error } = await supabase.from('group_members').insert({ group_id: id, user_id: session.user.id })
+    setJoiningIds((prev) => { const n = new Set(prev); n.delete(id); return n })
     if (error) {
       setMyGroupIds((prev) => { const n = new Set(prev); n.delete(id); return n })
       showToast(error.message.includes('policy') ? 'Joining unlocks once your account is approved.' : 'Could not join group.', { type: 'error' })
@@ -92,6 +99,7 @@ export default function Groups({ session }) {
               <GroupRow
                 key={g.id}
                 group={g}
+                joining={joiningIds.has(g.id)}
                 onOpen={() => navigate(`/groups/${g.id}`)}
                 onJoin={() => joinGroup(g.id)}
               />
@@ -128,7 +136,7 @@ function GroupCard({ group: g, joined, onClick }) {
   )
 }
 
-function GroupRow({ group: g, onOpen, onJoin }) {
+function GroupRow({ group: g, joining, onOpen, onJoin }) {
   const count = g.members?.[0]?.count ?? 0
   return (
     <li>
@@ -143,7 +151,9 @@ function GroupRow({ group: g, onOpen, onJoin }) {
           <span className="group-row-meta">{count} {count === 1 ? 'member' : 'members'}</span>
           {g.description && <p className="group-row-desc">{g.description}</p>}
         </div>
-        <button className="btn ghost" onClick={(e) => { e.stopPropagation(); onJoin() }}>Join</button>
+        <button className="btn ghost" onClick={(e) => { e.stopPropagation(); onJoin() }} disabled={joining}>
+          {joining ? 'Joining…' : 'Join'}
+        </button>
       </div>
     </li>
   )

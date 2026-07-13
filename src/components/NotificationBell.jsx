@@ -72,7 +72,10 @@ export default function NotificationBell({ session, onNavigate }) {
     }
     setOpen(false)
     const tab = ENTITY_TAB[n.entity_type]
-    if (tab) onNavigate?.(tab)
+    // Pass the entity id along too, so the caller can deep-link straight to
+    // the specific post/event this notification is about (e.g. /feed/:id)
+    // instead of just landing generically on that tab's top.
+    if (tab) onNavigate?.(tab, n.entity_type, n.entity_id)
     else onNavigate?.('messages')
   }
 

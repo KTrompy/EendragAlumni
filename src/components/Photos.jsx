@@ -6,6 +6,8 @@ import LoadingState from './LoadingState.jsx'
 import { useToast } from './Toast.jsx'
 
 const ALBUMS_SELECT = 'id, title, description, created_at, photos(count)'
+const ALBUMS_PAGE_SIZE = 24
+const PHOTOS_PAGE_SIZE = 60
 
 export default function Photos({ session }) {
   const [albums, setAlbums] = useState([])
@@ -16,6 +18,14 @@ export default function Photos({ session }) {
   const [tab, setTab] = useState('albums') // 'albums' or 'photos'
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('date-desc')
+  // Both lists previously loaded every row in the table with no limit at
+  // all — fine while there were a handful of albums/photos, but it meant
+  // the page's load time and payload size only ever grew, unbounded, as
+  // the archive filled up. Each tab now loads one page at a time instead.
+  const [albumsHasMore, setAlbumsHasMore] = useState(false)
+  const [photosHasMore, setPhotosHasMore] = useState(false)
+  const [loadingMoreAlbums, setLoadingMoreAlbums] = useState(false)
+  const [loadingMorePhotos, setLoadingMorePhotos] = useState(false)
   // Removed the "YOUR GROUPS" filter toggle that used to live here — it
   // toggled local state that neither filteredAlbums nor filteredPhotos ever
   // read, and there's no group_id anywhere on photo_albums/photos to
@@ -28,16 +38,43 @@ export default function Photos({ session }) {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('photo_albums').select(ALBUMS_SELECT).order('created_at', { ascending: false })
+    const [{ data }, { data: photos }] = await Promise.all([
+      supabase.from('photo_albums').select(ALBUMS_SELECT).order('created_at', { ascending: false }).range(0, ALBUMS_PAGE_SIZE - 1),
+      supabase.from('photos').select('id, url, caption, album_id, created_at').order('created_at', { ascending: false }).range(0, PHOTOS_PAGE_SIZE - 1),
+    ])
     setAlbums(data || [])
-
-    const { data: photos } = await supabase.from('photos').select('id, url, caption, album_id, created_at').order('created_at', { ascending: false })
+    setAlbumsHasMore((data || []).length === ALBUMS_PAGE_SIZE)
     setAllPhotos(photos || [])
+    setPhotosHasMore((photos || []).length === PHOTOS_PAGE_SIZE)
 
     setLoading(false)
   }
 
   useEffect(() => { load() }, [])
+
+  async function loadMoreAlbums() {
+    setLoadingMoreAlbums(true)
+    const { data } = await supabase
+      .from('photo_albums')
+      .select(ALBUMS_SELECT)
+      .order('created_at', { ascending: false })
+      .range(albums.length, albums.length + ALBUMS_PAGE_SIZE - 1)
+    setAlbums((prev) => [...prev, ...(data || [])])
+    setAlbumsHasMore((data || []).length === ALBUMS_PAGE_SIZE)
+    setLoadingMoreAlbums(false)
+  }
+
+  async function loadMorePhotos() {
+    setLoadingMorePhotos(true)
+    const { data } = await supabase
+      .from('photos')
+      .select('id, url, caption, album_id, created_at')
+      .order('created_at', { ascending: false })
+      .range(allPhotos.length, allPhotos.length + PHOTOS_PAGE_SIZE - 1)
+    setAllPhotos((prev) => [...prev, ...(data || [])])
+    setPhotosHasMore((data || []).length === PHOTOS_PAGE_SIZE)
+    setLoadingMorePhotos(false)
+  }
 
   useEffect(() => {
     if (albums.length === 0) return
@@ -151,6 +188,18 @@ export default function Photos({ session }) {
               ))}
             </div>
           )}
+
+          {/* Same rule Feed.jsx's pager follows: search only covers
+              already-loaded albums, so the "load more" button (which fetches
+              by date, not by relevance to the query) is hidden while
+              searching rather than implying it'd surface more matches. */}
+          {!searchQuery && albumsHasMore && (
+            <div className="load-more-row">
+              <button className="btn ghost" onClick={loadMoreAlbums} disabled={loadingMoreAlbums}>
+                {loadingMoreAlbums ? 'Loading…' : 'Load more albums'}
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -163,6 +212,14 @@ export default function Photos({ session }) {
                   <img src={p.url} alt="" loading="lazy" />
                 </button>
               ))}
+            </div>
+          )}
+
+          {!searchQuery && photosHasMore && (
+            <div className="load-more-row">
+              <button className="btn ghost" onClick={loadMorePhotos} disabled={loadingMorePhotos}>
+                {loadingMorePhotos ? 'Loading…' : 'Load more photos'}
+              </button>
             </div>
           )}
         </>

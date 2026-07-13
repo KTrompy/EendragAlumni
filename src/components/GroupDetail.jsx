@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import { GroupPlaceholderIcon } from './Groups.jsx'
 import RichTextEditor from './RichTextEditor.jsx'
@@ -11,6 +11,7 @@ import ConfirmDialog from './ConfirmDialog.jsx'
 import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
+import { useObjectUrls } from '../utils.js'
 
 // Bakes the pan/zoom/crop chosen in ImagePositioningEditor into a real
 // flattened image before upload. Without this, `submit()` uploaded the
@@ -124,6 +125,8 @@ export default function GroupDetail({ session, profile, onMessage }) {
   const [editingGroup, setEditingGroup] = useState(false)
   const [leavingConfirm, setLeavingConfirm] = useState(false)
   const [deletingGroup, setDeletingGroup] = useState(false)
+  const [joining, setJoining] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const isSiteAdmin = !!profile?.is_admin
   const isGroupCreator = group?.created_by === session.user.id
 
@@ -157,9 +160,12 @@ export default function GroupDetail({ session, profile, onMessage }) {
   useEffect(() => { loadGroup() }, [groupId])
 
   async function join() {
+    if (joining) return
+    setJoining(true)
     setMyRole('member')
     setMemberCount((c) => c + 1)
     const { error } = await supabase.from('group_members').insert({ group_id: groupId, user_id: session.user.id })
+    setJoining(false)
     if (error) {
       setMyRole(null)
       setMemberCount((c) => c - 1)
@@ -169,20 +175,34 @@ export default function GroupDetail({ session, profile, onMessage }) {
 
   async function leave() {
     setLeavingConfirm(false)
+    setLeaving(true)
+    const prevRole = myRole
     setMyRole(null)
     setMemberCount((c) => Math.max(0, c - 1))
-    await supabase.from('group_members').delete().match({ group_id: groupId, user_id: session.user.id })
+    const { error } = await supabase.from('group_members').delete().match({ group_id: groupId, user_id: session.user.id })
+    setLeaving(false)
+    if (error) {
+      // Roll the optimistic update back — the UI was showing "left" while
+      // the server still has this person as a member, which would
+      // otherwise let them believe they'd left a group they hadn't.
+      setMyRole(prevRole)
+      setMemberCount((c) => c + 1)
+      showToast('Could not leave group.', { type: 'error' })
+      return
+    }
     showToast('Left group')
   }
 
   async function deleteGroup() {
     setDeletingGroup(false)
+    const coverUrl = group?.cover_image_url
     const { error } = await supabase.from('groups').delete().eq('id', groupId)
     if (error) {
       showToast('Could not delete group.', { type: 'error' })
       return
     }
     showToast('Group deleted')
+    if (coverUrl) deleteStorageFilesFromUrls('group-covers', coverUrl)
     navigate('/groups')
   }
 
@@ -214,9 +234,9 @@ export default function GroupDetail({ session, profile, onMessage }) {
           </div>
           <div className="group-hero-actions">
             {isMember ? (
-              <button className="btn ghost" onClick={() => setLeavingConfirm(true)}>Joined ✓</button>
+              <button className="btn ghost" onClick={() => setLeavingConfirm(true)} disabled={leaving}>Joined ✓</button>
             ) : (
-              <button className="btn primary" onClick={join}>Join group</button>
+              <button className="btn primary" onClick={join} disabled={joining}>{joining ? 'Joining…' : 'Join group'}</button>
             )}
             {isGroupAdmin && (
               <>
@@ -578,11 +598,13 @@ function GroupFeedTab({ groupId, session, profile, isMember, isGroupAdmin, onOpe
   }, [groupId])
 
   async function removePost(id) {
+    const target = posts.find((p) => p.id === id) || pinnedPosts.find((p) => p.id === id)
     const { error } = await supabase.from('group_posts').delete().eq('id', id)
     if (error) { showToast('Could not delete post.', { type: 'error' }); return }
     setPosts((prev) => prev.filter((p) => p.id !== id))
     setPinnedPosts((prev) => prev.filter((p) => p.id !== id))
     showToast('Post deleted')
+    if (target?.image_urls?.length) deleteStorageFilesFromUrls('group-post-images', target.image_urls)
   }
 
   async function editPost(id, { title, content }) {
@@ -670,6 +692,10 @@ function GroupComposer({ groupId, session, profile, onPosted }) {
   const fileRef = useRef(null)
   const canPost = profile?.approved
   const canSubmit = canPost && (hasText(body) || files.length > 0)
+  // Created once per file list, revoked on change/unmount — see Feed.jsx's
+  // Composer for why calling URL.createObjectURL(f) inline in JSX (the
+  // previous approach) leaked a new blob URL on every render.
+  const previewUrls = useObjectUrls(files)
 
   function pickFiles(e) {
     const chosen = Array.from(e.target.files || [])
@@ -684,6 +710,7 @@ function GroupComposer({ groupId, session, profile, onPosted }) {
 
   async function publish() {
     if (!canSubmit) return
+    if (body.length > 4000) { setError('Post is too long — please trim it below 4000 characters.'); return }
     setBusy(true); setError(null)
     try {
       const image_urls = []
@@ -758,7 +785,7 @@ function GroupComposer({ groupId, session, profile, onPosted }) {
               <div className="composer-previews">
                 {files.map((f, i) => (
                   <div className="composer-preview" key={i}>
-                    <img src={URL.createObjectURL(f)} alt="" />
+                    <img src={previewUrls[i]} alt="" />
                     <button onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))} aria-label="Remove image">×</button>
                   </div>
                 ))}
@@ -789,6 +816,7 @@ function GroupPostItem({ post: p, session, isAdmin, liked, onLike, onDelete, onE
 
   async function saveEdit() {
     if (!hasText(editBody) && images.length === 0) { setEditError('A post needs some text.'); return }
+    if (editBody.length > 4000) { setEditError('Post is too long — please trim it below 4000 characters.'); return }
     setEditBusy(true); setEditError(null)
     const error = await onEdit?.({ title: editTitle.trim(), content: hasText(editBody) ? sanitizeHtml(editBody) : '(no text)' })
     setEditBusy(false)
@@ -902,7 +930,18 @@ function GroupComments({ postId, session, onOpenProfile }) {
     setItems(data || [])
   }
 
-  useEffect(() => { load() }, [postId])
+  // Live, same as Feed.jsx's post comments — a thread left open updates as
+  // other group members reply instead of only refreshing on your own
+  // send/delete.
+  useEffect(() => {
+    load()
+    const channel = supabase
+      .channel(`group-post-comments-${postId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_post_comments', filter: `post_id=eq.${postId}` }, load)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId])
 
   async function send() {
     if (!draft.trim()) return

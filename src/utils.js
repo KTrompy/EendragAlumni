@@ -16,6 +16,67 @@ export function isRecentlyOnline(lastSeen) {
   return Date.now() - new Date(lastSeen).getTime() < ONLINE_WINDOW_MS
 }
 
+// Graduation/leaving year range check — Eendrag's been around since 1961
+// (see the brand motto in the header), and there's no legitimate reason for
+// a value beyond a year or two out from now (someone entering their intake
+// year in advance). Used to reject obvious junk like 0, -5 or 99999, which
+// nothing else in the form was stopping.
+const EENDRAG_FOUNDING_YEAR = 1961
+export function isValidGradYear(value) {
+  if (value === '' || value === null || value === undefined) return true // optional field
+  const n = Number(value)
+  if (!Number.isInteger(n)) return false
+  const maxYear = new Date().getFullYear() + 1
+  return n >= EENDRAG_FOUNDING_YEAR && n <= maxYear
+}
+
+// Only http(s) links are allowed through profile/business "website" style
+// fields — blocks a javascript:/data: URI (or anything else non-http) from
+// being saved and later rendered as a clickable href. An empty value is
+// left alone (optional field); anything non-empty must parse as a URL with
+// an http/https scheme.
+export function isSafeHttpUrl(value) {
+  const v = (value || '').trim()
+  if (!v) return true
+  try {
+    const url = new URL(v)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+// Turns a single File/Blob (or null) into a stable object URL for preview
+// purposes, revoking the previous one whenever `file` changes and on
+// unmount. Calling URL.createObjectURL(file) directly inside JSX (the
+// pattern this replaces) minted a brand new blob URL on every render with
+// nothing ever calling revokeObjectURL — each keystroke in a form sharing
+// the same page leaked another one for the life of the tab.
+export function useObjectUrl(file) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!file) { setUrl(null); return undefined }
+    const next = URL.createObjectURL(file)
+    setUrl(next)
+    return () => URL.revokeObjectURL(next)
+  }, [file])
+  return url
+}
+
+// Same idea as useObjectUrl, but for an array of files (e.g. a multi-image
+// picker) — returns a same-length array of object URLs, revoking every URL
+// from the previous render whenever the file list changes or the component
+// unmounts.
+export function useObjectUrls(files) {
+  const [urls, setUrls] = useState([])
+  useEffect(() => {
+    const next = files.map((f) => URL.createObjectURL(f))
+    setUrls(next)
+    return () => next.forEach((u) => URL.revokeObjectURL(u))
+  }, [files])
+  return urls
+}
+
 export function useIsWide(breakpoint = 900) {
   const [isWide, setIsWide] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= breakpoint : true

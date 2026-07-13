@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { TILE_URL, TILE_ATTRIBUTION, TILE_SIZE, ZOOM_OFFSET } from '../mapTiles.js'
-import { supabase } from '../supabaseClient'
+import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import { Avatar } from './Directory.jsx'
@@ -89,10 +89,38 @@ function pinIcon(count) {
   })
 }
 
+// Re-fits the view to show every pin whenever the set of clusters changes
+// (first load, or search/filters narrowing the list) — without this, the
+// map stayed pinned at its hardcoded initial center/zoom forever, so
+// filtering down to a handful of far-flung businesses still showed the
+// original all-world view instead of zooming to where they actually are.
+// Same pattern AlumniMap.jsx's FitToMarkers uses.
+function FitToMarkers({ points }) {
+  const map = useMap()
+  const fingerprint = points.map((p) => p.key).join('|')
+
+  useEffect(() => {
+    if (!points.length) return
+    if (points.length === 1) {
+      map.setView([points[0].lat, points[0].lng], 8)
+      return
+    }
+    const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]))
+    map.fitBounds(bounds, { padding: [36, 36], maxZoom: 9 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fingerprint])
+
+  return null
+}
+
+const BUSINESSES_PAGE_SIZE = 30
+
 export default function BusinessDirectory({ session, profile, onMessage }) {
   const navigate = useNavigate()
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -104,7 +132,9 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const canPost = profile?.approved
   const isAdmin = !!profile?.is_admin
 
-
+  // Was loading every business row with no limit at all — fine for a
+  // handful of listings, but the payload only ever grows as the directory
+  // fills up. Loads one page up front; loadMoreBusinesses fetches the next.
   async function loadBusinesses() {
     setLoading(true)
     const { data, error } = await supabase
@@ -112,9 +142,26 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
       .select(`*, profiles!businesses_owner_id_fkey ( ${POSTER_FIELDS} )`)
       .order('promoted', { ascending: false })
       .order('created_at', { ascending: false })
+      .range(0, BUSINESSES_PAGE_SIZE - 1)
     if (error) { console.error(error); setLoading(false); return }
     setBusinesses(data || [])
+    setHasMore((data || []).length === BUSINESSES_PAGE_SIZE)
     setLoading(false)
+  }
+
+  async function loadMoreBusinesses() {
+    setLoadingMore(true)
+    const { data, error } = await supabase
+      .from('businesses')
+      .select(`*, profiles!businesses_owner_id_fkey ( ${POSTER_FIELDS} )`)
+      .order('promoted', { ascending: false })
+      .order('created_at', { ascending: false })
+      .range(businesses.length, businesses.length + BUSINESSES_PAGE_SIZE - 1)
+    if (!error) {
+      setBusinesses((prev) => [...prev, ...(data || [])])
+      setHasMore((data || []).length === BUSINESSES_PAGE_SIZE)
+    }
+    setLoadingMore(false)
   }
 
   useEffect(() => {
@@ -140,10 +187,13 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   }, [filterOpen, isWide])
 
   async function removeBusiness(id) {
+    const target = businesses.find((b) => b.id === id)
     const { error } = await supabase.from('businesses').delete().eq('id', id)
     if (error) { showToast('Could not delete listing.', { type: 'error' }); return }
     setBusinesses((prev) => prev.filter((b) => b.id !== id))
     showToast('Listing deleted')
+    if (target?.logo_url) deleteStorageFilesFromUrls('business-logos', target.logo_url)
+    if (target?.cover_image_url) deleteStorageFilesFromUrls('business-covers', target.cover_image_url)
   }
 
   async function togglePromote(b) {
@@ -343,6 +393,18 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
               )}
             </>
           )}
+
+          {/* Same rule Feed.jsx/Photos.jsx follow: search/filters only cover
+              already-loaded businesses, so the pager is hidden while one's
+              active rather than implying "load more" would surface more
+              matches. */}
+          {!needle && activeFilterCount === 0 && hasMore && (
+            <div className="load-more-row">
+              <button className="btn ghost" onClick={loadMoreBusinesses} disabled={loadingMore}>
+                {loadingMore ? 'Loading…' : 'Load more businesses'}
+              </button>
+            </div>
+          )}
         </div>
 
         {isWide && (
@@ -358,6 +420,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                 <div className="map-shell">
                   <MapContainer center={[20, 10]} zoom={2} scrollWheelZoom className="alumni-map">
                     <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} tileSize={TILE_SIZE} zoomOffset={ZOOM_OFFSET} />
+                    <FitToMarkers points={clusters} />
                     {clusters.map((c) => {
                       const place = [c.items[0].city, c.items[0].country].filter(Boolean).join(', ')
                       return (

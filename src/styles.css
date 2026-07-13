@@ -820,7 +820,7 @@ input, textarea, select { font: inherit; }
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
-  z-index: 2200; /* above the profile modal (2000) and chat panel (1100) */
+  z-index: 10700; /* above modals/create-panels (10500) and chat panel (1100) */
   display: flex;
   flex-direction: column-reverse;
   gap: 8px;
@@ -2409,8 +2409,13 @@ button.delete-danger svg { flex-shrink: 0; }
   -webkit-backdrop-filter: blur(3px);
   /* Above Leaflet's internal panes/controls (it uses z-index up to 1000
      for its own overlays), so profile modals opened from the Alumni Map
-     land on top of the map with their dark backdrop, instead of behind it. */
-  z-index: 2000;
+     land on top of the map with their dark backdrop, instead of behind it.
+     Also above the page-level floating dropdowns (city/phone/header-avatar
+     menus etc. sit at 9999-10000 — see those rules) — those dropdowns
+     render inside whatever page is open behind a modal, so without this a
+     modal opened while one of those dropdowns happened to still be open
+     could end up looking like it rendered underneath it. */
+  z-index: 10500;
   display: grid;
   place-items: center;
   padding: 20px;
@@ -3182,6 +3187,8 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .rte-toolbar-formats { display: flex; gap: 4px; }
 .rte-toolbar-extra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rte-char-count { font-size: 11.5px; color: var(--ink-soft); margin-left: auto; white-space: nowrap; }
+.rte-char-count.over { color: var(--danger); font-weight: 600; }
 .rte-btn {
   width: 30px; height: 30px;
   display: grid; place-items: center;
@@ -4472,7 +4479,10 @@ button.delete-danger svg { flex-shrink: 0; }
 .create-panel-backdrop {
   position: fixed; inset: 0;
   background: rgba(26, 15, 29, 0.6);
-  z-index: 2000;
+  /* Matches .modal-backdrop's z-index — see the comment there for why this
+     needs to sit above the page-level dropdown menus (city/phone/header
+     avatar, 9999-10000), not just above regular page content. */
+  z-index: 10500;
   display: grid;
   place-items: center;
   padding: 20px;
@@ -5716,6 +5726,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .dtp-time-label { font-size: 12px; color: var(--ink-soft); font-weight: 600; margin-right: 4px; }
 .dtp-time-select { flex: 1; }
 .dtp-time-select select { padding: 6px 28px 6px 8px; font-size: 13px; }
+.dtp-hint { font-size: 12px; color: var(--ink-soft); margin: -4px 0 10px; }
 .dtp-footer { display: flex; justify-content: flex-end; }
 
 /* ---------- Photo cropper ---------- */

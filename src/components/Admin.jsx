@@ -6,6 +6,7 @@ import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import { Avatar } from './Directory.jsx'
+import { useToast } from './Toast.jsx'
 
 const SUBTABS = [
   { id: 'pending', label: 'Pending approval' },
@@ -456,6 +457,7 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin }) {
 function PostsModeration() {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -470,7 +472,8 @@ function PostsModeration() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    await supabase.from('posts').delete().eq('id', id)
+    const { error } = await supabase.from('posts').delete().eq('id', id)
+    if (error) { showToast('Could not delete post.', { type: 'error' }); return }
     setPosts((prev) => prev.filter((p) => p.id !== id))
   }
 
@@ -499,6 +502,7 @@ function PostsModeration() {
 function JobsModeration() {
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -513,7 +517,8 @@ function JobsModeration() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    await supabase.from('jobs').delete().eq('id', id)
+    const { error } = await supabase.from('jobs').delete().eq('id', id)
+    if (error) { showToast('Could not delete job listing.', { type: 'error' }); return }
     setJobs((prev) => prev.filter((j) => j.id !== id))
   }
 
@@ -542,6 +547,7 @@ function JobsModeration() {
 function EventsModeration() {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -556,7 +562,8 @@ function EventsModeration() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    await supabase.from('events').delete().eq('id', id)
+    const { error } = await supabase.from('events').delete().eq('id', id)
+    if (error) { showToast('Could not delete event.', { type: 'error' }); return }
     setEvents((prev) => prev.filter((e) => e.id !== id))
   }
 
@@ -585,6 +592,7 @@ function EventsModeration() {
 function BusinessesModeration() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -599,7 +607,8 @@ function BusinessesModeration() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    await supabase.from('businesses').delete().eq('id', id)
+    const { error } = await supabase.from('businesses').delete().eq('id', id)
+    if (error) { showToast('Could not delete business listing.', { type: 'error' }); return }
     setItems((prev) => prev.filter((b) => b.id !== id))
   }
 
@@ -644,6 +653,7 @@ function BusinessesModeration() {
 function MerchModeration() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -658,7 +668,8 @@ function MerchModeration() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    await supabase.from('merchandise').delete().eq('id', id)
+    const { error } = await supabase.from('merchandise').delete().eq('id', id)
+    if (error) { showToast('Could not delete item.', { type: 'error' }); return }
     setItems((prev) => prev.filter((i) => i.id !== id))
   }
 
@@ -701,6 +712,7 @@ function MerchModeration() {
 function GroupsModeration() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -715,7 +727,8 @@ function GroupsModeration() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    await supabase.from('groups').delete().eq('id', id)
+    const { error } = await supabase.from('groups').delete().eq('id', id)
+    if (error) { showToast('Could not delete group.', { type: 'error' }); return }
     setItems((prev) => prev.filter((g) => g.id !== id))
   }
 
@@ -747,6 +760,7 @@ function GroupsModeration() {
 function PhotosModeration() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -761,7 +775,8 @@ function PhotosModeration() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    await supabase.from('photo_albums').delete().eq('id', id)
+    const { error } = await supabase.from('photo_albums').delete().eq('id', id)
+    if (error) { showToast('Could not delete album.', { type: 'error' }); return }
     setItems((prev) => prev.filter((a) => a.id !== id))
   }
 
@@ -792,6 +807,7 @@ function PhotosModeration() {
 function MentoringModeration() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -806,7 +822,8 @@ function MentoringModeration() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    await supabase.from('mentoring_programs').delete().eq('id', id)
+    const { error } = await supabase.from('mentoring_programs').delete().eq('id', id)
+    if (error) { showToast('Could not delete program.', { type: 'error' }); return }
     setItems((prev) => prev.filter((p) => p.id !== id))
   }
 

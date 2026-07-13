@@ -11,7 +11,14 @@ import { sanitizeHtml } from '../sanitizeHtml.js'
 // HTML from Word or a webpage), and every keystroke's HTML is run through
 // DOMPurify with a tight whitelist before it's handed to the parent. The
 // same sanitizer runs again at render time as a second line of defence.
-export default function RichTextEditor({ value, onChange, placeholder, disabled, toolbarExtra }) {
+// Posts/group posts are stored with a `char_length(content) between 1 and
+// 4000` check constraint (see schema.sql) on the sanitized HTML that
+// actually gets saved — so the counter below counts `value`'s length
+// (already-sanitized HTML), the same string the database check applies to,
+// rather than the plain-text length a person is actually typing.
+const DEFAULT_MAX_LENGTH = 4000
+
+export default function RichTextEditor({ value, onChange, placeholder, disabled, toolbarExtra, maxLength = DEFAULT_MAX_LENGTH }) {
   const ref = useRef(null)
   const [active, setActive] = useState({ bold: false, italic: false, list: false })
 
@@ -28,6 +35,9 @@ export default function RichTextEditor({ value, onChange, placeholder, disabled,
     if (!ref.current) return
     onChange(sanitizeHtml(ref.current.innerHTML))
   }
+
+  const length = (value || '').length
+  const overLimit = length > maxLength
 
   function updateActiveState() {
     try {
@@ -100,6 +110,9 @@ export default function RichTextEditor({ value, onChange, placeholder, disabled,
           </button>
         </div>
         {toolbarExtra && <div className="rte-toolbar-extra">{toolbarExtra}</div>}
+        <span className={overLimit ? 'rte-char-count over' : 'rte-char-count'}>
+          {length}/{maxLength}
+        </span>
       </div>
     </div>
   )

@@ -29,6 +29,7 @@ import Admin from './components/Admin.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
 import ConfirmDialog from './components/ConfirmDialog.jsx'
 import Settings from './components/Settings.jsx'
+import NotFound from './components/NotFound.jsx'
 
 // Eendragters (directory) now includes the alumni map as a view toggle
 // (see People.jsx) instead of splitting "find a person" across two nav
@@ -405,9 +406,13 @@ export default function App() {
   }
 
   // Used by the notification bell to jump straight to whatever the
-  // notification was about.
-  function handleNotificationNavigate(target) {
+  // notification was about — deep-linking to the specific post/event when
+  // one is available (matching NotificationBell's ENTITY_TAB mapping),
+  // rather than just landing generically at the top of that tab.
+  function handleNotificationNavigate(target, entityType, entityId) {
     if (target === 'messages') { setMessagesOpen(true); return }
+    if (entityId && entityType === 'post') { goTo(`/feed/${entityId}`); return }
+    if (entityId && entityType === 'event') { goTo(`/events/${entityId}`); return }
     const tab = TABS.find((t) => t.id === target)
     if (tab) goTo(tab.path)
   }
@@ -654,7 +659,7 @@ export default function App() {
                 path="/people/:personId"
                 element={<PersonProfile session={session} me={profile} onMessage={openMessage} />}
               />
-              <Route path="*" element={<Navigate to="/home" replace />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
 import { normalizeExpertise } from '../utils.js'
@@ -39,15 +39,48 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
   // respect that person's Settings → Privacy choices first, so we wait for
   // this to resolve rather than flashing the unfiltered values from `p`.
   const [contact, setContact] = useState(null)
+  const modalRef = useRef(null)
 
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose() }
+    function onKey(e) {
+      if (e.key === 'Escape') { onClose(); return }
+      // Focus trap: Tab/Shift+Tab cycle through this modal's own focusable
+      // elements instead of escaping out to whatever's behind it (the
+      // sidebar, other cards, etc.) — without this, keyboard-only
+      // navigation could tab straight out of an open modal into the page
+      // underneath it.
+      if (e.key !== 'Tab') return
+      const root = modalRef.current
+      if (!root) return
+      const focusable = root.querySelectorAll(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus()
+      }
+    }
     document.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+
+    // Move focus into the modal on open, and give it back to whatever
+    // triggered it on close, so keyboard/screen-reader users don't lose
+    // their place in the page.
+    const previouslyFocused = document.activeElement
+    const firstFocusable = modalRef.current?.querySelector(
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+    )
+    firstFocusable?.focus()
+
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
+      previouslyFocused?.focus?.()
     }
   }, [onClose])
 
@@ -80,7 +113,7 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div className="modal profile-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal profile-modal" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 id="modal-title">{p.full_name || 'Alumnus'}{isMe && <span className="person-name-you">You</span>}</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">×</button>

@@ -11,7 +11,7 @@ import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import ClearableInput from './ClearableInput.jsx'
 import PhoneInput from './PhoneInput.jsx'
 import DeleteButton from './DeleteButton.jsx'
-import { normalizeExpertise, formatExperienceRange, formatExperienceDuration } from '../utils.js'
+import { normalizeExpertise, formatExperienceRange, formatExperienceDuration, isValidGradYear, isSafeHttpUrl } from '../utils.js'
 
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
@@ -245,8 +245,28 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     setError(null)
     setGeoWarning(false)
 
+    if (!form.full_name.trim()) {
+      setError('Please enter your full name.')
+      return false
+    }
+
     if (!form.city.trim()) {
       setError('Please enter your city or town.')
+      return false
+    }
+
+    if (!isValidGradYear(form.grad_year)) {
+      setError(`Graduation year should be between 1961 and ${new Date().getFullYear() + 1}.`)
+      return false
+    }
+
+    if (!isSafeHttpUrl(form.linkedin_url)) {
+      setError('LinkedIn URL should start with http:// or https://.')
+      return false
+    }
+
+    if (!isSafeHttpUrl(form.business_website)) {
+      setError('Business website should start with http:// or https://.')
       return false
     }
 

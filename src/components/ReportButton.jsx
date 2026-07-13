@@ -23,7 +23,31 @@ export default function ReportButton({ session, entityType, entityId, className 
   const [details, setDetails] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [checkingExisting, setCheckingExisting] = useState(false)
+  // Whether this person has already filed an open report on this exact
+  // entity — there's no DB constraint stopping the same report being
+  // filed repeatedly, so this check is what keeps someone (accidentally or
+  // otherwise) from flooding the admin queue with duplicates of their own
+  // report on the same post/job/business/profile.
+  const [alreadyReported, setAlreadyReported] = useState(false)
   const showToast = useToast()
+
+  async function openDialog(e) {
+    e.stopPropagation()
+    setOpen(true)
+    setCheckingExisting(true)
+    const { data } = await supabase
+      .from('reports')
+      .select('id')
+      .eq('reporter_id', session.user.id)
+      .eq('entity_type', entityType)
+      .eq('entity_id', String(entityId))
+      .eq('status', 'open')
+      .limit(1)
+      .maybeSingle()
+    setAlreadyReported(!!data)
+    setCheckingExisting(false)
+  }
 
   async function submit() {
     if (!reason) return
@@ -46,7 +70,7 @@ export default function ReportButton({ session, entityType, entityId, className 
   function close(e) {
     e?.stopPropagation()
     setOpen(false)
-    setTimeout(() => { setReason(''); setDetails(''); setDone(false) }, 200)
+    setTimeout(() => { setReason(''); setDetails(''); setDone(false); setAlreadyReported(false) }, 200)
   }
 
   return (
@@ -54,7 +78,7 @@ export default function ReportButton({ session, entityType, entityId, className 
       <button
         type="button"
         className={className}
-        onClick={(e) => { e.stopPropagation(); setOpen(true) }}
+        onClick={openDialog}
         title={title}
         aria-label={title}
       >
@@ -65,12 +89,16 @@ export default function ReportButton({ session, entityType, entityId, className 
         <div className="modal-backdrop" onClick={close} role="dialog" aria-modal="true" aria-label="Report content">
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="modal-header">
-              <h2>{done ? 'Thanks — we got it' : 'Report this'}</h2>
+              <h2>{done ? 'Thanks — we got it' : alreadyReported ? "You've already reported this" : 'Report this'}</h2>
               <button className="modal-close" onClick={close} aria-label="Close">×</button>
             </div>
             <div className="modal-body">
-              {done ? (
+              {checkingExisting ? (
+                <p>Checking…</p>
+              ) : done ? (
                 <p>An admin will take a look. The person you flagged won't be told who reported it.</p>
+              ) : alreadyReported ? (
+                <p>You already filed a report on this that's still open — an admin hasn't reviewed it yet. No need to submit it again.</p>
               ) : (
                 <>
                   <label className="field"><span>What's wrong?</span>
@@ -86,12 +114,12 @@ export default function ReportButton({ session, entityType, entityId, className 
               )}
             </div>
             <div className="modal-footer">
-              {done ? (
-                <button className="btn primary" onClick={close}>Done</button>
+              {done || alreadyReported ? (
+                <button className="btn primary" onClick={close}>{done ? 'Done' : 'Close'}</button>
               ) : (
                 <>
                   <button className="btn ghost" onClick={close} disabled={busy}>Cancel</button>
-                  <button className="btn primary" onClick={submit} disabled={busy || !reason}>{busy ? 'Sending…' : 'Submit report'}</button>
+                  <button className="btn primary" onClick={submit} disabled={busy || !reason || checkingExisting}>{busy ? 'Sending…' : 'Submit report'}</button>
                 </>
               )}
             </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { PhotoPlaceholderIcon } from './Photos.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -77,17 +77,21 @@ export default function AlbumDetail({ session, profile }) {
   }
 
   async function removePhoto(id) {
+    const target = photos.find((p) => p.id === id)
     const { error } = await supabase.from('photos').delete().eq('id', id)
     if (error) { showToast('Could not delete photo.', { type: 'error' }); return }
     setPhotos((prev) => prev.filter((p) => p.id !== id))
     setLightboxIndex(null)
     showToast('Photo deleted')
+    if (target?.url) deleteStorageFilesFromUrls('album-photos', target.url)
   }
 
   async function deleteAlbum() {
+    const photoUrls = photos.map((p) => p.url)
     const { error } = await supabase.from('photo_albums').delete().eq('id', albumId)
     if (error) { showToast('Could not delete album.', { type: 'error' }); return }
     showToast('Album deleted')
+    if (photoUrls.length) deleteStorageFilesFromUrls('album-photos', photoUrls)
     navigate('/photos')
   }
 
