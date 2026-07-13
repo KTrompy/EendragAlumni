@@ -71,6 +71,7 @@ function AccountTab({ session, profile, onSaved }) {
   const [language, setLanguage] = useState(profile?.language || 'en')
   const [email, setEmail] = useState(session.user.email || '')
   const [emailMsg, setEmailMsg] = useState(null)
+  const [currentPassword, setCurrentPassword] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [passwordMsg, setPasswordMsg] = useState(null)
@@ -96,12 +97,31 @@ function AccountTab({ session, profile, onSaved }) {
 
   async function savePassword() {
     setPasswordMsg(null)
+    if (!currentPassword) { setPasswordMsg('Enter your current password.'); return }
     if (password.length < 6) { setPasswordMsg('Password must be at least 6 characters.'); return }
     if (password !== passwordConfirm) { setPasswordMsg('Passwords don’t match.'); return }
     setBusy(true)
+
+    // Re-authenticate with the current password first — updateUser() alone
+    // will happily change the password for whoever is holding the current
+    // (still-valid) session, with no proof they know the existing one.
+    // Anyone with a few minutes on an unlocked, already-signed-in device
+    // could lock the real owner out. signInWithPassword re-checks the
+    // current password against Supabase before anything changes.
+    const { error: reauthError } = await supabase.auth.signInWithPassword({
+      email: session.user.email,
+      password: currentPassword,
+    })
+    if (reauthError) {
+      setBusy(false)
+      setPasswordMsg('Current password is incorrect.')
+      return
+    }
+
     const { error } = await supabase.auth.updateUser({ password })
     setBusy(false)
     if (error) { setPasswordMsg(error.message); return }
+    setCurrentPassword('')
     setPassword('')
     setPasswordConfirm('')
     setPasswordMsg('Password updated.')
@@ -152,13 +172,16 @@ function AccountTab({ session, profile, onSaved }) {
 
         <div className="settings-divider" />
 
+        <label className="field settings-field"><span>Current password</span>
+          <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+        </label>
         <label className="field settings-field"><span>New password</span>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
         </label>
         <label className="field settings-field"><span>Confirm new password</span>
           <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
         </label>
-        <button className="btn ghost" disabled={busy || !password} onClick={savePassword}>Change password</button>
+        <button className="btn ghost" disabled={busy || !password || !currentPassword} onClick={savePassword}>Change password</button>
         {passwordMsg && <p className="hint">{passwordMsg}</p>}
       </div>
 
@@ -201,7 +224,13 @@ function NotificationsTab({ session }) {
   async function toggle(key) {
     const next = { ...prefs, [key]: !prefs[key] }
     setPrefs(next)
-    await supabase.from('notification_preferences').upsert({ user_id: session.user.id, [key]: next[key] })
+    // Upsert the whole row, not just the one changed column. When a
+    // preferences row doesn't exist yet, upserting a single column creates
+    // a row where every *other* preference falls back to whatever the
+    // table's column defaults are — which may not match the "all on"
+    // defaults this UI assumes, silently flipping toggles the person never
+    // touched.
+    await supabase.from('notification_preferences').upsert({ user_id: session.user.id, ...next })
   }
 
   if (loading) return <LoadingState message="Loading your notification settings…" />

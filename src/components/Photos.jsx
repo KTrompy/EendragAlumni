@@ -16,7 +16,13 @@ export default function Photos({ session }) {
   const [tab, setTab] = useState('albums') // 'albums' or 'photos'
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('date-desc')
-  const [filterMode, setFilterMode] = useState('all') // 'all' or 'your-groups'
+  // Removed the "YOUR GROUPS" filter toggle that used to live here — it
+  // toggled local state that neither filteredAlbums nor filteredPhotos ever
+  // read, and there's no group_id anywhere on photo_albums/photos to
+  // actually filter by (see schema-update-16.sql) — shared albums aren't
+  // scoped to a group at all. Wiring the button up would mean inventing
+  // that association from scratch, not fixing a bug, so removing the
+  // non-functional control until/unless that's an intentional feature.
   const navigate = useNavigate()
   const showToast = useToast()
 
@@ -105,17 +111,8 @@ export default function Photos({ session }) {
         </div>
       </div>
 
-      <div className="photos-toolbar">
-        <div className="photos-filters">
-          <button className={`photo-filter-btn ${filterMode === 'all' ? 'active' : ''}`} onClick={() => setFilterMode('all')}>
-            ALL
-          </button>
-          <button className={`photo-filter-btn ${filterMode === 'your-groups' ? 'active' : ''}`} onClick={() => setFilterMode('your-groups')}>
-            YOUR GROUPS
-          </button>
-        </div>
-
-        {tab === 'albums' && (
+      {tab === 'albums' && (
+        <div className="photos-toolbar">
           <div className="photos-sort">
             <span className="sort-label">Sort by:</span>
             <div className="select-wrap">
@@ -126,8 +123,8 @@ export default function Photos({ session }) {
               </select>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {loading ? (
         <LoadingState message="Loading…" />

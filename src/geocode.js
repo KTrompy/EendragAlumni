@@ -84,7 +84,14 @@ export async function geocodeCity(city, country) {
     result = null // offline, blocked, or Mapbox is down — just skip the pin
   }
 
-  cache[key] = result
-  saveCache(cache)
+  // Only cache a real hit. Caching a miss (Mapbox down, network error, or a
+  // genuinely unmatched place) forever would mean a transient outage
+  // permanently blanks that person's pin until someone manually clears
+  // localStorage — the next save should get another shot at the network
+  // instead of silently reusing today's failure forever.
+  if (result) {
+    cache[key] = result
+    saveCache(cache)
+  }
   return result
 }

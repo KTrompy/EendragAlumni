@@ -25,3 +25,24 @@ export const supabase = createClient(url, key)
 export async function deleteOwnAccount() {
   return supabase.functions.invoke('delete-account')
 }
+
+// Distinguishes "your JWT/session is no good" from an ordinary network
+// blip or a genuine "no rows" result. Postgrest returns 401s as a JWT-shaped
+// message/code, and a network failure (offline, DNS, CORS) never reaches
+// Postgrest at all so it carries no `code`/`status` — checking for either
+// shape here means callers can react to "you're not really signed in
+// anymore" without mistaking it for "the network hiccupped" or "that row
+// doesn't exist".
+export function isAuthError(error) {
+  if (!error) return false
+  if (error.code === 'PGRST301' || error.status === 401) return true
+  const msg = (error.message || '').toLowerCase()
+  return msg.includes('jwt') || msg.includes('refresh_token') || msg.includes('invalid_grant')
+}
+
+// True for a fetch/network-level failure (offline, DNS, CORS, Mapbox/
+// Supabase unreachable) as opposed to a real error response from the
+// server — no `code`, no `status`, just "the request never completed".
+export function isNetworkError(error) {
+  return !!error && !error.code && !error.status
+}

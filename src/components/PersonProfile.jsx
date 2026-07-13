@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { supabase, isNetworkError } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -50,17 +50,32 @@ export default function PersonProfile({ session, me, onMessage }) {
   const [contact, setContact] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [retryTick, setRetryTick] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setNotFound(false)
+    setLoadError(false)
     setPerson(null)
     setContact(null)
 
-    supabase.from('profiles').select('*').eq('id', personId).single().then(({ data }) => {
+    supabase.from('profiles').select('*').eq('id', personId).single().then(({ data, error }) => {
       if (cancelled) return
-      if (!data) { setNotFound(true); setLoading(false); return }
+      if (!data) {
+        // A real "no such row" (or an RLS policy quietly matching nothing)
+        // comes back with no data and no error — that's genuinely "not
+        // found". A network/connectivity failure also comes back with no
+        // data, but carries an error — treating that the same as "not
+        // found" told people their friend's profile had been deleted when
+        // really their wifi had just dropped. Distinguishing the two means
+        // a network hiccup shows "couldn't load, try again" instead.
+        if (error && isNetworkError(error)) setLoadError(true)
+        else setNotFound(true)
+        setLoading(false)
+        return
+      }
       setPerson(data)
       setLoading(false)
     })
@@ -71,12 +86,27 @@ export default function PersonProfile({ session, me, onMessage }) {
     })
 
     return () => { cancelled = true }
-  }, [personId])
+  }, [personId, retryTick])
 
   if (loading) {
     return (
       <section className="panel narrow profile-page">
         <LoadingState message="Loading profile…" />
+      </section>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <section className="panel narrow profile-page">
+        <button className="profile-back-btn" onClick={() => navigate(-1)}>← Back</button>
+        <EmptyState
+          icon="search"
+          message="Couldn't load this profile."
+          subMessage="Check your connection and try again."
+          actionLabel="Retry"
+          onAction={() => setRetryTick((t) => t + 1)}
+        />
       </section>
     )
   }

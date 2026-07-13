@@ -12,6 +12,71 @@ import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 
+// Bakes the pan/zoom/crop chosen in ImagePositioningEditor into a real
+// flattened image before upload. Without this, `submit()` uploaded the
+// original file untouched — the editor let someone drag and zoom a
+// preview, click "Done", and it looked like it worked, but that
+// offsetX/offsetY/scale never affected anything that got saved. This
+// reproduces the exact same translate+scale transform the live preview
+// used (see ImagePositioningEditor's `.image-editor-frame img` style),
+// pivoting around the frame's own center the same way the CSS transform
+// does, then rasterizes it at a fixed output resolution so the result
+// looks identical regardless of how big the editor happened to be
+// rendered on that person's screen.
+function bakeCoverImage(file, imageData) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const OUTPUT_WIDTH = 1600
+      const OUTPUT_HEIGHT = Math.round((OUTPUT_WIDTH * 9) / 16)
+      const { frameWidth, frameHeight, offsetX, offsetY, scale } = imageData
+      const k = OUTPUT_WIDTH / frameWidth
+
+      // The editor's <img> is sized to exactly fill the frame and uses
+      // object-fit: contain, so first figure out where the picture itself
+      // sits (letterboxed) within that frame-sized box before any pan/zoom.
+      const imgAspect = img.naturalWidth / img.naturalHeight
+      const frameAspect = frameWidth / frameHeight
+      let baseWidth, baseHeight
+      if (imgAspect > frameAspect) {
+        baseWidth = frameWidth
+        baseHeight = frameWidth / imgAspect
+      } else {
+        baseHeight = frameHeight
+        baseWidth = frameHeight * imgAspect
+      }
+      const baseX = (frameWidth - baseWidth) / 2
+      const baseY = (frameHeight - baseHeight) / 2
+
+      // Then apply the same translate(offsetX, offsetY) scale(scale),
+      // transform-origin: center transform the CSS preview used.
+      const cx = frameWidth / 2
+      const cy = frameHeight / 2
+      const drawWidth = baseWidth * scale
+      const drawHeight = baseHeight * scale
+      const drawX = cx + (baseX - cx) * scale + offsetX
+      const drawY = cy + (baseY - cy) * scale + offsetY
+
+      const canvas = document.createElement('canvas')
+      canvas.width = OUTPUT_WIDTH
+      canvas.height = OUTPUT_HEIGHT
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT)
+      ctx.drawImage(
+        img, 0, 0, img.naturalWidth, img.naturalHeight,
+        drawX * k, drawY * k, drawWidth * k, drawHeight * k
+      )
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob)
+        else reject(new Error('Could not process image'))
+      }, 'image/jpeg', 0.92)
+    }
+    img.onerror = () => reject(new Error('Could not load image'))
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 const POSTER_FIELDS =
   'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
   'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
@@ -262,9 +327,17 @@ function EditGroupModal({ group, onClose, onSaved }) {
 
       // Upload new cover image if selected
       if (coverImageFile) {
-        const ext = coverImageFile.name.split('.').pop().toLowerCase()
+        // Only bake in the position/zoom when someone actually adjusted it
+        // (and the editor measured a real frame size to adjust it against)
+        // — leaves the common "pick a photo, don't touch pan/zoom" case
+        // uploading the original file exactly as before.
+        const wasRepositioned = imageData?.frameWidth && imageData?.frameHeight
+          && (imageData.offsetX !== 0 || imageData.offsetY !== 0 || imageData.scale !== 1)
+        const fileToUpload = wasRepositioned ? await bakeCoverImage(coverImageFile, imageData) : coverImageFile
+        const ext = wasRepositioned ? 'jpg' : coverImageFile.name.split('.').pop().toLowerCase()
+        const contentType = wasRepositioned ? 'image/jpeg' : coverImageFile.type
         const path = `${group.id}/${Date.now()}.${ext}`
-        const { error: upErr } = await supabase.storage.from('group-covers').upload(path, coverImageFile, { contentType: coverImageFile.type, upsert: true })
+        const { error: upErr } = await supabase.storage.from('group-covers').upload(path, fileToUpload, { contentType, upsert: true })
         if (upErr) throw upErr
         cover_image_url = supabase.storage.from('group-covers').getPublicUrl(path).data.publicUrl
       }
@@ -342,6 +415,7 @@ function ImagePositioningEditor({ imageData, onClose, onSave }) {
   const [scale, setScale] = useState(imageData.scale)
   const [mode, setMode] = useState(imageData.mode)
   const canvasRef = useRef(null)
+  const frameRef = useRef(null)
 
   // Pan by dragging
   function handleMouseDown(e) {
@@ -375,7 +449,13 @@ function ImagePositioningEditor({ imageData, onClose, onSave }) {
   }
 
   function handleSave() {
-    onSave({ ...imageData, offsetX, offsetY, scale, mode })
+    // Captures the frame's actual rendered pixel size alongside the
+    // offsets/scale, so whatever eventually bakes this transform in (see
+    // bakeCoverImage) reproduces it against the same reference frame the
+    // person was looking at when they dragged/zoomed — not whatever size
+    // the modal happens to render at the next time this runs.
+    const rect = frameRef.current?.getBoundingClientRect()
+    onSave({ ...imageData, offsetX, offsetY, scale, mode, frameWidth: rect?.width, frameHeight: rect?.height })
   }
 
   return (
@@ -433,7 +513,7 @@ function ImagePositioningEditor({ imageData, onClose, onSave }) {
               style={{ cursor: 'grab' }}
             >
               {/* Preview frame (16:9 aspect ratio) */}
-              <div className="image-editor-frame" style={{ aspectRatio: '16/9' }}>
+              <div className="image-editor-frame" ref={frameRef} style={{ aspectRatio: '16/9' }}>
                 <img
                   src={imageData.url}
                   alt="Preview"

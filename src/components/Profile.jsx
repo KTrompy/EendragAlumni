@@ -282,8 +282,22 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       industry,
       experience: finalExperience,
       grad_year: form.grad_year ? Number(form.grad_year) : null,
+      // linkedin_url/phone used to be the only two fields trimmed here —
+      // everything else (name, degree, occupation, company, city, bio,
+      // business website) saved with whatever leading/trailing whitespace
+      // someone typed or pasted in, inconsistent with Onboarding.jsx, which
+      // does trim full_name. Trimming the same free-text fields here keeps
+      // the directory/search and this profile's own display from showing
+      // stray whitespace depending on which flow last touched the row.
+      full_name: form.full_name.trim(),
+      degree: form.degree.trim(),
+      occupation: form.occupation.trim(),
+      company: form.company.trim(),
+      city: form.city.trim(),
+      bio: form.bio.trim(),
       linkedin_url: form.linkedin_url.trim(),
       phone: form.phone.trim(),
+      business_website: form.business_website.trim(),
     }
 
     // Re-geocode when the city/country changed, or when this profile simply

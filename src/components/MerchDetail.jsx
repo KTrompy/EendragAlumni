@@ -52,6 +52,35 @@ export default function MerchDetail({ session, profile, onMessage }) {
 
   useEffect(() => { load() }, [itemId])
 
+  // Wishlist heart used to be local component state only — toggling it
+  // never wrote anywhere, so it silently reset to unfilled on every reload
+  // even though the button implied it was saving a preference. Backed by
+  // merch_wishlist now (see schema-update-31.sql) so it actually persists
+  // per person, per item.
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('merch_wishlist')
+      .select('item_id')
+      .eq('user_id', session.user.id)
+      .eq('item_id', itemId)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancelled) setLiked(!!data) })
+    return () => { cancelled = true }
+  }, [itemId, session.user.id])
+
+  async function toggleWishlist() {
+    const next = !liked
+    setLiked(next) // optimistic — flip back on failure below
+    const { error } = next
+      ? await supabase.from('merch_wishlist').upsert({ user_id: session.user.id, item_id: itemId })
+      : await supabase.from('merch_wishlist').delete().match({ user_id: session.user.id, item_id: itemId })
+    if (error) {
+      setLiked(!next)
+      showToast('Could not update wishlist.', { type: 'error' })
+    }
+  }
+
   async function remove() {
     const { error } = await supabase.from('merchandise').delete().eq('id', item.id)
     if (error) { showToast('Could not delete item.', { type: 'error' }); return }
@@ -75,6 +104,11 @@ export default function MerchDetail({ session, profile, onMessage }) {
     const bits = []
     if (item.sizes?.length) bits.push(`Size: ${size}`)
     if (item.colors?.length) bits.push(`Colour: ${color}`)
+    // Quantity used to be picked in the UI but never actually made it into
+    // the order message — the seller only ever heard about size/colour, so
+    // someone who selected 3 would still just get asked about "the item"
+    // with no indication more than one was wanted.
+    bits.push(`Qty: ${quantity}`)
     const variantText = bits.length ? ` (${bits.join(', ')})` : ''
     const poster = item.profiles
     if (!poster?.id) {
@@ -191,7 +225,7 @@ export default function MerchDetail({ session, profile, onMessage }) {
             <button className="btn primary merch-add-btn" disabled={!item.is_available} onClick={order}>
               {item.is_available ? 'ADD TO BAG' : 'Sold out'}
             </button>
-            <button className="merch-wishlist-btn" onClick={() => setLiked(!liked)} aria-label="Add to wishlist">
+            <button className="merch-wishlist-btn" onClick={toggleWishlist} aria-label={liked ? 'Remove from wishlist' : 'Add to wishlist'}>
               <HeartIcon filled={liked} />
             </button>
           </div>

@@ -178,15 +178,41 @@ export default function Feed({ session, profile, onMessage }) {
     setLoading(false)
   }
 
+  // A realtime insert elsewhere used to reset everyone straight back to
+  // page 1 of the feed (loadPage({replace:true})) — so if you'd scrolled
+  // down and clicked "Load more" a few times, any other member posting
+  // wiped that out from under you and dumped you back at the top. Instead,
+  // fetch just the new row and prepend it to whichever list it belongs in
+  // — it doesn't disturb anything already loaded below it, or where you'd
+  // scrolled to.
+  async function handleRealtimeInsert(payload) {
+    const newId = payload.new?.id
+    if (!newId) return
+    const { data } = await supabase.from('posts').select(POSTS_SELECT).eq('id', newId).maybeSingle()
+    if (!data) return
+    if (data.pinned) {
+      setPinnedPosts((prev) => (prev.some((p) => p.id === data.id) ? prev : [data, ...prev]))
+    } else {
+      setPosts((prev) => (prev.some((p) => p.id === data.id) ? prev : [data, ...prev]))
+    }
+  }
+
+  // Same reasoning as the insert handler — a delete elsewhere only ever
+  // needs to remove that one row from local state, not blow away and
+  // refetch the whole first page.
+  function handleRealtimeDelete(payload) {
+    const oldId = payload.old?.id
+    if (!oldId) return
+    setPosts((prev) => prev.filter((p) => p.id !== oldId))
+    setPinnedPosts((prev) => prev.filter((p) => p.id !== oldId))
+  }
+
   useEffect(() => {
     loadFirstPage()
-    // A realtime insert/delete from elsewhere resets back to the freshest
-    // page rather than trying to splice into whatever page you'd scrolled
-    // to — simplest way to stay consistent without refetching every page.
     const channel = supabase
       .channel('feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => { loadPage({ replace: true }); loadPinned() })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, () => { loadPage({ replace: true }); loadPinned() })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, handleRealtimeInsert)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, handleRealtimeDelete)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, () => loadPinned())
       .subscribe()
     return () => supabase.removeChannel(channel)

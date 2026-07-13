@@ -40,6 +40,23 @@ export function insertLink(value, start, end, url = '') {
   return { value: newValue, start: start + 1, end: start + selected.length + 1 }
 }
 
+// Only these URL schemes (plus scheme-relative/relative URLs, which have no
+// scheme at all) are safe to render as a clickable href. Anything else —
+// most importantly `javascript:`, but also things like `data:` or `vbscript:`
+// — executes in the visitor's session instead of navigating, so a link
+// markdown a user typed themselves (a post, comment, bio, anything that
+// goes through this renderer) could otherwise run arbitrary script for
+// anyone who clicked it.
+const SAFE_URL_PATTERN = /^(https?:|mailto:|tel:)/i
+
+function sanitizeHref(url) {
+  const trimmed = (url || '').trim()
+  // No scheme at all (relative path, `#anchor`, `//host/path`) is safe —
+  // it can only ever navigate, never execute.
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed
+  return SAFE_URL_PATTERN.test(trimmed) ? trimmed : '#'
+}
+
 // Parses inline formatting including strikethrough, links, bold, italic
 function parseInline(text, keyPrefix) {
   const nodes = []
@@ -56,7 +73,7 @@ function parseInline(text, keyPrefix) {
     if (match[1] !== undefined) {
       // Link: [text](url)
       nodes.push(
-        <a key={`${keyPrefix}-link${i++}`} href={match[2]} target="_blank" rel="noopener noreferrer">
+        <a key={`${keyPrefix}-link${i++}`} href={sanitizeHref(match[2])} target="_blank" rel="noopener noreferrer">
           {match[1]}
         </a>
       )

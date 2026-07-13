@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { supabase } from './supabaseClient'
+import { supabase, isAuthError } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import ResetPassword from './components/ResetPassword.jsx'
 import GlobalSearch from './components/GlobalSearch.jsx'
@@ -186,22 +186,39 @@ export default function App() {
     if (!sidebarMounted) return undefined
     repositionSidebar()
 
+    // Throttled to at most once per animation frame — on pages with heavy
+    // DOM churn (e.g. Feed's infinite scroll appending posts), an
+    // unthrottled MutationObserver callback fires repositionSidebar (which
+    // forces a synchronous layout reflow via getBoundingClientRect) on
+    // every single mutation, hundreds of times a second. Collapsing any
+    // number of mutations/resizes within a frame down to one reposition
+    // keeps this cheap regardless of how chatty the observed subtree gets.
+    let rafId = null
+    function scheduleReposition() {
+      if (rafId != null) return
+      rafId = requestAnimationFrame(() => {
+        rafId = null
+        repositionSidebar()
+      })
+    }
+
     // Covers the other ways the card's position can change once the
     // sidebar is up: window resize, the content column itself resizing
     // (ResizeObserver), and the profile fetch's loading → loaded swap,
     // which mounts a fresh .person-profile-page node rather than resizing
     // anything already being observed (MutationObserver).
     const contentEl = document.querySelector('.content')
-    const ro = new ResizeObserver(repositionSidebar)
+    const ro = new ResizeObserver(scheduleReposition)
     if (contentEl) ro.observe(contentEl)
-    const mo = new MutationObserver(repositionSidebar)
+    const mo = new MutationObserver(scheduleReposition)
     if (contentEl) mo.observe(contentEl, { childList: true, subtree: true })
-    window.addEventListener('resize', repositionSidebar)
+    window.addEventListener('resize', scheduleReposition)
 
     return () => {
+      if (rafId != null) cancelAnimationFrame(rafId)
       ro.disconnect()
       mo.disconnect()
-      window.removeEventListener('resize', repositionSidebar)
+      window.removeEventListener('resize', scheduleReposition)
     }
   }, [location.pathname, sidebarMounted, repositionSidebar])
 
@@ -264,8 +281,18 @@ export default function App() {
   async function confirmSaveAndLeave() {
     setLeaveBusy(true)
     setLeaveError(null)
-    const ok = await profileSaveRef.current?.()
-    setLeaveBusy(false)
+    let ok = false
+    try {
+      ok = await profileSaveRef.current?.()
+    } catch (e) {
+      // Without this, a thrown save() (rather than one that just returns
+      // false) left leaveBusy stuck true forever — "Save & leave" would
+      // stay disabled for the rest of the session.
+      setLeaveError(e?.message || "Couldn't save — check the profile page for what needs fixing.")
+      return
+    } finally {
+      setLeaveBusy(false)
+    }
     if (!ok) { setLeaveError("Couldn't save — check the profile page for what needs fixing."); return }
     pendingNav?.()
     setPendingNav(null)
@@ -321,6 +348,17 @@ export default function App() {
       if (error && !isRetry) {
         await new Promise((r) => setTimeout(r, 600))
         if (!cancelled) await load(true)
+        return
+      }
+      // Still failing after the retry, and it looks like an auth problem
+      // rather than a transient blip (e.g. a revoked/expired refresh token
+      // that didn't trigger a clean SIGNED_OUT event) — a stale JWT reads
+      // as "authenticated" to this component but every Supabase call keeps
+      // failing, leaving someone stuck looking at a signed-in app where
+      // nothing works. Forcing a real sign-out drops them back to the
+      // login screen instead of a silently broken one.
+      if (error && isRetry && isAuthError(error)) {
+        await supabase.auth.signOut()
         return
       }
       setProfile(data || null)
