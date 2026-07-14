@@ -6975,7 +6975,7 @@ button.delete-danger svg { flex-shrink: 0; }
   place-items: center;
   overflow: hidden;
 }
-.group-card-cover img { width: 100%; height: 100%; object-fit: contain; }
+.group-card-cover img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
 .group-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; }
 .group-card-name { font-weight: 700; font-size: 14px; color: var(--ink); }
 .group-card-meta { font-size: 12px; color: var(--ink-soft); }
@@ -7005,7 +7005,7 @@ button.delete-danger svg { flex-shrink: 0; }
   overflow: hidden;
   flex-shrink: 0;
 }
-.group-row-cover img { width: 100%; height: 100%; object-fit: cover; }
+.group-row-cover img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
 .group-row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .group-row-name { font-weight: 700; font-size: 14.5px; color: var(--ink); }
 .group-row-meta { font-size: 12px; color: var(--ink-soft); }
