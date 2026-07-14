@@ -11,6 +11,7 @@ import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import ClearableInput from './ClearableInput.jsx'
 import PhoneInput from './PhoneInput.jsx'
 import DeleteButton from './DeleteButton.jsx'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import { normalizeExpertise, formatExperienceRange, formatExperienceDuration, isValidGradYear, isSafeHttpUrl } from '../utils.js'
 
 const EMPTY = {
@@ -61,6 +62,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   const [geoWarning, setGeoWarning] = useState(false)
   const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
   const [dirty, setDirty] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [showBusinessProfile, setShowBusinessProfile] = useState(false)
   // Which experience cards are showing the full edit form rather than the
   // collapsed LinkedIn-style summary. Tracked by each entry's client-only
@@ -355,26 +357,27 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     return true
   }
 
+  // Calls a server-side Edge Function (using the Admin API) to actually
+  // remove the auth user — not just the profile row. Deleting the auth
+  // user cascades to delete all of the account's data. Once it's gone,
+  // signing in again with the same email requires signing up from
+  // scratch. See deleteOwnAccount() in supabaseClient.js — Settings.jsx
+  // uses this same helper so the two "Delete account" entry points in
+  // the app can't drift out of sync again.
+  //
+  // Uses the same ConfirmDialog component as Settings.jsx rather than
+  // window.confirm() — the two "Delete account" entry points had drifted
+  // into inconsistent UX (native browser dialog vs. on-brand modal).
   async function deleteProfile() {
-    if (!window.confirm('Are you sure you want to delete your account? This will permanently remove your profile, posts, messages and photos, and cannot be undone.')) {
-      return
-    }
-
     setBusy(true)
     setError(null)
 
-    // Calls a server-side Edge Function (using the Admin API) to actually
-    // remove the auth user — not just the profile row. Deleting the auth
-    // user cascades to delete all of the account's data. Once it's gone,
-    // signing in again with the same email requires signing up from
-    // scratch. See deleteOwnAccount() in supabaseClient.js — Settings.jsx
-    // uses this same helper so the two "Delete account" entry points in
-    // the app can't drift out of sync again.
     const { error } = await deleteOwnAccount()
 
     if (error) {
       setError(error.message)
       setBusy(false)
+      setConfirmingDelete(false)
     } else {
       await supabase.auth.signOut()
       window.location.reload()
@@ -825,7 +828,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <button className="btn ghost" onClick={() => supabase.auth.signOut()} disabled={busy}>
           Sign out
         </button>
-        <button className="btn ghost delete-danger" onClick={deleteProfile} disabled={busy}>
+        <button className="btn ghost delete-danger" onClick={() => setConfirmingDelete(true)} disabled={busy}>
           Delete account
         </button>
         {saved && (
@@ -841,6 +844,16 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           file={cropFile}
           onCancel={() => setCropFile(null)}
           onSave={uploadCroppedPhoto}
+        />
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Delete your account?"
+          message={error || 'This will permanently remove your profile, posts, messages and photos, and cannot be undone.'}
+          confirmLabel={busy ? 'Deleting…' : 'Delete permanently'}
+          onConfirm={deleteProfile}
+          onCancel={() => { setConfirmingDelete(false); setError(null) }}
         />
       )}
     </section>

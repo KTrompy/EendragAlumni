@@ -421,7 +421,7 @@ export default function Feed({ session, profile, onMessage }) {
           )}
 
           <ul className="post-list">
-            {shown.map((p) => <PostItem key={p.id} {...postItemProps(p)} />)}
+            {shown.map((p) => <LazyPost key={p.id} {...postItemProps(p)} />)}
           </ul>
 
           {/* Search only filters what's already loaded — hide the pager while
@@ -786,7 +786,65 @@ function Composer({ session, profile, onPosted, openRef }) {
 }
 
 /* ---------- Post item ---------- */
-function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLike, onDelete, onEdit, onTogglePin, onImageClick, onMessage, onOpenProfile }) {
+// Lightweight custom virtualization for the feed's post list — no
+// react-window dependency needed. Each post starts mounted as usual; once
+// IntersectionObserver reports it's scrolled far enough out of the
+// viewport in either direction (rootMargin below), its heavy DOM (rich
+// text, images, embedded video, expanded comment threads) is swapped for a
+// plain placeholder <li> sized to its last known height. That keeps the
+// number of live DOM nodes roughly constant no matter how many pages
+// "Load more" has pulled in, instead of every post ever loaded staying
+// mounted for the life of the session. Starting mounted (rather than
+// lazily revealing) means first paint and the /feed/:postId deep-link
+// scroll effect above both see the real element immediately.
+function LazyPost(props) {
+  const ref = useRef(null)
+  const [visible, setVisible] = useState(true)
+  const heightRef = useRef(320)
+
+  useEffect(() => {
+    // A /feed/:postId deep link needs its target's real <li id="post-…">
+    // in the DOM to scroll to — never collapse the highlighted post, even
+    // if it starts out beyond the observer's margin.
+    if (props.highlighted) return
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+        } else {
+          // Remember the real height right before collapsing it, so the
+          // placeholder holds the same amount of scroll space and nothing
+          // jumps as items above/below mount and unmount.
+          if (entry.boundingClientRect.height > 0) heightRef.current = entry.boundingClientRect.height
+          setVisible(false)
+        }
+      },
+      { rootMargin: '1600px 0px', threshold: 0 }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+    // Re-observe whenever the underlying DOM node is swapped out (real
+    // post <-> placeholder), since IntersectionObserver stops reporting
+    // once the element it was watching is removed from the DOM.
+  }, [visible, props.highlighted])
+
+  if (!visible && !props.highlighted) {
+    return (
+      <li
+        ref={ref}
+        className="post post-placeholder"
+        style={{ height: heightRef.current }}
+        aria-hidden="true"
+      />
+    )
+  }
+
+  return <PostItem {...props} containerRef={ref} />
+}
+
+function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLike, onDelete, onEdit, onTogglePin, onImageClick, onMessage, onOpenProfile, containerRef }) {
   const [showComments, setShowComments] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -840,7 +898,7 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
   ].filter(Boolean).join(' · ')
 
   return (
-    <li id={`post-${p.id}`} className={['post', p.pinned && 'post-pinned', highlighted && 'post-highlighted'].filter(Boolean).join(' ')}>
+    <li ref={containerRef} id={`post-${p.id}`} className={['post', p.pinned && 'post-pinned', highlighted && 'post-highlighted'].filter(Boolean).join(' ')}>
       {p.pinned && <span className="post-pinned-tag"><PinIcon /> Pinned Post</span>}
       <div className="post-head">
         <button

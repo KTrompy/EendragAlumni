@@ -2552,6 +2552,38 @@ button.delete-danger svg { flex-shrink: 0; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.global-search-see-all {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 18px;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--orange-dark);
+  cursor: pointer;
+}
+.global-search-see-all:hover { text-decoration: underline; }
+.global-search-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 18px 12px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.global-search-back:hover { color: var(--maroon); }
+.global-search-back svg { flex-shrink: 0; }
 
 /* ---------- Profile modal: business-card-style header ---------- */
 /* Photo sits beside the name/role/location instead of alone on its own
@@ -3300,6 +3332,13 @@ button.delete-danger svg { flex-shrink: 0; }
    the app — so the feed doesn't feel like a visually separate part of
    the product from Directory/Jobs. */
 .post:hover { border-color: var(--line-strong); box-shadow: var(--shadow-lift); }
+/* Stand-in for a post that's scrolled far out of view — see the LazyPost
+   virtualization wrapper in Feed.jsx. Kept visually quiet (no border/
+   shadow) since it's never meant to draw the eye, just hold scroll space. */
+.post-placeholder {
+  background: var(--paper);
+  box-shadow: none;
+}
 /* Briefly marks the post a /feed/:postId deep link (e.g. Home's "Recent
    feed posts" widget) scrolled you to — same treatment as
    .event-card-highlighted so a landed-on card and a landed-on event read
@@ -3874,10 +3913,158 @@ button.delete-danger svg { flex-shrink: 0; }
   align-self: flex-end;
   flex-direction: row-reverse;
 }
-.message-row .bubble { max-width: 100%; }
 .message-row.group-start { margin-top: 8px; }
 .message-row:first-child.group-start { margin-top: 0; }
 .avatar-spacer { flex-shrink: 0; display: inline-block; height: 1px; }
+
+/* Wraps the bubble plus whatever sits below it (reaction pills, "Seen") —
+   sized to the bubble's own width so those extras line up under it rather
+   than stretching the full 78% message-row column. */
+.message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+  align-items: flex-start;
+}
+.message-row.mine .message-content { align-items: flex-end; }
+.message-content .bubble { max-width: 100%; }
+
+.message-deleted {
+  font-style: italic;
+  color: var(--ink-soft);
+  opacity: 0.85;
+}
+.message-edited-tag {
+  font-size: 10px;
+  font-style: italic;
+  opacity: 0.75;
+  margin-right: 4px;
+}
+
+/* Edit-in-place form — same width/shape budget as a bubble so swapping
+   into edit mode doesn't jump the layout around. */
+.message-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 220px;
+}
+.message-edit-input {
+  border: 1px solid var(--orange);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--card);
+  color: var(--ink);
+}
+.message-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Small hover-revealed toolbar tucked into the bubble's corner — react/
+   edit/delete. Hidden until the row is hovered or focused (keyboard/touch
+   users can still reach it via the bubble's own focus-within), so bubbles
+   stay clean at rest instead of every message sprouting three icons. */
+.message-hover-actions {
+  position: absolute;
+  top: -14px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+  box-shadow: 0 2px 6px rgba(26, 26, 26, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.bubble.mine .message-hover-actions { right: auto; left: 6px; }
+.message-row:hover .message-hover-actions,
+.message-row:focus-within .message-hover-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.message-hover-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--ink-soft);
+}
+.message-hover-btn:hover { background: var(--paper); color: var(--orange-dark); }
+
+/* Quick-react emoji strip, popped open from the hover toolbar's react
+   button. */
+.reaction-picker {
+  position: absolute;
+  top: -46px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 12px rgba(26, 26, 26, 0.16);
+  z-index: 2;
+}
+.reaction-picker.mine { right: auto; left: 6px; }
+.reaction-picker button {
+  background: none;
+  border: none;
+  font-size: 17px;
+  line-height: 1;
+  padding: 3px;
+  border-radius: 50%;
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+.reaction-picker button:hover { background: var(--paper); transform: scale(1.15); }
+
+/* Aggregated reaction pills under a bubble — one per distinct emoji, with
+   a count once more than one person's used it. */
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.reaction-pill.mine { background: var(--orange-soft); border-color: var(--orange); color: var(--orange-dark); }
+.reaction-pill:hover { border-color: var(--orange); }
+
+.message-seen {
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  padding-right: 2px;
+}
+
+.chat-header-typing {
+  color: var(--orange-dark);
+  font-weight: 700;
+  font-style: italic;
+}
 
 /* Centered "Today / Yesterday / Jul 3" pill wherever the thread crosses a
    calendar day — breaks long conversations into scannable chunks. */
@@ -5599,6 +5786,117 @@ button.delete-danger svg { flex-shrink: 0; }
 .mini-calendar-cell.has-event { box-shadow: inset 0 0 0 1px var(--line-strong); font-weight: 700; }
 .mini-calendar-cell.today { background: var(--maroon); color: #fff; font-weight: 700; }
 .mini-calendar-cell.selected { background: var(--orange-soft); color: var(--orange-dark); box-shadow: inset 0 0 0 1px var(--orange); font-weight: 700; }
+
+/* ---------- Full calendar view (main content, Events "Calendar" tab) ---------- */
+.month-calendar {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--card);
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.month-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.month-calendar-header h3 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--maroon);
+  margin: 0;
+}
+.month-calendar-nav { display: flex; align-items: center; gap: 6px; }
+.month-calendar-nav button:not(.btn) {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+  font-size: 16px;
+}
+.month-calendar-nav button:not(.btn):hover { border-color: var(--orange); color: var(--orange-dark); }
+.month-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.month-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.month-calendar-cell {
+  min-height: 84px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.month-calendar-cell.empty { border: none; background: none; }
+.month-calendar-cell.today { border-color: var(--maroon); background: var(--paper); }
+.month-calendar-cell.selected { border-color: var(--orange); background: var(--orange-soft); }
+.month-calendar-daynum {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 1px 4px;
+  border-radius: 999px;
+}
+.month-calendar-cell.today .month-calendar-daynum { background: var(--maroon); color: #fff; }
+.month-calendar-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.month-calendar-event {
+  text-align: left;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 2px 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.month-calendar-event:hover { border-color: var(--orange); color: var(--orange-dark); }
+.month-calendar-event.past { opacity: 0.55; }
+.month-calendar-more {
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 1px 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--orange-dark);
+}
+.month-calendar-more:hover { text-decoration: underline; }
+@media (max-width: 720px) {
+  .month-calendar-cell { min-height: 56px; }
+  .month-calendar-event { font-size: 10px; }
+}
 
 /* ---------- Map widget: search + mini map + matching-events list ---------- */
 .events-map-search {

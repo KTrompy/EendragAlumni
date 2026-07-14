@@ -23,10 +23,24 @@ function truncate(text, max = 80) {
 // grouped results, click-through straight to the person/post/job/business.
 // `,()` are stripped from the query before building the ilike pattern so a
 // stray one in what someone types can't break the .or() filter syntax.
+const SECTION_LABEL = { people: 'Eendragters', posts: 'Feed', jobs: 'Jobs', businesses: 'Business Directory' }
+const PREVIEW_LIMIT = 5
+const EXPANDED_LIMIT = 50
+
 export default function GlobalSearch({ open, onClose }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState({ people: [], posts: [], jobs: [], businesses: [] })
+  // Exact total counts per category (independent of the 5-row preview cap)
+  // so "See all 23 results" can show a real number rather than a vague
+  // "more". Previously every category hard-capped at 5 with no way to see
+  // the rest at all.
+  const [counts, setCounts] = useState({ people: 0, posts: 0, jobs: 0, businesses: 0 })
   const [loading, setLoading] = useState(false)
+  // Which single category (if any) is showing its full result list instead
+  // of the mixed 4-category preview.
+  const [expanded, setExpanded] = useState(null)
+  const [expandedResults, setExpandedResults] = useState([])
+  const [expandedLoading, setExpandedLoading] = useState(false)
   const inputRef = useRef(null)
   const navigate = useNavigate()
 
@@ -34,51 +48,92 @@ export default function GlobalSearch({ open, onClose }) {
     if (!open) return
     setQ('')
     setResults({ people: [], posts: [], jobs: [], businesses: [] })
+    setCounts({ people: 0, posts: 0, jobs: 0, businesses: 0 })
+    setExpanded(null)
     const t = setTimeout(() => inputRef.current?.focus(), 0)
     return () => clearTimeout(t)
   }, [open])
 
+  // `,()` are stripped (rather than escaped) since they'd otherwise break
+  // the .or() filter's own syntax. `%` and `_` are ILIKE wildcards — `%` is
+  // stripped the same way, and `_` is backslash-escaped (not stripped) so
+  // "j_hn" only matches a literal underscore instead of also matching
+  // "john" via `_`'s "any single character" meaning.
+  function likePattern(needle) {
+    const safe = needle.replace(/[,()%]/g, ' ').replace(/_/g, '\\_').trim()
+    return `%${safe}%`
+  }
+
   useEffect(() => {
     if (!open) return
     const needle = q.trim()
+    setExpanded(null) // typing a new query always drops back to the mixed preview
     if (needle.length < 2) {
       setResults({ people: [], posts: [], jobs: [], businesses: [] })
+      setCounts({ people: 0, posts: 0, jobs: 0, businesses: 0 })
       setLoading(false)
       return
     }
     setLoading(true)
     const timer = setTimeout(async () => {
-      // `,()` are stripped (rather than escaped) since they'd otherwise
-      // break the .or() filter's own syntax. `%` and `_` are ILIKE
-      // wildcards — `%` is stripped the same way, and `_` is backslash-
-      // escaped (not stripped) so "j_hn" only matches a literal underscore
-      // instead of also matching "john" via `_`'s "any single character"
-      // meaning.
-      const safe = needle.replace(/[,()%]/g, ' ').replace(/_/g, '\\_').trim()
-      const like = `%${safe}%`
-      const [{ data: people }, { data: posts }, { data: jobs }, { data: businesses }] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, avatar_url, occupation, company')
+      const like = likePattern(needle)
+      const [{ data: people, count: peopleCount }, { data: posts, count: postsCount }, { data: jobs, count: jobsCount }, { data: businesses, count: businessesCount }] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, avatar_url, occupation, company', { count: 'exact' })
           .or(`full_name.ilike.${like},occupation.ilike.${like},company.ilike.${like}`)
-          .limit(5),
-        supabase.from('posts').select('id, content, profiles!posts_author_id_fkey ( full_name )')
-          .ilike('content', like).limit(5),
-        supabase.from('jobs').select('id, title, company')
-          .or(`title.ilike.${like},company.ilike.${like}`).limit(5),
-        supabase.from('businesses').select('id, name, description')
-          .or(`name.ilike.${like},description.ilike.${like}`).limit(5),
+          .limit(PREVIEW_LIMIT),
+        supabase.from('posts').select('id, content, profiles!posts_author_id_fkey ( full_name )', { count: 'exact' })
+          .ilike('content', like).limit(PREVIEW_LIMIT),
+        supabase.from('jobs').select('id, title, company', { count: 'exact' })
+          .or(`title.ilike.${like},company.ilike.${like}`).limit(PREVIEW_LIMIT),
+        supabase.from('businesses').select('id, name, description', { count: 'exact' })
+          .or(`name.ilike.${like},description.ilike.${like}`).limit(PREVIEW_LIMIT),
       ])
       setResults({ people: people || [], posts: posts || [], jobs: jobs || [], businesses: businesses || [] })
+      setCounts({ people: peopleCount || 0, posts: postsCount || 0, jobs: jobsCount || 0, businesses: businessesCount || 0 })
       setLoading(false)
     }, 300)
     return () => clearTimeout(timer)
   }, [q, open])
 
+  // Re-runs just one category's query with a much higher limit, so "See
+  // all results" shows the real list instead of navigating away from the
+  // search modal entirely.
+  async function expandSection(section) {
+    setExpanded(section)
+    setExpandedLoading(true)
+    const like = likePattern(q.trim())
+    let query
+    if (section === 'people') {
+      query = supabase.from('profiles').select('id, full_name, avatar_url, occupation, company')
+        .or(`full_name.ilike.${like},occupation.ilike.${like},company.ilike.${like}`)
+    } else if (section === 'posts') {
+      query = supabase.from('posts').select('id, content, profiles!posts_author_id_fkey ( full_name )')
+        .ilike('content', like)
+    } else if (section === 'jobs') {
+      query = supabase.from('jobs').select('id, title, company')
+        .or(`title.ilike.${like},company.ilike.${like}`)
+    } else {
+      query = supabase.from('businesses').select('id, name, description')
+        .or(`name.ilike.${like},description.ilike.${like}`)
+    }
+    const { data } = await query.limit(EXPANDED_LIMIT)
+    setExpandedResults(data || [])
+    setExpandedLoading(false)
+  }
+
   useEffect(() => {
     if (!open) return
-    function onKey(e) { if (e.key === 'Escape') onClose() }
+    function onKey(e) {
+      if (e.key !== 'Escape') return
+      // Escape backs out of an expanded section first, same as most
+      // search UIs' "step back before close" behaviour, then closes on a
+      // second press.
+      if (expanded) setExpanded(null)
+      else onClose()
+    }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open, onClose, expanded])
 
   if (!open) return null
 
@@ -103,6 +158,22 @@ export default function GlobalSearch({ open, onClose }) {
         <div className="global-search-results">
           {q.trim().length < 2 ? (
             <p className="empty small">Start typing to search across the whole site.</p>
+          ) : expanded ? (
+            <>
+              <button className="global-search-back" onClick={() => setExpanded(null)}>
+                <BackIcon /> All results for "{q.trim()}"
+              </button>
+              <div className="global-search-group">
+                <h4>{SECTION_LABEL[expanded]} · {counts[expanded]} result{counts[expanded] === 1 ? '' : 's'}</h4>
+                {expandedLoading ? (
+                  <p className="empty small">Searching…</p>
+                ) : (
+                  expandedResults.map((item) => (
+                    <SearchResultRow key={item.id} section={expanded} item={item} onGo={go} />
+                  ))
+                )}
+              </div>
+            </>
           ) : loading ? (
             <p className="empty small">Searching…</p>
           ) : !hasAny ? (
@@ -113,53 +184,52 @@ export default function GlobalSearch({ open, onClose }) {
                 <div className="global-search-group">
                   <h4>Eendragters</h4>
                   {results.people.map((p) => (
-                    <button key={p.id} className="global-search-result" onClick={() => go(`/people/${p.id}`)}>
-                      <Avatar url={p.avatar_url} name={p.full_name} size={32} />
-                      <span>
-                        <strong>{p.full_name || 'Alumnus'}</strong>
-                        {(p.occupation || p.company) && <em>{[p.occupation, p.company].filter(Boolean).join(' @ ')}</em>}
-                      </span>
-                    </button>
+                    <SearchResultRow key={p.id} section="people" item={p} onGo={go} />
                   ))}
+                  {counts.people > PREVIEW_LIMIT && (
+                    <button className="global-search-see-all" onClick={() => expandSection('people')}>
+                      See all {counts.people} results →
+                    </button>
+                  )}
                 </div>
               )}
               {results.posts.length > 0 && (
                 <div className="global-search-group">
                   <h4>Feed</h4>
                   {results.posts.map((p) => (
-                    <button key={p.id} className="global-search-result" onClick={() => go(`/feed/${p.id}`)}>
-                      <span>
-                        <strong>{p.profiles?.full_name || 'Alumnus'}</strong>
-                        <em>{truncate(plainText(p.content))}</em>
-                      </span>
-                    </button>
+                    <SearchResultRow key={p.id} section="posts" item={p} onGo={go} />
                   ))}
+                  {counts.posts > PREVIEW_LIMIT && (
+                    <button className="global-search-see-all" onClick={() => expandSection('posts')}>
+                      See all {counts.posts} results →
+                    </button>
+                  )}
                 </div>
               )}
               {results.jobs.length > 0 && (
                 <div className="global-search-group">
                   <h4>Jobs</h4>
                   {results.jobs.map((j) => (
-                    <button key={j.id} className="global-search-result" onClick={() => go(`/jobs/${j.id}`)}>
-                      <span>
-                        <strong>{j.title}</strong>
-                        {j.company && <em>{j.company}</em>}
-                      </span>
-                    </button>
+                    <SearchResultRow key={j.id} section="jobs" item={j} onGo={go} />
                   ))}
+                  {counts.jobs > PREVIEW_LIMIT && (
+                    <button className="global-search-see-all" onClick={() => expandSection('jobs')}>
+                      See all {counts.jobs} results →
+                    </button>
+                  )}
                 </div>
               )}
               {results.businesses.length > 0 && (
                 <div className="global-search-group">
                   <h4>Business Directory</h4>
                   {results.businesses.map((b) => (
-                    <button key={b.id} className="global-search-result" onClick={() => go(`/businesses/${b.id}`)}>
-                      <span>
-                        <strong>{b.name}</strong>
-                        {b.description && <em>{truncate(plainText(b.description), 60)}</em>}
-                      </span>
-                    </button>
+                    <SearchResultRow key={b.id} section="businesses" item={b} onGo={go} />
                   ))}
+                  {counts.businesses > PREVIEW_LIMIT && (
+                    <button className="global-search-see-all" onClick={() => expandSection('businesses')}>
+                      See all {counts.businesses} results →
+                    </button>
+                  )}
                 </div>
               )}
             </>
@@ -170,11 +240,65 @@ export default function GlobalSearch({ open, onClose }) {
   )
 }
 
+// One result row, factored out so both the 5-item preview and the
+// "see all" expanded list render identically instead of duplicating each
+// section's markup twice.
+function SearchResultRow({ section, item, onGo }) {
+  if (section === 'people') {
+    return (
+      <button className="global-search-result" onClick={() => onGo(`/people/${item.id}`)}>
+        <Avatar url={item.avatar_url} name={item.full_name} size={32} />
+        <span>
+          <strong>{item.full_name || 'Alumnus'}</strong>
+          {(item.occupation || item.company) && <em>{[item.occupation, item.company].filter(Boolean).join(' @ ')}</em>}
+        </span>
+      </button>
+    )
+  }
+  if (section === 'posts') {
+    return (
+      <button className="global-search-result" onClick={() => onGo(`/feed/${item.id}`)}>
+        <span>
+          <strong>{item.profiles?.full_name || 'Alumnus'}</strong>
+          <em>{truncate(plainText(item.content))}</em>
+        </span>
+      </button>
+    )
+  }
+  if (section === 'jobs') {
+    return (
+      <button className="global-search-result" onClick={() => onGo(`/jobs/${item.id}`)}>
+        <span>
+          <strong>{item.title}</strong>
+          {item.company && <em>{item.company}</em>}
+        </span>
+      </button>
+    )
+  }
+  return (
+    <button className="global-search-result" onClick={() => onGo(`/businesses/${item.id}`)}>
+      <span>
+        <strong>{item.name}</strong>
+        {item.description && <em>{truncate(plainText(item.description), 60)}</em>}
+      </span>
+    </button>
+  )
+}
+
 function SearchIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.35-4.35" />
+    </svg>
+  )
+}
+
+function BackIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
     </svg>
   )
 }

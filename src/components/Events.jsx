@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -14,6 +14,7 @@ import DateTimePicker from './DateTimePicker.jsx'
 import { useToast } from './Toast.jsx'
 import { eventIcebreaker } from '../icebreaker.js'
 import EventFormEnhanced from './EventFormEnhanced'
+import { buildIcs, downloadIcs, icsFilenameFor } from '../ics.js'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -72,6 +73,20 @@ export default function Events({ session, profile, onMessage }) {
     const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
   })
   const [selectedDay, setSelectedDay] = useState(null)
+  // 'list' (the original chronological upcoming/past feed) or 'calendar' —
+  // a full month grid in the main content area, complementing the small
+  // always-on sidebar MiniCalendar (which only has room to mark days with
+  // a dot, not show what's actually on them). Kept in the URL (?view=
+  // calendar), same pattern as Eendragters' List/Map switch, so a link to
+  // it is shareable and survives a refresh.
+  const [viewParams, setViewParams] = useSearchParams()
+  const viewMode = viewParams.get('view') === 'calendar' ? 'calendar' : 'list'
+  function setViewMode(next) {
+    const p = new URLSearchParams(viewParams)
+    if (next === 'list') p.delete('view')
+    else p.set('view', next)
+    setViewParams(p, { replace: true })
+  }
   const [mapQuery, setMapQuery] = useState('')
   const [hasMoreUpcoming, setHasMoreUpcoming] = useState(true)
   const [hasMorePast, setHasMorePast] = useState(true)
@@ -351,6 +366,21 @@ export default function Events({ session, profile, onMessage }) {
           <p className="panel-sub">Reunions, golf days, house drinks. See you there.</p>
         </div>
         <div className="events-header-actions">
+          <div className="view-switch" role="tablist" aria-label="Events view">
+            <button role="tab" aria-selected={viewMode === 'list'} className={viewMode === 'list' ? 'on' : ''} onClick={() => setViewMode('list')}>
+              <ListIcon /> List
+            </button>
+            <button role="tab" aria-selected={viewMode === 'calendar'} className={viewMode === 'calendar' ? 'on' : ''} onClick={() => setViewMode('calendar')}>
+              <CalendarViewIcon /> Calendar
+            </button>
+          </div>
+          <button
+            className="filters-toggle-btn"
+            onClick={() => downloadIcs('eendrag-hub-events', buildIcs(savedOnly ? savedEvents : upcoming, { calendarName: 'Eendrag Hub Events' }))}
+            title={savedOnly ? 'Download your saved events as a calendar file' : 'Download upcoming events as a calendar file'}
+          >
+            <CalendarPlusIcon /> Export .ics
+          </button>
           <button
             className={savedOnly ? 'filters-toggle-btn on' : 'filters-toggle-btn'}
             onClick={() => setSavedOnly((s) => !s)}
@@ -387,6 +417,17 @@ export default function Events({ session, profile, onMessage }) {
             </div>
           )}
 
+          {viewMode === 'calendar' && !loading && (
+            <MonthCalendar
+              events={savedOnly ? savedEvents : events}
+              cursorMonth={cursorMonth}
+              setCursorMonth={setCursorMonth}
+              selectedDay={selectedDay}
+              setSelectedDay={setSelectedDay}
+              onEventClick={focusEvent}
+            />
+          )}
+
           {selectedDay && (
             <div className="events-day-filter-banner">
               <span>
@@ -412,47 +453,54 @@ export default function Events({ session, profile, onMessage }) {
             )
           )}
 
-          {!loading && allListItems.length > 0 && listItems.length === 0 && (
+          {/* In calendar view, the flat chronological list only makes
+              sense once a specific day's been picked — otherwise it's just
+              a second copy of everything the grid above already shows. */}
+          {(viewMode === 'list' || selectedDay) && !loading && allListItems.length > 0 && listItems.length === 0 && (
             <p className="empty small">
               {selectedDay ? 'Nothing on that day.' : `No events match "${query}".`}
             </p>
           )}
 
-          <ul className="event-list">
-            {listItems.map((e) => (
-              <EventCard
-                key={e.id}
-                e={e}
-                session={session}
-                profile={profile}
-                iAmGoing={myRsvps.has(e.id)}
-                isSaved={savedIds.has(e.id)}
-                onToggleSave={() => toggleSaveEvent(e.id)}
-                onToggleRsvp={() => toggleRsvp(e.id)}
-                onDelete={() => removeEvent(e.id)}
-                onSaved={loadInitial}
-                onMessage={onMessage}
-                highlighted={String(e.id) === eventId}
-              />
-            ))}
-          </ul>
+          {(viewMode === 'list' || selectedDay) && (
+            <>
+              <ul className="event-list">
+                {listItems.map((e) => (
+                  <EventCard
+                    key={e.id}
+                    e={e}
+                    session={session}
+                    profile={profile}
+                    iAmGoing={myRsvps.has(e.id)}
+                    isSaved={savedIds.has(e.id)}
+                    onToggleSave={() => toggleSaveEvent(e.id)}
+                    onToggleRsvp={() => toggleRsvp(e.id)}
+                    onDelete={() => removeEvent(e.id)}
+                    onSaved={loadInitial}
+                    onMessage={onMessage}
+                    highlighted={String(e.id) === eventId}
+                  />
+                ))}
+              </ul>
 
-          {/* Search only filters what's already loaded — hide the pagers
-              while searching, same reasoning as Feed/Jobs. Saved is its
-              own complete query, so it never has "more" to page in. */}
-          {!needle && !savedOnly && !selectedDay && (hasMoreUpcoming || hasMorePast) && (
-            <div className="load-more-row events-load-more-row">
-              {hasMoreUpcoming && (
-                <button className="btn ghost" onClick={loadMoreUpcoming} disabled={loadingMoreUpcoming}>
-                  {loadingMoreUpcoming ? 'Loading…' : 'Load more upcoming'}
-                </button>
+              {/* Search only filters what's already loaded — hide the pagers
+                  while searching, same reasoning as Feed/Jobs. Saved is its
+                  own complete query, so it never has "more" to page in. */}
+              {viewMode === 'list' && !needle && !savedOnly && !selectedDay && (hasMoreUpcoming || hasMorePast) && (
+                <div className="load-more-row events-load-more-row">
+                  {hasMoreUpcoming && (
+                    <button className="btn ghost" onClick={loadMoreUpcoming} disabled={loadingMoreUpcoming}>
+                      {loadingMoreUpcoming ? 'Loading…' : 'Load more upcoming'}
+                    </button>
+                  )}
+                  {hasMorePast && (
+                    <button className="btn ghost" onClick={loadMorePast} disabled={loadingMorePast}>
+                      {loadingMorePast ? 'Loading…' : 'Load more past events'}
+                    </button>
+                  )}
+                </div>
               )}
-              {hasMorePast && (
-                <button className="btn ghost" onClick={loadMorePast} disabled={loadingMorePast}>
-                  {loadingMorePast ? 'Loading…' : 'Load more past events'}
-                </button>
-              )}
-            </div>
+            </>
           )}
         </div>
 
@@ -609,6 +657,13 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
           </button>
           <button className="post-action" onClick={copyLink} title="Copy a link to this event">
             <LinkIcon /> {copied ? 'Copied!' : 'Share'}
+          </button>
+          <button
+            className="post-action"
+            onClick={() => downloadIcs(icsFilenameFor(e.title), buildIcs(e))}
+            title="Download a .ics file for Google/Apple/Outlook Calendar"
+          >
+            <CalendarPlusIcon /> Add to calendar
           </button>
           {isMine && (
             <button className="post-action" onClick={() => setEditing(true)} title="Edit event">
@@ -876,6 +931,106 @@ function MiniCalendar({ events, cursorMonth, setCursorMonth, selectedDay, setSel
   )
 }
 
+/* ---------- Full calendar view (main content) ---------- */
+// A bigger sibling of the sidebar MiniCalendar above — same month-grid
+// math, but with room to show a few event titles per day instead of just
+// a dot, since it lives in the main content column rather than a narrow
+// sidebar widget. Clicking a day narrows the card list below to that day
+// (shared `selectedDay` state, same as the mini calendar); clicking an
+// event's title jumps straight to its card.
+function MonthCalendar({ events, cursorMonth, setCursorMonth, selectedDay, setSelectedDay, onEventClick }) {
+  const year = cursorMonth.getFullYear()
+  const month = cursorMonth.getMonth()
+  const MAX_VISIBLE = 3
+
+  const cells = useMemo(() => {
+    const firstOfMonth = new Date(year, month, 1)
+    const startWeekday = firstOfMonth.getDay() // 0=Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const list = []
+    for (let i = 0; i < startWeekday; i++) list.push(null)
+    for (let d = 1; d <= daysInMonth; d++) list.push(new Date(year, month, d))
+    return list
+  }, [year, month])
+
+  function eventsOn(date) {
+    if (!date) return []
+    return events
+      .filter((e) => sameDay(new Date(e.event_date), date))
+      .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+  }
+
+  function prevMonth() { setCursorMonth(new Date(year, month - 1, 1)) }
+  function nextMonth() { setCursorMonth(new Date(year, month + 1, 1)) }
+  function jumpToToday() {
+    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0)
+    setCursorMonth(d)
+  }
+
+  const today = new Date()
+
+  return (
+    <div className="month-calendar">
+      <div className="month-calendar-header">
+        <h3>{MONTHS[month]} {year}</h3>
+        <div className="month-calendar-nav">
+          <button className="btn ghost small" onClick={jumpToToday}>Today</button>
+          <button onClick={prevMonth} aria-label="Previous month">‹</button>
+          <button onClick={nextMonth} aria-label="Next month">›</button>
+        </div>
+      </div>
+
+      <div className="month-calendar-weekdays">
+        {WEEKDAYS.map((w) => <span key={w}>{w}</span>)}
+      </div>
+
+      <div className="month-calendar-grid">
+        {cells.map((date, i) => {
+          if (!date) return <div className="month-calendar-cell empty" key={i} />
+          const dayEvents = eventsOn(date)
+          const isToday = sameDay(date, today)
+          const isSelected = selectedDay && sameDay(date, selectedDay)
+          const visible = dayEvents.slice(0, MAX_VISIBLE)
+          const overflow = dayEvents.length - visible.length
+          return (
+            <div
+              key={i}
+              className={['month-calendar-cell', isToday ? 'today' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ')}
+            >
+              <button
+                type="button"
+                className="month-calendar-daynum"
+                onClick={() => setSelectedDay(isSelected ? null : date)}
+              >
+                {date.getDate()}
+              </button>
+              {dayEvents.length > 0 && (
+                <div className="month-calendar-day-events">
+                  {visible.map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      className={new Date(e.event_date) < today ? 'month-calendar-event past' : 'month-calendar-event'}
+                      onClick={() => { setSelectedDay(date); onEventClick?.(e.id) }}
+                      title={e.title}
+                    >
+                      {e.title}
+                    </button>
+                  ))}
+                  {overflow > 0 && (
+                    <button type="button" className="month-calendar-more" onClick={() => setSelectedDay(date)}>
+                      +{overflow} more
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 /* ---------- Icons ---------- */
 function CheckIcon() {
@@ -944,6 +1099,33 @@ function SearchIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="7" />
       <path d="M21 21l-4.35-4.35" />
+    </svg>
+  )
+}
+function ListIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 6h13M8 12h13M8 18h13" />
+      <path d="M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  )
+}
+function CalendarViewIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 3v4M16 3v4" />
+    </svg>
+  )
+}
+function CalendarPlusIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 3v4M16 3v4" />
+      <path d="M12 13v6M9 16h6" />
     </svg>
   )
 }
