@@ -6206,11 +6206,11 @@ button.delete-danger svg { flex-shrink: 0; }
   /* The ring is a radial-gradient trick: transparent circle, then a 2px
      white ring, then a semi-black outer area. */
   background:
-    radial-gradient(circle at center,
-      transparent 49.5%,
-      rgba(255,255,255,0.25) 49.5%,
-      rgba(255,255,255,0.25) 50.5%,
-      rgba(0,0,0,0.55) 50.5%
+    radial-gradient(circle closest-side at center,
+      transparent calc(100% - 1px),
+      rgba(255,255,255,0.25) calc(100% - 1px),
+      rgba(255,255,255,0.25) calc(100% + 1px),
+      rgba(0,0,0,0.55) calc(100% + 1px)
     );
 }
 
