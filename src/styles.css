@@ -7282,6 +7282,9 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 
 /* ---------- Sidebar: contact / location+map / promote ---------- */
+/* Small uppercase kicker so each sidebar card reads as its own section
+   instead of the contact/location/promote content running together. */
+.business-sidebar-label { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 700; }
 .business-contact-card { display: flex; flex-direction: column; gap: 10px; }
 .business-contact-row {
   display: flex;

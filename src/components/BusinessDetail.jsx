@@ -194,6 +194,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
         <aside className="business-detail-sidebar">
           {(business.phone || business.contact_email || website) && (
             <div className="feed-widget business-contact-card">
+              <p className="business-sidebar-label">Contact</p>
               {business.phone && (
                 <a className="business-contact-row" href={`tel:${business.phone.replace(/\s+/g, '')}`}>
                   <PhoneIcon /> {business.phone}
@@ -216,6 +217,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
           )}
 
           <div className="feed-widget business-location-card">
+            <p className="business-sidebar-label">Location</p>
             <p className="business-location-line">
               <PinIcon /> {[business.city, business.country].filter(Boolean).join(', ') || 'Location not set'}
             </p>
@@ -230,6 +232,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
           </div>
 
           <div className="feed-widget business-promote-card">
+            <p className="business-sidebar-label">List your business</p>
             <p>Do you have a business you would like to promote?</p>
             <button className="btn primary wide" onClick={() => navigate('/businesses?post=1')}>Start posting</button>
           </div>
