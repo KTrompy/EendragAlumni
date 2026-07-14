@@ -57,6 +57,11 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [cropFile, setCropFile] = useState(null)
+  // Last-saved crop (zoom/position/rotation/flip/filters), passed to
+  // PhotoCropper so re-editing an existing photo restores where you left
+  // off instead of resetting — see editExistingPhoto below for why this is
+  // only set when we're sure we loaded the true original image.
+  const [cropInitial, setCropInitial] = useState(null)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
   const [geoWarning, setGeoWarning] = useState(false)
@@ -213,6 +218,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     setError(null)
     setShowPhotoModal(false)
     setCropFile(file)
+    // A newly picked photo is unrelated to whatever crop you last saved on
+    // your previous avatar, so the editor should open centered/unzoomed —
+    // never carry over the old crop fractions onto a differently-shaped image.
+    setCropInitial(null)
     // Stash the untouched original (best-effort, don't block the crop UI on
     // it) so a later re-edit can start from the full photo again instead of
     // the already-cropped/zoomed avatar — see editExistingPhoto below.
@@ -221,8 +230,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       .catch(() => {})
   }
 
-  async function uploadCroppedPhoto(blob) {
+  async function uploadCroppedPhoto(blob, cropMeta) {
     setCropFile(null)
+    setCropInitial(null)
     setUploading(true); setError(null)
     const path = `${session.user.id}/avatar.jpg`
 
@@ -241,7 +251,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
     const { data: updated, error: dbErr } = await supabase
       .from('profiles')
-      .update({ avatar_url: url })
+      .update({ avatar_url: url, avatar_crop: cropMeta || null })
       .eq('id', session.user.id)
       .select()
       .single()
@@ -258,7 +268,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     await supabase.storage.from('avatars').remove([path, `${session.user.id}/original`])
     const { data, error: dbErr } = await supabase
       .from('profiles')
-      .update({ avatar_url: null })
+      .update({ avatar_url: null, avatar_crop: null })
       .eq('id', session.user.id)
       .select()
       .single()
@@ -281,9 +291,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       const { data: origData } = supabase.storage.from('avatars').getPublicUrl(`${session.user.id}/original`)
       const originalUrl = `${origData.publicUrl}?t=${Date.now()}`
       let sourceUrl = profile.avatar_url
+      let usingOriginal = false
       try {
         const check = await fetch(originalUrl, { method: 'HEAD' })
-        if (check.ok) sourceUrl = originalUrl
+        if (check.ok) { sourceUrl = originalUrl; usingOriginal = true }
       } catch {
         // no preserved original (or network hiccup) — fall back to the current avatar
       }
@@ -291,6 +302,12 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       const blob = await res.blob()
       const file = new File([blob], 'avatar.jpg', { type: blob.type || 'image/jpeg' })
       setShowPhotoModal(false)
+      // Only restore the last-saved crop (zoom/position/rotation/filters)
+      // when we know we're loading the real, uncropped original — applying
+      // it on top of the fallback avatar_url image would re-crop an
+      // already-cropped image and effectively zoom in even further, the
+      // exact bug this whole original-preservation mechanism exists to fix.
+      setCropInitial(usingOriginal ? (profile.avatar_crop || null) : null)
       setCropFile(file)
     } catch {
       setError('Could not load current photo for editing.')
@@ -926,7 +943,8 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       {cropFile && (
         <PhotoCropper
           file={cropFile}
-          onCancel={() => setCropFile(null)}
+          initialCrop={cropInitial}
+          onCancel={() => { setCropFile(null); setCropInitial(null) }}
           onSave={uploadCroppedPhoto}
         />
       )}

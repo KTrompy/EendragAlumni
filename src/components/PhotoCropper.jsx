@@ -4,7 +4,21 @@ import { useEffect, useRef, useState } from 'react'
 // on the left, control panel (Crop / Filter / Adjust tabs) on the right.
 const OUTPUT_SIZE = 640
 
-export default function PhotoCropper({ file, onCancel, onSave }) {
+// Offset clamping as a plain function of explicit values rather than a
+// closure over component state — handleImgLoad needs to clamp using the
+// natural size/viewport it *just* computed, before setNatural/setViewSize
+// have actually applied (React state updates aren't visible synchronously),
+// so it can't rely on the `natural`/`viewSize` state variables yet.
+function clampOffset(pos, zoomActual, natW, natH, side) {
+  const sw = natW * zoomActual
+  const sh = natH * zoomActual
+  return {
+    x: Math.min(0, Math.max(side - sw, pos.x)),
+    y: Math.min(0, Math.max(side - sh, pos.y)),
+  }
+}
+
+export default function PhotoCropper({ file, initialCrop, onCancel, onSave }) {
   const viewportRef = useRef(null)
   const imgRef = useRef(null)
   const [imgUrl, setImgUrl] = useState(null)
@@ -52,21 +66,40 @@ export default function PhotoCropper({ file, onCancel, onSave }) {
     const side = viewSize
     const scale = recalcScale(w, h, side)
     setMinScale(scale)
-    setZoomMult(1)
-    setOffset({
-      x: (side - w * scale) / 2,
-      y: (side - h * scale) / 2,
-    })
+
+    // Restore the last-saved crop (zoom, position, rotation, flip, filters)
+    // so reopening the editor on an existing photo picks up where you left
+    // off, LinkedIn-style — only done when the caller explicitly hands us
+    // one (Profile.jsx only does this when it's sure it loaded the true
+    // original image, never the already-cropped fallback; otherwise the
+    // saved crop fractions would be re-applied on top of an already-cropped
+    // image and zoom in even further).
+    if (initialCrop && initialCrop.w > 0 && initialCrop.h > 0) {
+      const zoomActual = side / (initialCrop.w * w)
+      const zm = Math.min(3, Math.max(1, zoomActual / scale))
+      setZoomMult(zm)
+      setRotate(initialCrop.rotate ?? 0)
+      setFlipH(!!initialCrop.flipH)
+      setFlipV(!!initialCrop.flipV)
+      setBrightness(initialCrop.brightness ?? 100)
+      setContrast(initialCrop.contrast ?? 100)
+      setSaturate(initialCrop.saturate ?? 100)
+      setActiveFilter(initialCrop.filter ?? 'none')
+      const actualZoom = scale * zm
+      const rawOffset = { x: -initialCrop.x * w * actualZoom, y: -initialCrop.y * h * actualZoom }
+      setOffset(clampOffset(rawOffset, actualZoom, w, h, side))
+    } else {
+      setZoomMult(1)
+      setOffset({
+        x: (side - w * scale) / 2,
+        y: (side - h * scale) / 2,
+      })
+    }
   }
 
   function clamp(pos, za) {
     if (!natural) return pos
-    const sw = natural.w * za
-    const sh = natural.h * za
-    return {
-      x: Math.min(0, Math.max(viewSize - sw, pos.x)),
-      y: Math.min(0, Math.max(viewSize - sh, pos.y)),
-    }
+    return clampOffset(pos, za, natural.w, natural.h, viewSize)
   }
 
   const zoomActual = minScale * zoomMult
@@ -149,7 +182,25 @@ export default function PhotoCropper({ file, onCancel, onSave }) {
       0, 0, OUTPUT_SIZE, OUTPUT_SIZE
     )
 
-    canvas.toBlob(blob => onSave(blob), 'image/jpeg', 0.9)
+    // Normalized (fraction-of-image) crop rectangle plus rotation/flip/
+    // filter state — independent of this session's viewport pixel size, so
+    // it restores correctly even if the editor opens at a different size
+    // next time (different window, mobile vs desktop, etc).
+    const cropMeta = {
+      x: sourceX / natural.w,
+      y: sourceY / natural.h,
+      w: sourceW / natural.w,
+      h: sourceH / natural.h,
+      rotate,
+      flipH,
+      flipV,
+      brightness,
+      contrast,
+      saturate,
+      filter: activeFilter,
+    }
+
+    canvas.toBlob(blob => onSave(blob, cropMeta), 'image/jpeg', 0.9)
   }
 
   const imgTransform = [

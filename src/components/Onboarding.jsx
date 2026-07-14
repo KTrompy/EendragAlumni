@@ -71,6 +71,10 @@ export default function Onboarding({ session, profile, onDone }) {
     draft?.customIndustry ?? (profile?.industry && !INDUSTRIES.includes(profile.industry) ? profile.industry : '')
   )
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || null)
+  // Saved alongside avatar_url so a later re-edit from the Profile page can
+  // restore this exact zoom/position/rotation instead of resetting — see
+  // the matching logic in Profile.jsx's editExistingPhoto/uploadCroppedPhoto.
+  const [avatarCrop, setAvatarCrop] = useState(profile?.avatar_crop || null)
   const [cropFile, setCropFile] = useState(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -182,9 +186,15 @@ export default function Onboarding({ session, profile, onDone }) {
     if (file.size > 8 * 1024 * 1024) { setError('Photo must be under 8MB.'); return }
     setError(null)
     setCropFile(file)
+    // Stash the untouched original (best-effort) so a later re-edit from
+    // the Profile page can start from the full photo again instead of the
+    // already-cropped avatar — matches Profile.jsx's pickPhoto.
+    supabase.storage.from('avatars')
+      .upload(`${session.user.id}/original`, file, { upsert: true, contentType: file.type || 'image/jpeg' })
+      .catch(() => {})
   }
 
-  async function uploadCroppedPhoto(blob) {
+  async function uploadCroppedPhoto(blob, cropMeta) {
     setCropFile(null)
     setUploadingPhoto(true)
     setError(null)
@@ -195,6 +205,7 @@ export default function Onboarding({ session, profile, onDone }) {
     if (upErr) { setError(upErr.message); setUploadingPhoto(false); return }
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
     setAvatarUrl(`${data.publicUrl}?t=${Date.now()}`)
+    setAvatarCrop(cropMeta || null)
     setUploadingPhoto(false)
   }
 
@@ -224,6 +235,7 @@ export default function Onboarding({ session, profile, onDone }) {
       business_website: form.business_website.trim(),
     }
     if (avatarUrl) payload.avatar_url = avatarUrl
+    if (avatarCrop) payload.avatar_crop = avatarCrop
     if (cityCoords) {
       // Picked straight from the suggestions dropdown — already a
       // confirmed, geocodable place, no need to look it up again.
