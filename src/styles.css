@@ -7678,7 +7678,7 @@ button.delete-danger svg { flex-shrink: 0; }
   background: var(--paper);
   border: 1px solid var(--line);
 }
-.home-post-preview-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.home-post-preview-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
 @media (max-width: 480px) {
   .home-post-preview-thumb { width: 56px; height: 56px; }
 }
