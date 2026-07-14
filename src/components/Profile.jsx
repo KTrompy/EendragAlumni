@@ -33,7 +33,7 @@ const EMPTY = {
   looking_to_connect: [],
 }
 
-const EMPTY_EXPERIENCE_ENTRY = { title: '', company: '', industry: '', from: '', to: '' }
+const EMPTY_EXPERIENCE_ENTRY = { title: '', company: '', industry: '', from: '', to: '', description: '' }
 
 // Client-only identity for an experience entry — the DB just stores a plain
 // jsonb array with no ids, but the editor needs something stable to key
@@ -654,6 +654,15 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                   options={INDUSTRIES}
                   placeholder="Search or type an industry"
                   clearable
+                />
+              </label>
+
+              <label className="field"><span>Description (optional)</span>
+                <textarea
+                  value={entry.description}
+                  onChange={(e) => setExperienceField(entry._key, 'description', e.target.value)}
+                  placeholder="Add details about your role, achievements, or responsibilities..."
+                  style={{ resize: 'vertical', minHeight: '100px' }}
                 />
               </label>
 
