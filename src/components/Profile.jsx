@@ -64,13 +64,15 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   const [dirty, setDirty] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [showBusinessProfile, setShowBusinessProfile] = useState(false)
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
+  const [deletingPhoto, setDeletingPhoto] = useState(false)
   // Which experience cards are showing the full edit form rather than the
   // collapsed LinkedIn-style summary. Tracked by each entry's client-only
   // _key rather than array index, so it doesn't get scrambled when entries
   // are added, removed or reordered.
   const [expandedExperience, setExpandedExperience] = useState(() => new Set())
   const fileRef = useRef(null)
-  const aboutSectionRef = useRef(null) // scroll target for the "Edit profile" button next to the photo
+  const aboutSectionRef = useRef(null)
 
   useEffect(() => {
     if (profile) {
@@ -209,6 +211,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       return
     }
     setError(null)
+    setShowPhotoModal(false)
     setCropFile(file)
   }
 
@@ -240,6 +243,38 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     if (dbErr) setError(dbErr.message)
     else onSaved(updated)
     setUploading(false)
+  }
+
+  async function deletePhoto() {
+    setDeletingPhoto(true)
+    setError(null)
+    const path = `${session.user.id}/avatar.jpg`
+    await supabase.storage.from('avatars').remove([path])
+    const { data, error: dbErr } = await supabase
+      .from('profiles')
+      .update({ avatar_url: null })
+      .eq('id', session.user.id)
+      .select()
+      .single()
+    if (dbErr) setError(dbErr.message)
+    else onSaved(data)
+    setDeletingPhoto(false)
+    setShowPhotoModal(false)
+  }
+
+  // Edit existing photo: fetch the current avatar as a File and open the
+  // cropper so the user can re-crop/reposition without uploading a new image.
+  async function editExistingPhoto() {
+    if (!profile?.avatar_url) return
+    try {
+      const res = await fetch(profile.avatar_url)
+      const blob = await res.blob()
+      const file = new File([blob], 'avatar.jpg', { type: blob.type || 'image/jpeg' })
+      setShowPhotoModal(false)
+      setCropFile(file)
+    } catch {
+      setError('Could not load current photo for editing.')
+    }
   }
 
   // Returns true/false so callers (including App's "leave without saving?"
@@ -404,20 +439,20 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       {/* Photo Section - Hero */}
       <div className="profile-photo-section">
         <div className="profile-photo-card">
-          <Avatar url={profile?.avatar_url} name={form.full_name} size={120} />
+          <button
+            type="button"
+            className="profile-photo-avatar-btn"
+            onClick={() => setShowPhotoModal(true)}
+            aria-label="View profile photo"
+          >
+            <Avatar url={profile?.avatar_url} name={form.full_name} size={120} />
+          </button>
           <div className="profile-photo-actions">
             <button
-              className="btn secondary small"
-              onClick={() => aboutSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            >
-              Edit profile
-            </button>
-            <button
               className="btn primary small"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
+              onClick={() => setShowPhotoModal(true)}
             >
-              {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change profile picture' : 'Add photo'}
+              {profile?.avatar_url ? 'Profile picture' : 'Add photo'}
             </button>
             <p className="profile-photo-hint">JPG, PNG or WebP • Max 8MB</p>
           </div>
@@ -846,6 +881,19 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         )}
       </div>
 
+      {showPhotoModal && (
+        <ProfilePhotoModal
+          avatarUrl={profile?.avatar_url}
+          name={form.full_name}
+          onClose={() => setShowPhotoModal(false)}
+          onEdit={editExistingPhoto}
+          onUpdate={() => fileRef.current?.click()}
+          onDelete={deletePhoto}
+          deleting={deletingPhoto}
+          hasPhoto={!!profile?.avatar_url}
+        />
+      )}
+
       {cropFile && (
         <PhotoCropper
           file={cropFile}
@@ -891,5 +939,46 @@ function PlusIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 5v14M5 12h14" />
     </svg>
+  )
+}
+
+function ProfilePhotoModal({ avatarUrl, name, onClose, onEdit, onUpdate, onDelete, deleting, hasPhoto }) {
+  const initials = (name || 'A').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+  return (
+    <div className="modal-backdrop pfp-modal-backdrop" onClick={onClose}>
+      <div className="pfp-modal" onClick={e => e.stopPropagation()}>
+        <div className="pfp-modal-header">
+          <h2>Profile photo</h2>
+          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <div className="pfp-modal-body">
+          <div className="pfp-modal-photo">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={name || 'Profile photo'} />
+            ) : (
+              <div className="pfp-modal-fallback" style={{ fontSize: 72 }}>{initials}</div>
+            )}
+          </div>
+        </div>
+        <div className="pfp-modal-actions">
+          {hasPhoto && (
+            <button type="button" className="pfp-action-btn" onClick={onEdit}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+              <span>Edit</span>
+            </button>
+          )}
+          <button type="button" className="pfp-action-btn" onClick={onUpdate}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <span>Update</span>
+          </button>
+          {hasPhoto && (
+            <button type="button" className="pfp-action-btn pfp-action-delete" onClick={onDelete} disabled={deleting}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              <span>{deleting ? 'Deleting…' : 'Delete'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
