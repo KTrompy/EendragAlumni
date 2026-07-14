@@ -70,6 +70,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   // are added, removed or reordered.
   const [expandedExperience, setExpandedExperience] = useState(() => new Set())
   const fileRef = useRef(null)
+  const aboutSectionRef = useRef(null) // scroll target for the "Edit profile" button next to the photo
 
   useEffect(() => {
     if (profile) {
@@ -406,11 +407,17 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           <Avatar url={profile?.avatar_url} name={form.full_name} size={120} />
           <div className="profile-photo-actions">
             <button
+              className="btn secondary small"
+              onClick={() => aboutSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              Edit profile
+            </button>
+            <button
               className="btn primary small"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
             >
-              {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change' : 'Add photo'}
+              {uploading ? 'Uploading…' : profile?.avatar_url ? 'Change profile picture' : 'Add photo'}
             </button>
             <p className="profile-photo-hint">JPG, PNG or WebP • Max 8MB</p>
           </div>
@@ -425,7 +432,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       </div>
 
       {/* Basic Info Section */}
-      <div className="profile-section">
+      <div className="profile-section" ref={aboutSectionRef}>
         <h3 className="profile-section-title">About you</h3>
 
         <label className="field"><span>Full name</span>
