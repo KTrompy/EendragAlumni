@@ -4199,6 +4199,24 @@ button.delete-danger svg { flex-shrink: 0; }
   background: none;
 }
 .event-card.event-card-editing:hover { transform: none; box-shadow: none; }
+/* Event cover photo — uploaded via EventFormEnhanced's "Event image" field
+   but never actually rendered anywhere until now. Same letterboxed
+   treatment as group/business covers (object-fit: contain against a
+   neutral background) rather than a hard crop, so the whole photo the
+   organizer picked is always visible. Sits inside .event-card-body, above
+   the title, so it works within the existing 3-column card grid without
+   needing a layout change. */
+.event-card-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-strong, #f0ede8);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 10px;
+  display: grid;
+  place-items: center;
+}
+.event-card-image img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .job-badge.business-featured-tag { background: var(--orange); margin-left: 8px; }
 .business-pin { background: var(--maroon) !important; }
 

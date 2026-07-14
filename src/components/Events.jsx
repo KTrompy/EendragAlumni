@@ -631,6 +631,11 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
         <div className="event-date-time">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
       </div>
       <div className="event-card-body">
+        {e.image_url && (
+          <div className="event-card-image">
+            <img src={e.image_url} alt="" />
+          </div>
+        )}
         <h3 className="event-title">
           {e.title}
           {isPast && <span className="job-badge" style={{ background: 'var(--ink-soft)' }}>Past</span>}
