@@ -6969,12 +6969,15 @@ button.delete-danger svg { flex-shrink: 0; }
 .group-card-cover {
   width: 100%;
   aspect-ratio: 16 / 10;
-  background: linear-gradient(135deg, var(--maroon), var(--maroon-soft));
-  color: var(--orange-soft);
+  background: var(--bg-strong, #f0ede8);
+  color: var(--ink-soft);
   display: grid;
   place-items: center;
   overflow: hidden;
 }
+/* object-fit: contain — show the whole cover photo, letterboxed against the
+   neutral background above rather than cropped, same treatment as every
+   other photo on the site (business covers, profile photos, feed images). */
 .group-card-cover img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .group-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; }
 .group-card-name { font-weight: 700; font-size: 14px; color: var(--ink); }
@@ -6998,8 +7001,8 @@ button.delete-danger svg { flex-shrink: 0; }
   width: 56px;
   height: 56px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--maroon), var(--maroon-soft));
-  color: var(--orange-soft);
+  background: var(--bg-strong, #f0ede8);
+  color: var(--ink-soft);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -7037,8 +7040,8 @@ button.delete-danger svg { flex-shrink: 0; }
   min-width: 140px;
   height: auto;
   max-height: 200px;
-  background: linear-gradient(135deg, var(--maroon), var(--maroon-soft));
-  color: var(--orange-soft);
+  background: var(--bg-strong, #f0ede8);
+  color: var(--ink-soft);
   display: grid;
   place-items: center;
   overflow: hidden;

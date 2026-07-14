@@ -213,6 +213,12 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     setError(null)
     setShowPhotoModal(false)
     setCropFile(file)
+    // Stash the untouched original (best-effort, don't block the crop UI on
+    // it) so a later re-edit can start from the full photo again instead of
+    // the already-cropped/zoomed avatar — see editExistingPhoto below.
+    supabase.storage.from('avatars')
+      .upload(`${session.user.id}/original`, file, { upsert: true, contentType: file.type || 'image/jpeg' })
+      .catch(() => {})
   }
 
   async function uploadCroppedPhoto(blob) {
@@ -249,7 +255,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     setDeletingPhoto(true)
     setError(null)
     const path = `${session.user.id}/avatar.jpg`
-    await supabase.storage.from('avatars').remove([path])
+    await supabase.storage.from('avatars').remove([path, `${session.user.id}/original`])
     const { data, error: dbErr } = await supabase
       .from('profiles')
       .update({ avatar_url: null })
@@ -262,12 +268,26 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     setShowPhotoModal(false)
   }
 
-  // Edit existing photo: fetch the current avatar as a File and open the
-  // cropper so the user can re-crop/reposition without uploading a new image.
+  // Edit existing photo: fetch the ORIGINAL (untouched) upload as a File and
+  // open the cropper, so re-editing always starts from the full photo.
+  // Using profile.avatar_url here instead would feed the cropper the
+  // already-cropped/zoomed display image — every re-edit would then zoom in
+  // further from wherever the last save left off, with no way to zoom back
+  // out since the parts cropped away the first time are gone for good.
+  // Falls back to avatar_url for accounts whose original predates this fix.
   async function editExistingPhoto() {
     if (!profile?.avatar_url) return
     try {
-      const res = await fetch(profile.avatar_url)
+      const { data: origData } = supabase.storage.from('avatars').getPublicUrl(`${session.user.id}/original`)
+      const originalUrl = `${origData.publicUrl}?t=${Date.now()}`
+      let sourceUrl = profile.avatar_url
+      try {
+        const check = await fetch(originalUrl, { method: 'HEAD' })
+        if (check.ok) sourceUrl = originalUrl
+      } catch {
+        // no preserved original (or network hiccup) — fall back to the current avatar
+      }
+      const res = await fetch(sourceUrl)
       const blob = await res.blob()
       const file = new File([blob], 'avatar.jpg', { type: blob.type || 'image/jpeg' })
       setShowPhotoModal(false)
