@@ -834,9 +834,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             {/* Single, top-level gate for the whole section — everything
                 below only makes sense once someone has actually said yes
                 here, so it's the one and only "am I open to this" question.
-                The rest of the fields (including the "Mentoring/Coaching"
-                option below) used to sit visible regardless of this answer,
-                which read as a second, competing "become a mentor" toggle. */}
+                This toggle alone is also what puts someone under Find a
+                Mentor — there's no separate "Mentoring/Coaching" checkbox
+                anymore, so this is the only thing to flip. */}
             <div className="field">
               <span>Open to mentoring and other opportunities?</span>
               <div className="onboarding-choice-row profile-choice-row">
@@ -855,6 +855,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                   Not right now
                 </button>
               </div>
+              {form.is_open_to_opportunities && (
+                <span className="hint mentor-status-hint">
+                  ✓ You'll show up under Find a Mentor.{' '}
+                  <button type="button" className="link-btn" onClick={() => navigate('/mentoring')}>
+                    See how you appear →
+                  </button>
+                </span>
+              )}
             </div>
 
             {form.is_open_to_opportunities && (
@@ -902,7 +910,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                 <div className="field">
                   <span>What can you offer to other Eendragters?</span>
                   <span className="hint">
-                    These show up on your profile as things people can reach out to you about — including "Mentoring/Coaching" below if that's something you're up for informally.
+                    These show up on your profile as things people can reach out to you about.
                   </span>
                   <div className="tags-grid compact">
                     {SERVICES_OFFERED.map((service) => (
@@ -916,14 +924,6 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                       </button>
                     ))}
                   </div>
-                  {form.services_offered.includes('Mentoring/Coaching') && (
-                    <span className="hint mentor-status-hint">
-                      ✓ Your profile shows you're open to mentoring.{' '}
-                      <button type="button" className="link-btn" onClick={() => navigate('/mentoring')}>
-                        Join a structured mentoring program →
-                      </button>
-                    </span>
-                  )}
                 </div>
 
                 {/* Business website */}

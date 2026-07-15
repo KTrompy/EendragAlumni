@@ -108,7 +108,7 @@ export function useDirectoryFilters(session, refetchTrigger) {
     if (f.countries.length && !f.countries.includes(p.country)) return false
     if (f.industries.length && !f.industries.includes(p.industry)) return false
     if (f.services.length && !(p.services_offered || []).some((s) => f.services.includes(s))) return false
-    if (f.mentoringOnly && !(p.services_offered || []).includes('Mentoring/Coaching')) return false
+    if (f.mentoringOnly && !p.is_open_to_opportunities) return false
     return true
   }
 

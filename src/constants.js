@@ -557,7 +557,6 @@ export const EXPERTISE_BY_INDUSTRY = {
 
 // Consolidated: Services & Opportunities (merged Services + Collaboration)
 export const SERVICES_OFFERED = [
-  'Mentoring/Coaching',
   'Consulting',
   'Technical Expertise',
   'Job Opportunities',

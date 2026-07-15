@@ -19,7 +19,6 @@ const SUBTABS = [
   { id: 'merch', label: 'Merchandise' },
   { id: 'groups', label: 'Groups' },
   { id: 'photos', label: 'Photos' },
-  { id: 'mentoring', label: 'Mentoring' },
 ]
 
 function timeAgo(iso) {
@@ -58,7 +57,6 @@ const COUNT_TABLES = [
   ['merch', 'merchandise'],
   ['groups', 'groups'],
   ['photos', 'photo_albums'],
-  ['mentoring', 'mentoring_programs'],
 ]
 
 export default function Admin({ session }) {
@@ -131,7 +129,6 @@ export default function Admin({ session }) {
         <StatCard label="Merchandise" value={counts.merch} />
         <StatCard label="Groups" value={counts.groups} />
         <StatCard label="Photo albums" value={counts.photos} />
-        <StatCard label="Mentoring" value={counts.mentoring} />
       </div>
 
       <div className="admin-subtabs" role="tablist" aria-label="Admin sections">
@@ -189,7 +186,6 @@ export default function Admin({ session }) {
       {subtab === 'merch' && <MerchModeration />}
       {subtab === 'groups' && <GroupsModeration />}
       {subtab === 'photos' && <PhotosModeration />}
-      {subtab === 'mentoring' && <MentoringModeration />}
     </section>
   )
 }
@@ -803,66 +799,3 @@ function PhotosModeration() {
   )
 }
 
-/* ---------- Mentoring moderation ---------- */
-function MentoringModeration() {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const showToast = useToast()
-
-  async function load() {
-    const { data } = await supabase
-      .from('mentoring_programs')
-      .select('id, title, description, status, start_date, end_date, created_at, profiles!mentoring_programs_owner_id_fkey ( full_name )')
-      .order('created_at', { ascending: false })
-      .limit(200)
-    setItems(data || [])
-    setLoading(false)
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function remove(id) {
-    const { error } = await supabase.from('mentoring_programs').delete().eq('id', id)
-    if (error) { showToast('Could not delete program.', { type: 'error' }); return }
-    setItems((prev) => prev.filter((p) => p.id !== id))
-  }
-
-  async function toggleStatus(program) {
-    const next = program.status === 'active' ? 'closed' : 'active'
-    setItems((prev) => prev.map((p) => (p.id === program.id ? { ...p, status: next } : p)))
-    const { error } = await supabase.from('mentoring_programs').update({ status: next }).eq('id', program.id)
-    if (error) setItems((prev) => prev.map((p) => (p.id === program.id ? { ...p, status: program.status } : p)))
-  }
-
-  if (loading) return <LoadingState message="Loading mentoring programs…" />
-  if (items.length === 0) return <EmptyState icon="groups" message="No mentoring programs yet." />
-
-  return (
-    <ul className="admin-list">
-      {items.map((p) => (
-        <li className="admin-row" key={p.id}>
-          <div className="admin-row-info">
-            <span className="admin-row-name">
-              {p.title}
-              <span className={p.status === 'active' ? 'admin-badge approved' : 'admin-badge pending'} style={{ marginLeft: 8 }}>
-                {p.status === 'active' ? 'Active' : 'Closed'}
-              </span>
-            </span>
-            <span className="admin-row-meta">
-              Run by {p.profiles?.full_name || 'an admin'}
-              {p.start_date ? ` · Starts ${new Date(p.start_date).toLocaleDateString()}` : ''}
-              {p.end_date ? ` · Ends ${new Date(p.end_date).toLocaleDateString()}` : ''}
-            </span>
-            {p.description && <p className="admin-row-preview">{truncate(p.description)}</p>}
-          </div>
-          <div className="admin-row-actions">
-            <button className="btn ghost small" onClick={() => toggleStatus(p)}>
-              {p.status === 'active' ? 'Close program' : 'Reopen program'}
-            </button>
-            <DeleteButton onConfirm={() => remove(p.id)} label="Delete program" message="This removes the program and its participant sign-ups. This can't be undone." />
-          </div>
-        </li>
-      ))}
-    </ul>
-  )
-}
