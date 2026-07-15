@@ -198,13 +198,18 @@ export default function Onboarding({ session, profile, onDone }) {
     setCropFile(null)
     setUploadingPhoto(true)
     setError(null)
-    const path = `${session.user.id}/avatar.jpg`
+    // Unique filename per upload (see Profile.jsx's uploadCroppedPhoto for
+    // why: reusing a fixed path like avatar.jpg can serve stale bytes from
+    // Supabase's storage CDN for a long time even with a `?t=` cache-buster,
+    // since edge caches key on the object path and largely ignore query
+    // strings).
+    const path = `${session.user.id}/avatar-${Date.now()}.jpg`
     const { error: upErr } = await supabase.storage
       .from('avatars')
-      .upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+      .upload(path, blob, { upsert: false, contentType: 'image/jpeg', cacheControl: '31536000' })
     if (upErr) { setError(upErr.message); setUploadingPhoto(false); return }
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-    setAvatarUrl(`${data.publicUrl}?t=${Date.now()}`)
+    setAvatarUrl(data.publicUrl)
     setAvatarCrop(cropMeta || null)
     setUploadingPhoto(false)
   }

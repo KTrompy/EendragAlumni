@@ -234,11 +234,19 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     setCropFile(null)
     setCropInitial(null)
     setUploading(true); setError(null)
-    const path = `${session.user.id}/avatar.jpg`
+    // Every save gets its own filename instead of overwriting avatar.jpg.
+    // Supabase's storage CDN caches by object key at the edge and largely
+    // ignores query strings, so a `?t=` cache-buster on a reused path could
+    // still serve the old bytes for up to the Cache-Control max-age (this is
+    // the "doesn't update / takes forever" bug). A brand-new path is a
+    // brand-new URL that's never been cached anywhere, so it shows up
+    // immediately — and we can cache it aggressively since it never changes.
+    const prevUrl = profile?.avatar_url || null
+    const path = `${session.user.id}/avatar-${Date.now()}.jpg`
 
     const { error: upErr } = await supabase.storage
       .from('avatars')
-      .upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+      .upload(path, blob, { upsert: false, contentType: 'image/jpeg', cacheControl: '31536000' })
 
     if (upErr) {
       setError(upErr.message)
@@ -247,7 +255,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     }
 
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-    const url = `${data.publicUrl}?t=${Date.now()}`
+    const url = data.publicUrl
 
     const { data: updated, error: dbErr } = await supabase
       .from('profiles')
@@ -257,15 +265,21 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       .single()
 
     if (dbErr) setError(dbErr.message)
-    else onSaved(updated)
+    else {
+      onSaved(updated)
+      // Best-effort cleanup of the now-orphaned previous avatar file.
+      const prevPath = prevUrl?.match(/\/avatars\/([^?]+)/)?.[1]
+      if (prevPath) supabase.storage.from('avatars').remove([prevPath]).catch(() => {})
+    }
     setUploading(false)
   }
 
   async function deletePhoto() {
     setDeletingPhoto(true)
     setError(null)
-    const path = `${session.user.id}/avatar.jpg`
-    await supabase.storage.from('avatars').remove([path, `${session.user.id}/original`])
+    const currentPath = profile?.avatar_url?.match(/\/avatars\/([^?]+)/)?.[1]
+    const paths = [`${session.user.id}/original`, ...(currentPath ? [currentPath] : [])]
+    await supabase.storage.from('avatars').remove(paths)
     const { data, error: dbErr } = await supabase
       .from('profiles')
       .update({ avatar_url: null, avatar_crop: null })
