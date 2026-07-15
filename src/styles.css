@@ -4871,6 +4871,8 @@ button.delete-danger svg { flex-shrink: 0; }
   animation: profile-section-in 0.35s ease both;
 }
 .hint { font-size: 12px; color: var(--ink-soft); margin: 6px 0 0; }
+.mentor-status-hint { display: block; color: var(--maroon); font-weight: 500; }
+.mentor-status-hint .link-btn { font-size: 12px; padding: 0; font-weight: 600; }
 
 /* ---------- Profile page (grouped, animated sections) ---------- */
 @keyframes profile-section-in {

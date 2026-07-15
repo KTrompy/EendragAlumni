@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase, deleteOwnAccount } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, BUSINESS_CATEGORIES, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
@@ -51,6 +52,7 @@ function monthNow() {
 }
 
 export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
+  const navigate = useNavigate()
   const [form, setForm] = useState(EMPTY)
   const [customIndustry, setCustomIndustry] = useState('')
   const [customCity, setCustomCity] = useState('')
@@ -894,6 +896,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             {/* Services & opportunities offered */}
             <div className="field">
               <span>What can you offer to other Eendragters?</span>
+              <span className="hint">
+                Select "Mentoring/Coaching" to be listed as an available mentor on the Mentoring page.
+              </span>
               <div className="tags-grid compact">
                 {SERVICES_OFFERED.map((service) => (
                   <button
@@ -906,6 +911,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                   </button>
                 ))}
               </div>
+              {form.services_offered.includes('Mentoring/Coaching') && (
+                <span className="hint mentor-status-hint">
+                  ✓ You're discoverable as a mentor.{' '}
+                  <button type="button" className="link-btn" onClick={() => navigate('/mentoring')}>
+                    Manage requests and relationships in Mentoring →
+                  </button>
+                </span>
+              )}
             </div>
 
             {/* Business website */}
