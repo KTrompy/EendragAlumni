@@ -5522,14 +5522,12 @@ button.delete-danger svg { flex-shrink: 0; }
   gap: 16px;
 }
 
-/* Quick discovery section styling */
+/* The "open to opportunities?" gate at the top of the section */
 .profile-mentoring-content > .field:first-child {
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
+  margin-bottom: 0;
 }
 
-.profile-mentoring-content > .field-row:nth-of-type(2) {
+.profile-mentoring-details .field-row {
   margin-bottom: 20px;
 }
 
@@ -5552,19 +5550,29 @@ button.delete-danger svg { flex-shrink: 0; }
   }
 }
 
-/* Improved tag grid - more compact and scannable */
-.tags-grid {
+/* Improved tag grid - more compact and scannable.
+   Scoped to .profile-page: .tags-grid/.tag-btn/.field/.field-row are shared,
+   generic class names also used by Onboarding, Jobs, Merchandise,
+   BusinessDirectory and EventFormEnhanced. This block used to be unscoped,
+   so — purely by virtue of appearing later in the file — it silently
+   overrode those other pages' field/tag layout too (e.g. Onboarding's tag
+   chips picking up profile-only padding, and every other page's field-row
+   flipping from a flexible row to a fixed 2-column grid). Scoping it here
+   keeps the enhanced styling limited to the profile editor, where it's
+   actually intended, and lets everywhere else fall back to the original
+   shared definitions above. */
+.profile-page .tags-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin: 12px 0 0;
 }
 
-.tags-grid.compact {
+.profile-page .tags-grid.compact {
   gap: 8px;
 }
 
-.tag-btn {
+.profile-page .tag-btn {
   padding: 8px 14px;
   background: var(--paper);
   border: 1.5px solid var(--line);
@@ -5578,34 +5586,34 @@ button.delete-danger svg { flex-shrink: 0; }
   user-select: none;
 }
 
-.tag-btn:hover {
+.profile-page .tag-btn:hover {
   border-color: var(--orange);
   background: var(--orange-soft);
   color: var(--orange-dark);
   transform: translateY(-1px);
 }
 
-.tag-btn.selected {
+.profile-page .tag-btn.selected {
   background: var(--maroon);
   border-color: var(--maroon);
   color: white;
   font-weight: 600;
 }
 
-.tag-btn.selected:hover {
+.profile-page .tag-btn.selected:hover {
   background: var(--maroon-dark);
   border-color: var(--maroon-dark);
   transform: translateY(-1px);
 }
 
 /* Field layout improvements */
-.field {
+.profile-page .field {
   display: block;
   margin-bottom: 18px;
   flex: 1;
 }
 
-.field > span {
+.profile-page .field > span {
   display: block;
   font-size: 11.5px;
   font-weight: 700;
@@ -5615,16 +5623,26 @@ button.delete-danger svg { flex-shrink: 0; }
   margin-bottom: 8px;
 }
 
-.field-row {
+.profile-page .field-row {
   display: grid;
   gap: 16px;
   grid-template-columns: 1fr 1fr;
 }
 
 @media (max-width: 640px) {
-  .field-row {
+  .profile-page .field-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Mentoring detail fields (availability/expertise/services/website) only
+   render once "Open to mentoring and other opportunities?" is Yes — see
+   Profile.jsx. A light left border ties them visually to that answer
+   instead of reading as a separate, disconnected block. */
+.profile-mentoring-details {
+  padding-left: 14px;
+  margin-top: 16px;
+  border-left: 2px solid var(--line);
 }
 
 /* Choice row styling */
@@ -5715,7 +5733,7 @@ button.delete-danger svg { flex-shrink: 0; }
     margin-bottom: 14px;
   }
 
-  .field {
+  .profile-page .field {
     margin-bottom: 14px;
   }
 
@@ -5724,11 +5742,11 @@ button.delete-danger svg { flex-shrink: 0; }
     font-size: 12px;
   }
 
-  .tags-grid {
+  .profile-page .tags-grid {
     gap: 8px;
   }
 
-  .tag-btn {
+  .profile-page .tag-btn {
     padding: 7px 11px;
     font-size: 12px;
   }

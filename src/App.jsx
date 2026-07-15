@@ -322,28 +322,38 @@ export default function App() {
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  // Scoped to the user id rather than the whole `session` object: supabase-js
+  // hands back a brand-new session object (new identity, same user) on every
+  // TOKEN_REFRESHED event, which fires on tab re-focus as well as on a timer
+  // — not just at sign-in. Re-running this effect on every one of those
+  // re-fetches the whole profile row from the DB, and if that fetch happens
+  // to resolve *after* a Profile.jsx save() (e.g. you tab away mid-edit,
+  // come back, toggle something, hit save — the refocus-triggered refetch
+  // and the save's own response are now racing), the older row wins and
+  // silently overwrites the change you just saved. Keying off just the user
+  // id means this only re-runs on an actual sign-in/sign-out/account switch.
+  const sessionUserId = session?.user?.id
   useEffect(() => {
-    if (!session) { setProfile(null); return }
+    if (!sessionUserId) { setProfile(null); return }
     let cancelled = false
 
     // Same auth-not-settled race documented in Home.jsx's dashboard load:
-    // this effect fires the instant `session` changes (including on
-    // TOKEN_REFRESHED / re-focus, not just initial sign-in), which can
-    // race the underlying supabase-js client's auth header still being
-    // attached to outgoing requests. When that happens the `to
-    // authenticated` RLS policy on profiles silently matches nothing,
-    // .single() comes back as a "no rows" error, and setProfile(null)
-    // makes the whole app render as a blank/0%-complete profile (see
-    // Home's "Good afternoon, there" banner) until a manual refresh gives
-    // the client time to settle. Awaiting getSession() first, plus one
-    // retry on error, closes that window instead.
+    // this effect can still fire around a token refresh (sign-in itself
+    // counts), which can race the underlying supabase-js client's auth
+    // header still being attached to outgoing requests. When that happens
+    // the `to authenticated` RLS policy on profiles silently matches
+    // nothing, .single() comes back as a "no rows" error, and
+    // setProfile(null) makes the whole app render as a blank/0%-complete
+    // profile (see Home's "Good afternoon, there" banner) until a manual
+    // refresh gives the client time to settle. Awaiting getSession() first,
+    // plus one retry on error, closes that window instead.
     async function load(isRetry = false) {
       await supabase.auth.getSession()
       if (cancelled) return
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', session.user.id)
+        .eq('id', sessionUserId)
         .single()
       if (cancelled) return
       if (error && !isRetry) {
@@ -366,7 +376,7 @@ export default function App() {
     }
     load()
     return () => { cancelled = true }
-  }, [session])
+  }, [sessionUserId])
 
   // Heartbeat: writes last_seen every few minutes while the app is open (and
   // once immediately on load/tab-refocus) — this is what powers the

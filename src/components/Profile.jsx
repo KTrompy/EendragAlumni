@@ -831,9 +831,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
         {showMentoring && (
           <div className="profile-mentoring-content">
-            {/* Quick discovery toggles */}
+            {/* Single, top-level gate for the whole section — everything
+                below only makes sense once someone has actually said yes
+                here, so it's the one and only "am I open to this" question.
+                The rest of the fields (including the "Mentoring/Coaching"
+                option below) used to sit visible regardless of this answer,
+                which read as a second, competing "become a mentor" toggle. */}
             <div className="field">
-              <span>Are you open to mentoring and other opportunities?</span>
+              <span>Open to mentoring and other opportunities?</span>
               <div className="onboarding-choice-row profile-choice-row">
                 <button
                   type="button"
@@ -852,83 +857,87 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               </div>
             </div>
 
-            <div className="field-row">
-              <label className="field"><span>Availability</span>
-                <ListAutocomplete
-                  value={form.availability}
-                  onChange={(value) => set('availability', value)}
-                  options={AVAILABILITY_OPTIONS}
-                  placeholder="Search your availability"
-                  clearable
-                />
-              </label>
+            {form.is_open_to_opportunities && (
+              <div className="profile-mentoring-details">
+                <div className="field-row">
+                  <label className="field"><span>Availability</span>
+                    <ListAutocomplete
+                      value={form.availability}
+                      onChange={(value) => set('availability', value)}
+                      options={AVAILABILITY_OPTIONS}
+                      placeholder="Search your availability"
+                      clearable
+                    />
+                  </label>
 
-              <div className="field">
-                <span>Geographic focus</span>
-                <div className="tags-grid compact">
-                  {GEOGRAPHIC_FOCUS.map((geo) => (
-                    <button
-                      key={geo}
-                      type="button"
-                      className={`tag-btn ${form.geographic_focus.includes(geo) ? 'selected' : ''}`}
-                      onClick={() => toggleTag('geographic_focus', geo)}
-                    >
-                      {geo}
-                    </button>
-                  ))}
+                  <div className="field">
+                    <span>Geographic focus</span>
+                    <div className="tags-grid compact">
+                      {GEOGRAPHIC_FOCUS.map((geo) => (
+                        <button
+                          key={geo}
+                          type="button"
+                          className={`tag-btn ${form.geographic_focus.includes(geo) ? 'selected' : ''}`}
+                          onClick={() => toggleTag('geographic_focus', geo)}
+                        >
+                          {geo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+
+                {/* Main expertise — options are scoped to whichever industry is selected above */}
+                <label className="field"><span>Main areas you can mentor in</span>
+                  <MultiSelectAutocomplete
+                    values={form.expertise}
+                    onChange={(value) => set('expertise', value)}
+                    options={EXPERTISE_BY_INDUSTRY[form.industry] || EXPERTISE_OPTIONS}
+                    placeholder={form.industry ? 'Search your expertise, or type your own' : 'Pick an industry above to see relevant options'}
+                    allowCustom
+                  />
+                </label>
+
+                {/* Services & opportunities offered */}
+                <div className="field">
+                  <span>What can you offer to other Eendragters?</span>
+                  <span className="hint">
+                    These show up on your profile as things people can reach out to you about — including "Mentoring/Coaching" below if that's something you're up for informally.
+                  </span>
+                  <div className="tags-grid compact">
+                    {SERVICES_OFFERED.map((service) => (
+                      <button
+                        key={service}
+                        type="button"
+                        className={`tag-btn ${form.services_offered.includes(service) ? 'selected' : ''}`}
+                        onClick={() => toggleTag('services_offered', service)}
+                      >
+                        {service}
+                      </button>
+                    ))}
+                  </div>
+                  {form.services_offered.includes('Mentoring/Coaching') && (
+                    <span className="hint mentor-status-hint">
+                      ✓ Your profile shows you're open to mentoring.{' '}
+                      <button type="button" className="link-btn" onClick={() => navigate('/mentoring')}>
+                        Join a structured mentoring program →
+                      </button>
+                    </span>
+                  )}
+                </div>
+
+                {/* Business website */}
+                <label className="field"><span>Business website or portfolio (optional)</span>
+                  <ClearableInput
+                    type="url"
+                    value={form.business_website}
+                    onChange={(e) => set('business_website', e.target.value)}
+                    onClear={() => set('business_website', '')}
+                    placeholder="https://yourwebsite.com"
+                  />
+                </label>
               </div>
-            </div>
-
-            {/* Main expertise — options are scoped to whichever industry is selected above */}
-            <label className="field"><span>Main areas you can mentor in</span>
-              <MultiSelectAutocomplete
-                values={form.expertise}
-                onChange={(value) => set('expertise', value)}
-                options={EXPERTISE_BY_INDUSTRY[form.industry] || EXPERTISE_OPTIONS}
-                placeholder={form.industry ? 'Search your expertise, or type your own' : 'Pick an industry above to see relevant options'}
-                allowCustom
-              />
-            </label>
-
-            {/* Services & opportunities offered */}
-            <div className="field">
-              <span>What can you offer to other Eendragters?</span>
-              <span className="hint">
-                Select "Mentoring/Coaching" to be listed as an available mentor on the Mentoring page.
-              </span>
-              <div className="tags-grid compact">
-                {SERVICES_OFFERED.map((service) => (
-                  <button
-                    key={service}
-                    type="button"
-                    className={`tag-btn ${form.services_offered.includes(service) ? 'selected' : ''}`}
-                    onClick={() => toggleTag('services_offered', service)}
-                  >
-                    {service}
-                  </button>
-                ))}
-              </div>
-              {form.services_offered.includes('Mentoring/Coaching') && (
-                <span className="hint mentor-status-hint">
-                  ✓ You're discoverable as a mentor.{' '}
-                  <button type="button" className="link-btn" onClick={() => navigate('/mentoring')}>
-                    Manage requests and relationships in Mentoring →
-                  </button>
-                </span>
-              )}
-            </div>
-
-            {/* Business website */}
-            <label className="field"><span>Business website or portfolio (optional)</span>
-              <ClearableInput
-                type="url"
-                value={form.business_website}
-                onChange={(e) => set('business_website', e.target.value)}
-                onClear={() => set('business_website', '')}
-                placeholder="https://yourwebsite.com"
-              />
-            </label>
+            )}
           </div>
         )}
       </div>
