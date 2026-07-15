@@ -5452,11 +5452,7 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 
 .profile-section-title::before {
-  content: '';
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--orange);
+  display: none;
 }
 
 /* Mentoring collapsible toggle */
