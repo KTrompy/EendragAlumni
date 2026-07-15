@@ -6428,6 +6428,17 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--ink-soft);
 }
 
+/* Leaflet's internal panes/zoom-controls use z-index values up to 1000
+   (see the modal-backdrop comment above), which otherwise beats the sticky
+   header (z-index: 50) as soon as a map scrolls underneath it — the map
+   visually pops up over the header/nav instead of disappearing behind it.
+   `isolation: isolate` gives every .leaflet-container its own stacking
+   context so Leaflet's internal z-index values are only ever compared
+   against each other, never against page-level chrome like the header.
+   Applies to every map embed site-wide (jobs, businesses, events, groups,
+   the Alumni Map) since they all render this same react-leaflet class. */
+.leaflet-container { isolation: isolate; }
+
 /* Leaflet's own chrome, restyled to sit inside the paper/card palette
    instead of its default white-on-white. */
 .leaflet-control-zoom a {
