@@ -108,6 +108,8 @@ export default function Mentoring({ session, profile, onMessage }) {
               myMatches={myMatches}
               onRequest={requestMentor}
               onOpenProfile={goToProfile}
+              onMessage={onMessage}
+              profile={profile}
             />
           )}
           {tab === 'relationships' && (
@@ -133,7 +135,7 @@ export default function Mentoring({ session, profile, onMessage }) {
 /* ============================================================
    Find a Mentor — with search, industry filter, card layout
    ============================================================ */
-function FindMentorTab({ session, mentors, myMatches, onRequest, onOpenProfile }) {
+function FindMentorTab({ session, mentors, myMatches, onRequest, onOpenProfile, onMessage, profile }) {
   const [search, setSearch] = useState('')
   const [industryFilter, setIndustryFilter] = useState('')
 
@@ -202,8 +204,8 @@ function FindMentorTab({ session, mentors, myMatches, onRequest, onOpenProfile }
             const roleLine = person.occupation && person.company ? `${person.occupation} @ ${person.company}` : (person.occupation || person.company || '')
 
             return (
-              <div key={person.id} className="mentor-card">
-                <div className="mentor-card-top" role="button" tabIndex={0} onClick={() => onOpenProfile(person)} onKeyDown={(e) => { if (e.key === 'Enter') onOpenProfile(person) }}>
+              <div key={person.id} className="mentor-card" role="button" tabIndex={0} onClick={() => onOpenProfile(person)} onKeyDown={(e) => { if (e.key === 'Enter') onOpenProfile(person) }}>
+                <div className="mentor-card-top">
                   <Avatar url={person.avatar_url} name={person.full_name} size={56} />
                   <div className="mentor-card-identity">
                     <span className="mentor-card-name">{person.full_name}</span>
@@ -224,10 +226,18 @@ function FindMentorTab({ session, mentors, myMatches, onRequest, onOpenProfile }
                 {person.grad_year && <span className="mentor-card-grad">Class of {person.grad_year}</span>}
 
                 <div className="mentor-card-footer">
-                  {existing ? (
+                  <div className="mentor-card-actions" onClick={(e) => e.stopPropagation()}>
+                    <button className="header-icon-btn mentor-message-btn" onClick={() => onMessage?.({ id: person.id, full_name: person.full_name }, buildIcebreaker(profile, person))} aria-label="Message" title="Message">
+                      <MessageIcon />
+                    </button>
+                    {person.linkedin_url && (
+                      <a href={person.linkedin_url} target="_blank" rel="noopener noreferrer" className="header-icon-btn mentor-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
+                        <LinkedInIcon />
+                      </a>
+                    )}
+                  </div>
+                  {existing && (
                     <span className={`mentoring-status-pill ${existing.status}`}>{statusLabel(existing.status)}</span>
-                  ) : (
-                    <button className="btn primary small" onClick={(e) => { e.stopPropagation(); onRequest(person.id) }}>Request</button>
                   )}
                 </div>
               </div>
@@ -397,6 +407,22 @@ function SearchIcon() {
     <svg className="mentoring-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  )
+}
+
+function MessageIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
+function LinkedInIcon() {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.13 1 2.5 1s2.48 1.13 2.48 2.5zM.24 8h4.52v14H.24V8zm7.5 0h4.34v1.92h.06c.6-1.14 2.07-2.34 4.26-2.34 4.56 0 5.4 3 5.4 6.9V22h-4.52v-6.14c0-1.46-.02-3.34-2.04-3.34-2.04 0-2.36 1.6-2.36 3.24V22H7.74V8z"/>
     </svg>
   )
 }
