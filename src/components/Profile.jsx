@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, deleteOwnAccount } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, BUSINESS_CATEGORIES, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
+import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
@@ -25,7 +25,6 @@ const EMPTY = {
   expertise: [],
   services_offered: [],
   business_website: '',
-  business_categories: [],
   is_open_to_opportunities: true,
   availability: '',
   geographic_focus: [],
@@ -70,7 +69,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
   const [dirty, setDirty] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [showBusinessProfile, setShowBusinessProfile] = useState(false)
+  const [showMentoring, setShowMentoring] = useState(false)
   const [showPhotoModal, setShowPhotoModal] = useState(false)
   const [deletingPhoto, setDeletingPhoto] = useState(false)
   // Which experience cards are showing the full edit form rather than the
@@ -100,7 +99,6 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         expertise: normalizeExpertise(profile.expertise),
         services_offered: Array.isArray(profile.services_offered) ? profile.services_offered : [],
         business_website: profile.business_website || '',
-        business_categories: Array.isArray(profile.business_categories) ? profile.business_categories : [],
         is_open_to_opportunities: profile.is_open_to_opportunities !== false,
         availability: profile.availability || '',
         geographic_focus: Array.isArray(profile.geographic_focus) ? profile.geographic_focus : [],
@@ -821,21 +819,21 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </label>
       </div>
 
-      {/* Business Profile - Collapsible */}
+      {/* Mentoring - Collapsible */}
       <div className="profile-section">
         <button
-          className="profile-business-toggle"
-          onClick={() => setShowBusinessProfile(!showBusinessProfile)}
+          className="profile-mentoring-toggle"
+          onClick={() => setShowMentoring(!showMentoring)}
         >
-          <span className="profile-business-title">Business profile</span>
-          <span className={`toggle-arrow ${showBusinessProfile ? 'open' : ''}`}>▼</span>
+          <span className="profile-mentoring-title">Mentoring</span>
+          <span className={`toggle-arrow ${showMentoring ? 'open' : ''}`}>▼</span>
         </button>
 
-        {showBusinessProfile && (
-          <div className="profile-business-content">
+        {showMentoring && (
+          <div className="profile-mentoring-content">
             {/* Quick discovery toggles */}
             <div className="field">
-              <span>Are you open to business opportunities?</span>
+              <span>Are you open to mentoring and other opportunities?</span>
               <div className="onboarding-choice-row profile-choice-row">
                 <button
                   type="button"
@@ -883,7 +881,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             </div>
 
             {/* Main expertise — options are scoped to whichever industry is selected above */}
-            <label className="field"><span>Main areas of expertise</span>
+            <label className="field"><span>Main areas you can mentor in</span>
               <MultiSelectAutocomplete
                 values={form.expertise}
                 onChange={(value) => set('expertise', value)}

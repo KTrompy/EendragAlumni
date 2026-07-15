@@ -2768,7 +2768,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .person-profile-page .profile-photo-card { padding: 40px 28px; gap: 16px; }
 .person-profile-page .profile-card-subsection { margin-top: 20px; }
 .person-profile-page .profile-actions { margin-top: 24px; gap: 14px; }
-/* Contact / Business profile cards put a heading directly above the fact
+/* Contact / Mentoring cards put a heading directly above the fact
    strip, so the strip's own top border would just draw a second line right
    under the title — drop it there and keep only the bottom rule that
    separates the strip from whatever subsections follow. */
@@ -5459,8 +5459,8 @@ button.delete-danger svg { flex-shrink: 0; }
   background: var(--orange);
 }
 
-/* Business profile collapsible toggle */
-.profile-business-toggle {
+/* Mentoring collapsible toggle */
+.profile-mentoring-toggle {
   width: 100%;
   background: none;
   border: none;
@@ -5473,11 +5473,11 @@ button.delete-danger svg { flex-shrink: 0; }
   transition: color 0.15s ease;
 }
 
-.profile-business-toggle:hover {
+.profile-mentoring-toggle:hover {
   color: var(--orange);
 }
 
-.profile-business-title {
+.profile-mentoring-title {
   font-family: var(--display);
   font-weight: 800;
   font-size: 12px;
@@ -5489,7 +5489,7 @@ button.delete-danger svg { flex-shrink: 0; }
   gap: 8px;
 }
 
-.profile-business-title::before {
+.profile-mentoring-title::before {
   content: '';
   width: 4px;
   height: 4px;
@@ -5512,29 +5512,29 @@ button.delete-danger svg { flex-shrink: 0; }
   transform: rotate(180deg);
 }
 
-.profile-business-content {
+.profile-mentoring-content {
   padding-top: 16px;
   border-top: 1px solid var(--line);
   animation: slideDown 0.2s ease;
 }
 
-.profile-business-content .field-row {
+.profile-mentoring-content .field-row {
   gap: 16px;
 }
 
 /* Quick discovery section styling */
-.profile-business-content > .field:first-child {
+.profile-mentoring-content > .field:first-child {
   margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line);
 }
 
-.profile-business-content > .field-row:nth-of-type(2) {
+.profile-mentoring-content > .field-row:nth-of-type(2) {
   margin-bottom: 20px;
 }
 
-/* Help text for business profile */
-.business-profile-hint {
+/* Help text for the mentoring section */
+.mentoring-hint {
   font-size: 11px;
   color: var(--ink-soft);
   margin-top: 4px;

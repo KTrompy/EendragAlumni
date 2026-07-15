@@ -81,7 +81,7 @@ function bakeCoverImage(file, imageData) {
 const POSTER_FIELDS =
   'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
   'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
-  'business_categories, availability, geographic_focus, is_open_to_opportunities'
+  'availability, geographic_focus, is_open_to_opportunities'
 
 const GROUP_POSTS_SELECT = `
   id, title, content, image_urls, pinned, created_at, author_id,

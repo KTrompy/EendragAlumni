@@ -41,9 +41,7 @@ function truncate(text, max = 140) {
   return t.length > max ? t.slice(0, max).trim() + '…' : t
 }
 
-// A distinct list from the profile-level BUSINESS_CATEGORIES (which
-// classifies a *person's* relationship to business — "Founder", "Investor",
-// etc.) — this classifies the *listing itself*, so someone browsing can
+// Classifies the *listing itself* (not the poster), so someone browsing can
 // filter "show me the lawyers" the way the reference's directory does.
 export const LISTING_CATEGORIES = [
   'Professional Services',
@@ -67,7 +65,7 @@ export const LISTING_CATEGORIES = [
 const POSTER_FIELDS =
   'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
   'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
-  'business_categories, availability, geographic_focus, is_open_to_opportunities'
+  'availability, geographic_focus, is_open_to_opportunities'
 
 const EMPTY_FILTERS = { category: '', country: '' }
 

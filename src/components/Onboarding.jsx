@@ -15,7 +15,7 @@ import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 // One question per screen, skip-friendly, saved in a single write at the
 // end. Shown full-screen (like Auth) the first time a member logs in with
 // no name on file yet — see App.jsx. Mirrors every question the Profile
-// page can ask, including its collapsible "Business profile" section
+// page can ask, including its collapsible "Mentoring" section
 // (opportunities/availability/expertise/services/geography/website), so
 // nothing is left for someone to discover only by opening My Profile later.
 const QUESTION_KEYS = [
@@ -110,7 +110,7 @@ export default function Onboarding({ session, profile, onDone }) {
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setEmptyNotice(false) }
   function onEnter(e) { if (e.key === 'Enter') handleContinue() }
 
-  // Same toggle-a-tag-in-an-array behaviour as Profile's Business profile
+  // Same toggle-a-tag-in-an-array behaviour as Profile's Mentoring
   // section (Services offered / Geographic focus tag grids).
   function toggleTag(field, tag) {
     setForm((f) => {
@@ -472,7 +472,7 @@ export default function Onboarding({ session, profile, onDone }) {
       case 'opportunities':
         return (
           <>
-            <h2 className="onboarding-question">Are you open to business opportunities?</h2>
+            <h2 className="onboarding-question">Are you open to mentoring and other opportunities?</h2>
             <div className="onboarding-choice-row">
               <button
                 className={form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
@@ -506,7 +506,7 @@ export default function Onboarding({ session, profile, onDone }) {
       case 'expertise':
         return (
           <>
-            <h2 className="onboarding-question">What are your main areas of expertise?</h2>
+            <h2 className="onboarding-question">What are the main areas you could mentor others in?</h2>
             <p className="onboarding-hint">Pick as many as apply — or type your own</p>
             <MultiSelectAutocomplete
               values={form.expertise}

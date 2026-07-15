@@ -102,13 +102,12 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
   const experience = Array.isArray(p.experience) ? p.experience : []
   const expertise = normalizeExpertise(p.expertise)
   const servicesOffered = Array.isArray(p.services_offered) ? p.services_offered : []
-  const businessCategories = Array.isArray(p.business_categories) ? p.business_categories : []
   const geographicFocus = Array.isArray(p.geographic_focus) ? p.geographic_focus : []
-  // Only show the business section at all if there's something in it —
+  // Only show the mentoring section at all if there's something in it —
   // most fields here default to blank/true and shouldn't clutter the
   // profile of someone who never opened that part of the form.
-  const hasBusinessProfile = expertise.length > 0 || servicesOffered.length > 0
-    || businessCategories.length > 0 || geographicFocus.length > 0
+  const hasMentoringInfo = expertise.length > 0 || servicesOffered.length > 0
+    || geographicFocus.length > 0
     || !!p.business_website || !!p.availability
 
   return (
@@ -175,9 +174,9 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
             </div>
           )}
 
-          {hasBusinessProfile && (
+          {hasMentoringInfo && (
             <div className="profile-card-section">
-              <h3 className="profile-card-section-title">Business profile</h3>
+              <h3 className="profile-card-section-title">Mentoring</h3>
 
               <div className="profile-fact-strip">
                 <Fact label="Open to opportunities" value={p.is_open_to_opportunities ? 'Yes' : 'Not right now'} />
@@ -208,13 +207,6 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
                 <div className="profile-card-subsection">
                   <span className="profile-fact-label">Can offer other Eendragters</span>
                   <Chips items={servicesOffered} />
-                </div>
-              )}
-
-              {businessCategories.length > 0 && (
-                <div className="profile-card-subsection">
-                  <span className="profile-fact-label">Business categories</span>
-                  <Chips items={businessCategories} />
                 </div>
               )}
 

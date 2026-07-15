@@ -31,7 +31,7 @@ const QUICK_TABS = [
 
 const PEOPLE_SELECT = 'id, full_name, grad_year, degree, occupation, industry, company, city, country, ' +
   'is_current_resident, bio, avatar_url, linkedin_url, approved, lat, lng, last_seen, ' +
-  'expertise, services_offered, business_website, looking_to_connect, business_categories, ' +
+  'expertise, services_offered, business_website, looking_to_connect, ' +
   'availability, geographic_focus, is_open_to_opportunities, created_at, experience'
 
 export function useDirectoryFilters(session, refetchTrigger) {

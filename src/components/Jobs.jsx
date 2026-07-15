@@ -25,7 +25,7 @@ const PAGE_SIZE = 20
 export const POSTER_FIELDS =
   'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
   'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
-  'business_categories, availability, geographic_focus, is_open_to_opportunities'
+  'availability, geographic_focus, is_open_to_opportunities'
 
 // Everything the job board itself, the standalone job detail page, and the
 // "saved jobs" query all need — kept in one place so the three stay in sync.

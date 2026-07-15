@@ -316,7 +316,7 @@ export const PHONE_PRIORITY_COUNTRIES = [
   'Australia', 'United Arab Emirates', 'Canada', 'New Zealand',
 ]
 
-// Business profile options
+// Mentoring section options
 // Generic fallback list — shown before an industry is picked, or when the
 // chosen industry has no dedicated list below.
 export const EXPERTISE_OPTIONS = [
@@ -579,18 +579,6 @@ export const COLLABORATION_TYPES = [
   'Client Referrals',
   'Knowledge Sharing',
   'Recruitment',
-]
-
-// Improved: Clearer, more discoverable business categories
-export const BUSINESS_CATEGORIES = [
-  'Founder/Entrepreneur',
-  'Corporate Executive',
-  'Investor/Advisor',
-  'Service Provider',
-  'Product Company',
-  'Consultant/Freelancer',
-  'Job Creator/Recruiter',
-  'Non-Profit Leader',
 ]
 
 // New: Availability/Capacity

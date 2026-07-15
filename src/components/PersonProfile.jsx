@@ -138,10 +138,9 @@ export default function PersonProfile({ session, me, onMessage }) {
     .sort((a, b) => (b.to || b.from || '').localeCompare(a.to || a.from || ''))
   const expertise = normalizeExpertise(p.expertise)
   const servicesOffered = Array.isArray(p.services_offered) ? p.services_offered : []
-  const businessCategories = Array.isArray(p.business_categories) ? p.business_categories : []
   const geographicFocus = Array.isArray(p.geographic_focus) ? p.geographic_focus : []
-  const hasBusinessProfile = expertise.length > 0 || servicesOffered.length > 0
-    || businessCategories.length > 0 || geographicFocus.length > 0
+  const hasMentoringInfo = expertise.length > 0 || servicesOffered.length > 0
+    || geographicFocus.length > 0
     || !!p.business_website || !!p.availability
 
   return (
@@ -196,7 +195,7 @@ export default function PersonProfile({ session, me, onMessage }) {
       </div>
 
       {/* Each block below used to live inside one big shared card, which
-          made About/Contact/Experience/Business profile blur together with
+          made About/Contact/Experience/Mentoring blur together with
           nothing but a small uppercase label to tell them apart. Giving each
           its own .profile-section card (bordered, shadowed, its own fade-in
           stagger) makes the page scannable at a glance instead of reading
@@ -252,9 +251,9 @@ export default function PersonProfile({ session, me, onMessage }) {
         </div>
       )}
 
-      {hasBusinessProfile && (
+      {hasMentoringInfo && (
         <div className="profile-section">
-          <h3 className="profile-card-section-title">Business profile</h3>
+          <h3 className="profile-card-section-title">Mentoring</h3>
 
           <div className="profile-fact-strip profile-fact-strip-noborder">
             <Fact label="Open to opportunities" value={p.is_open_to_opportunities ? 'Yes' : 'Not right now'} />
@@ -285,13 +284,6 @@ export default function PersonProfile({ session, me, onMessage }) {
             <div className="profile-card-subsection">
               <span className="profile-fact-label">Can offer other Eendragters</span>
               <Chips items={servicesOffered} />
-            </div>
-          )}
-
-          {businessCategories.length > 0 && (
-            <div className="profile-card-subsection">
-              <span className="profile-fact-label">Business categories</span>
-              <Chips items={businessCategories} />
             </div>
           )}
 

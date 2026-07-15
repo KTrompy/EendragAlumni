@@ -18,7 +18,7 @@ import { useObjectUrl, useObjectUrls } from '../utils.js'
 const POSTER_FIELDS =
   'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
   'is_current_resident, linkedin_url, bio, expertise, services_offered, business_website, ' +
-  'business_categories, availability, geographic_focus, is_open_to_opportunities'
+  'availability, geographic_focus, is_open_to_opportunities'
 
 const MAX_IMAGES = 4
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
