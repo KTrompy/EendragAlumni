@@ -8433,6 +8433,407 @@ button.delete-danger svg { flex-shrink: 0; }
   font-size: 13.5px;
 }
 
+/* ---------- Find a Mentor — search/filter bar ---------- */
+.mentoring-find { display: flex; flex-direction: column; gap: 12px; }
+.mentoring-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+.mentoring-search-wrap {
+  position: relative;
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+.mentoring-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+.mentoring-search {
+  width: 100%;
+  padding: 9px 32px 9px 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  background: var(--card);
+  color: var(--ink);
+}
+.mentoring-search:focus { border-color: var(--maroon); outline: none; }
+.mentoring-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.mentoring-filter-selects { display: flex; gap: 8px; flex-wrap: wrap; }
+.mentoring-filter-select {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--card);
+  color: var(--ink);
+  max-width: 220px;
+}
+
+/* ---------- Mentor card grid ---------- */
+.mentor-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.mentor-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.15s ease;
+}
+.mentor-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+
+.mentor-card-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.mentor-card-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mentor-card-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mentor-card-role {
+  font-size: 13px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mentor-card-industry {
+  font-size: 12px;
+  color: var(--maroon);
+  font-weight: 600;
+}
+.mentor-card-bio {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.mentor-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.mentor-tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.mentor-tag-more { font-weight: 700; color: var(--maroon); }
+.mentor-card-grad {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.mentor-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.mentor-card-program {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* ---------- Relationship cards ---------- */
+.relationship-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.relationship-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.relationship-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  flex-wrap: wrap;
+}
+.relationship-card-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  cursor: pointer;
+  min-width: 0;
+  flex: 1;
+}
+.relationship-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.relationship-card-name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.relationship-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.relationship-card-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 14px;
+}
+.relationship-completion-note {
+  padding: 10px 14px;
+  background: rgba(44, 110, 73, 0.06);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.relationship-completion-note strong { color: var(--ink); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 4px; }
+
+/* ---------- Goals section ---------- */
+.mentoring-goals-section, .mentoring-notes-section {
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+.mentoring-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.mentoring-section-header h4 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--maroon);
+}
+.mentoring-progress-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-left: auto;
+}
+.mentoring-progress-bar {
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.mentoring-progress-fill {
+  height: 100%;
+  background: var(--ok);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.mentoring-inline-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.mentoring-inline-form input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--card);
+  color: var(--ink);
+}
+.mentoring-inline-form input:focus { border-color: var(--maroon); outline: none; }
+.mentoring-goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mentoring-goal-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+.mentoring-goal-item:hover { background: var(--card); }
+.mentoring-goal-item.done span { text-decoration: line-through; color: var(--ink-soft); }
+.mentoring-goal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--ink);
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+.mentoring-goal-check input[type="checkbox"] {
+  accent-color: var(--ok);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.mentoring-goal-delete {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.mentoring-goal-item:hover .mentoring-goal-delete,
+.mentoring-note-head:hover .mentoring-goal-delete { opacity: 1; }
+
+/* ---------- Notes section ---------- */
+.mentoring-note-form {
+  margin-bottom: 12px;
+}
+.mentoring-note-form textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--card);
+  color: var(--ink);
+  resize: vertical;
+}
+.mentoring-note-form textarea:focus { border-color: var(--maroon); outline: none; }
+.mentoring-note-form-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.field-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.field-inline input { padding: 6px 8px; font-size: 12.5px; }
+.mentoring-note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mentoring-note-item {
+  padding: 10px 12px;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+.mentoring-note-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.mentoring-note-author { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.mentoring-note-date {
+  font-size: 11.5px;
+  color: var(--maroon);
+  font-weight: 600;
+  background: rgba(112, 27, 38, 0.08);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.mentoring-note-time { font-size: 11.5px; color: var(--ink-soft); margin-left: auto; }
+.mentoring-note-content {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .mentor-card-grid { grid-template-columns: 1fr; }
+  .mentoring-filter-bar { flex-direction: column; }
+  .mentoring-search-wrap { flex: 1 1 100%; }
+  .relationship-card-head { flex-direction: column; align-items: flex-start; }
+  .relationship-card-actions { width: 100%; }
+}
+
 /* ===========================================================
    Settings page (/settings — Account / Notifications / Privacy)
    Not to be confused with .settings-card above, which is Mentoring's own
