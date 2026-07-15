@@ -231,8 +231,13 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   }
 
   async function uploadCroppedPhoto(blob, cropMeta) {
-    setCropFile(null)
-    setCropInitial(null)
+    // Deliberately NOT clearing cropFile/cropInitial here — the editor stays
+    // open with a "Saving…" state until the upload + DB write actually
+    // finish. Closing immediately (the old behavior) left no visible sign
+    // anything was happening: the avatar on the page behind it was still the
+    // old one until the network calls resolved, so on a slow connection it
+    // looked like nothing happened — and refreshing mid-upload would abandon
+    // the in-flight request entirely, permanently losing the change.
     setUploading(true); setError(null)
     // Every save gets its own filename instead of overwriting avatar.jpg.
     // Supabase's storage CDN caches by object key at the edge and largely
@@ -264,9 +269,12 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       .select()
       .single()
 
-    if (dbErr) setError(dbErr.message)
-    else {
+    if (dbErr) {
+      setError(dbErr.message)
+    } else {
       onSaved(updated)
+      setCropFile(null)
+      setCropInitial(null)
       // Best-effort cleanup of the now-orphaned previous avatar file.
       const prevPath = prevUrl?.match(/\/avatars\/([^?]+)/)?.[1]
       if (prevPath) supabase.storage.from('avatars').remove([prevPath]).catch(() => {})
@@ -958,8 +966,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <PhotoCropper
           file={cropFile}
           initialCrop={cropInitial}
-          onCancel={() => { setCropFile(null); setCropInitial(null) }}
+          onCancel={() => { setCropFile(null); setCropInitial(null); setError(null) }}
           onSave={uploadCroppedPhoto}
+          uploading={uploading}
+          error={error}
         />
       )}
 

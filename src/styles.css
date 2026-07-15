@@ -6375,10 +6375,18 @@ button.delete-danger svg { flex-shrink: 0; }
 /* Footer */
 .cropper-editor-footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 12px;
   padding: 12px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: #2d2d2d;
+}
+
+.cropper-editor-error {
+  margin: 0;
+  margin-right: auto;
+  color: #ff8a8a;
 }
 
 /* Mobile: stack vertically */

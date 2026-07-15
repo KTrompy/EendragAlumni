@@ -18,7 +18,7 @@ function clampOffset(pos, zoomActual, natW, natH, side) {
   }
 }
 
-export default function PhotoCropper({ file, initialCrop, onCancel, onSave }) {
+export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uploading, error }) {
   const viewportRef = useRef(null)
   const imgRef = useRef(null)
   const [imgUrl, setImgUrl] = useState(null)
@@ -154,7 +154,7 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave }) {
   }
 
   function handleSave() {
-    if (!natural) return
+    if (!natural || uploading) return
 
     const canvas = document.createElement('canvas')
     canvas.width = OUTPUT_SIZE
@@ -210,12 +210,12 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave }) {
   ].join(' ')
 
   return (
-    <div className="modal-backdrop" onClick={onCancel}>
+    <div className="modal-backdrop" onClick={uploading ? undefined : onCancel}>
       <div className="cropper-editor" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="cropper-editor-header">
           <h2>Edit image</h2>
-          <button className="modal-close" onClick={onCancel} aria-label="Close">×</button>
+          <button className="modal-close" onClick={onCancel} aria-label="Close" disabled={uploading}>×</button>
         </div>
 
         {/* Main content: photo area + side panel */}
@@ -373,7 +373,10 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave }) {
 
         {/* Footer */}
         <div className="cropper-editor-footer">
-          <button className="btn primary" onClick={handleSave} disabled={!natural}>Save changes</button>
+          {error && <p className="form-error cropper-editor-error">{error}</p>}
+          <button className="btn primary" onClick={handleSave} disabled={!natural || uploading}>
+            {uploading ? 'Saving…' : 'Save changes'}
+          </button>
         </div>
       </div>
     </div>
