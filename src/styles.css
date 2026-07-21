@@ -8591,6 +8591,37 @@ button.delete-danger svg { flex-shrink: 0; }
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }
+.mentor-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* The mentor card sits on a white surface, so the header-icon-btn's white
+   default color rendered invisible — override to the same tinted-icon look
+   used on the standalone profile page. */
+.mentor-message-btn {
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.mentor-message-btn:hover {
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  border-color: var(--orange);
+}
+.mentor-linkedin-btn {
+  color: #0a66c2;
+  border: 1px solid #0a66c2;
+  background: var(--card);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mentor-linkedin-btn:hover {
+  background: rgba(10, 102, 194, 0.1);
+  border-color: #0a66c2;
+}
 .mentor-card-program {
   font-size: 11.5px;
   color: var(--ink-soft);
