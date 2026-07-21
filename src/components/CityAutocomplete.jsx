@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { getApproxLocation } from '../ipLocation'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -34,6 +35,18 @@ export default function CityAutocomplete({
   const [needsPick, setNeedsPick] = useState(false)
   const debounceRef = useRef(null)
   const blurTimeoutRef = useRef(null)
+  const [approxLocation, setApproxLocation] = useState(null)
+
+  // Detect the person's approximate location from their IP address once,
+  // on mount — no browser permission prompt (see ipLocation.js). Used below
+  // to bias Mapbox's suggestions toward places near them, e.g. so typing an
+  // address resolves to the local match first instead of a same-named one
+  // on the other side of the world.
+  useEffect(() => {
+    let cancelled = false
+    getApproxLocation().then((loc) => { if (!cancelled) setApproxLocation(loc) })
+    return () => { cancelled = true }
+  }, [])
 
   // Stay in sync with the confirmed value from outside (profile loading,
   // form reset) — but not while the person is actively typing/picking.
@@ -70,9 +83,16 @@ export default function CityAutocomplete({
 
     async function search(q2) {
       if (!MAPBOX_TOKEN) return []
+      // Bias toward the person's IP-detected location, if we have it — this
+      // ranks nearby results first without excluding matches further away
+      // (unlike filtering by country), which is exactly what makes "26
+      // Bluegum Street" resolve to the local one first.
+      const proximity = approxLocation
+        ? `&proximity=${approxLocation.lng},${approxLocation.lat}`
+        : ''
       const url =
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q2)}.json` +
-        `?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=6` +
+        `?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=6${proximity}` +
         `&types=address,poi,neighborhood,place,locality,region,country`
       const res = await fetch(url, { headers: { Accept: 'application/json' } })
       if (!res.ok) return []
@@ -104,7 +124,7 @@ export default function CityAutocomplete({
 
     return () => clearTimeout(debounceRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, country])
+  }, [text, country, approxLocation])
 
   // Mapbox occasionally returns near-duplicate labels for the same place
   // (a suburb under two slightly different name variants). Collapse
