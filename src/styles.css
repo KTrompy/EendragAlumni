@@ -56,6 +56,20 @@ body {
 button { font: inherit; cursor: pointer; }
 input, textarea, select { font: inherit; }
 
+/* iOS Safari auto-zooms into any input/select with a computed font-size
+   below 16px and never zooms back out, which throws the whole layout off
+   as soon as anyone taps a search box, chat input, comment field, filter
+   input, etc. Body text is 15px and several inputs opt into 13.5–14px on
+   top of that. This scoping (touch-primary devices only) leaves desktop
+   pixel-perfect while stopping the zoom on phones/tablets. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* ---------- Masthead ---------- */
 .masthead {
   background: var(--maroon);
@@ -812,7 +826,7 @@ input, textarea, select { font: inherit; }
   .chat-panel-body .date-separator span { font-size: 10.5px; }
 }
 
-.center-page { display: grid; place-items: center; min-height: 100vh; color: var(--ink-soft); }
+.center-page { display: grid; place-items: center; min-height: 100vh; min-height: 100dvh; color: var(--ink-soft); }
 
 /* ---------- Toasts ---------- */
 .toast-stack {
@@ -855,8 +869,10 @@ input, textarea, select { font: inherit; }
   to { opacity: 1; transform: none; }
 }
 @media (max-width: 720px) {
-  /* Clear the bottom tab bar / chat FAB instead of sitting under them. */
-  .toast-stack { bottom: 84px; }
+  /* Clear the bottom tab bar / chat FAB instead of sitting under them.
+     Match the FAB's safe-area handling so toasts don't slide behind the
+     home indicator on notched iPhones. */
+  .toast-stack { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ---------- Buttons & fields ---------- */
@@ -1093,6 +1109,11 @@ button.delete-danger svg { flex-shrink: 0; }
 /* ---------- Auth ---------- */
 .auth-page {
   min-height: 100vh;
+  /* 100dvh tracks the visible viewport (mobile browser chrome expanding
+     and collapsing) — without it the maroon backdrop clips as the
+     address bar hides and reappears, leaving a strip of paper showing
+     under it. */
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   background:
@@ -1145,6 +1166,7 @@ button.delete-danger svg { flex-shrink: 0; }
 /* ---------- Onboarding wizard (one question at a time) ---------- */
 .onboarding-page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   background: radial-gradient(ellipse at top, var(--maroon-soft), var(--maroon-dark) 65%);
@@ -6569,7 +6591,13 @@ button.delete-danger svg { flex-shrink: 0; }
      on top of the last card's buttons on short pages (Jobs/Events with
      just one listing, for example). */
   .content { padding: 20px 14px 100px; }
-  .masthead-inner { padding: 12px 14px; }
+  /* Respect the iOS notch when added to homescreen / running standalone —
+     without env(safe-area-inset-top) the maroon bar sits *underneath* the
+     status bar so the brand logo overlaps the clock/battery icons. */
+  .masthead-inner {
+    padding: 12px 14px;
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
   .person-info { padding: 10px 10px 6px; }
   .person-name { font-size: 15px; }
   .person-industry, .person-occupation, .person-location { font-size: 11.5px; }
@@ -6613,9 +6641,15 @@ button.delete-danger svg { flex-shrink: 0; }
 
   /* Reserve room at the bottom of the page for the fixed tab bar (and the
      floating chat bubble, moved up to sit just above it), so neither
-     covers the footer credit line or the last bit of scrollable content. */
-  .footer { padding-right: 84px; padding-bottom: 84px; }
-  .chat-fab { bottom: 76px; }
+     covers the footer credit line or the last bit of scrollable content.
+     Add env(safe-area-inset-bottom) so the FAB stays above the taller
+     tabbar on notched iPhones (the tabbar itself grows by the same inset
+     via its own padding-bottom rule). */
+  .footer {
+    padding-right: 84px;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  .chat-fab { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
 
   .mobile-tabbar {
     position: fixed;
