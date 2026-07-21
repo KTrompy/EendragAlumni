@@ -375,8 +375,6 @@ export default function Feed({ session, profile, onMessage }) {
         <div className="feed-main">
           <Composer session={session} profile={profile} onPosted={() => { loadFirstPage(); showToast('Post created') }} openRef={composerOpenRef} />
 
-          <WhosOnline session={session} onOpenProfile={goToProfile} />
-
           {(posts.length > 0 || pinnedPosts.length > 0) && (
             <div className="search-wrap feed-search-wrap">
               <input
@@ -437,6 +435,7 @@ export default function Feed({ session, profile, onMessage }) {
         </div>
 
         <aside className="feed-sidebar">
+          <WhosOnline session={session} onOpenProfile={goToProfile} />
           <TopJobsWidget onViewAll={() => navigate('/jobs')} />
           <RecentMembersWidget onOpenProfile={goToProfile} onViewAll={() => navigate('/directory')} />
         </aside>
