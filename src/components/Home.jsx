@@ -186,22 +186,30 @@ export default function Home({ session, profile, onMessage }) {
       if (cancelled) return
       const uid = session.user.id
 
+      // PostgREST .or() parses commas/parens as its own grammar, and
+      // double-quotes any value that could otherwise ambiguously be read as
+      // one of its operators. Wrapping in double quotes and escaping any
+      // embedded quote handles industries/cities/etc. that happen to
+      // contain those characters (e.g. "Food, Beverage & Hospitality") —
+      // without this, the whole query 400s or matches nothing.
+      const forOr = (v) => `"${String(v).replace(/"/g, '\\"')}"`
+
       // Suggested connections for "My Community — Strengthen Your Network":
       // prioritizes industry match, then grad year, then city. Falls back to
       // recently-joined members if the profile doesn't have enough filled in
       // to match on, so the widget is never empty for a sparse profile.
       const communityFilters = []
-      if (profile?.industry) communityFilters.push(`industry.eq.${profile.industry}`)
+      if (profile?.industry) communityFilters.push(`industry.eq.${forOr(profile.industry)}`)
       if (profile?.grad_year) communityFilters.push(`grad_year.eq.${profile.grad_year}`)
-      if (profile?.city) communityFilters.push(`city.eq.${profile.city}`)
+      if (profile?.city) communityFilters.push(`city.eq.${forOr(profile.city)}`)
 
       // "Businesses near me": listings sharing the viewer's city or country,
       // same "match first, fall back to most recent" shape as the community
       // widget above so this is never empty just because the viewer's own
       // location fields are blank.
       const businessFilters = []
-      if (profile?.city) businessFilters.push(`city.eq.${profile.city}`)
-      if (profile?.country) businessFilters.push(`country.eq.${profile.country}`)
+      if (profile?.city) businessFilters.push(`city.eq.${forOr(profile.city)}`)
+      if (profile?.country) businessFilters.push(`country.eq.${forOr(profile.country)}`)
 
       const [
         { data: posts },

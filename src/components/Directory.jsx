@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -8,16 +8,26 @@ import { normalizeExpertise, isRecentlyOnline } from '../utils.js'
 const PAGE_SIZE = 12
 
 // Round avatar used elsewhere in the app (Feed, Profile page, Messages).
+// Falls back to the initials tile if the URL 404s (deleted bucket file,
+// stale link) so the layout never renders a broken-image icon.
 export function Avatar({ url, name, size = 72 }) {
-  const initials = (name || 'A')
-    .split(' ')
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-  return url ? (
-    <img className="avatar" src={url} alt={name || 'Alumnus'} style={{ width: size, height: size }} loading="lazy" />
-  ) : (
+  const initials = useMemo(() => (name || 'A')
+    .split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase(), [name])
+  const [broken, setBroken] = useState(false)
+  useEffect(() => { setBroken(false) }, [url])
+  if (url && !broken) {
+    return (
+      <img
+        className="avatar"
+        src={url}
+        alt={name || 'Alumnus'}
+        style={{ width: size, height: size }}
+        loading="lazy"
+        onError={() => setBroken(true)}
+      />
+    )
+  }
+  return (
     <div className="avatar avatar-fallback" style={{ width: size, height: size, fontSize: size * 0.36 }}>
       {initials}
     </div>
@@ -26,12 +36,15 @@ export function Avatar({ url, name, size = 72 }) {
 
 // Rectangular photo block for cards and modal.
 function PhotoBlock({ url, name, className = 'person-photo' }) {
-  const initials = (name || 'A')
-    .split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+  const initials = useMemo(() => (name || 'A')
+    .split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase(), [name])
+  const [broken, setBroken] = useState(false)
+  useEffect(() => { setBroken(false) }, [url])
+  const showImg = !!url && !broken
   return (
     <div className={className}>
-      {url
-        ? <img src={url} alt={name || 'Alumnus'} loading="lazy" />
+      {showImg
+        ? <img src={url} alt={name || 'Alumnus'} loading="lazy" onError={() => setBroken(true)} />
         : <span className="person-photo-initials">{initials}</span>}
     </div>
   )

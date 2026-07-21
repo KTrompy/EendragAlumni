@@ -46,6 +46,29 @@ export function isSafeHttpUrl(value) {
   }
 }
 
+// Defense-in-depth for href render sites. Save-time validation covers
+// everything the current forms produce, but legacy data or rows inserted
+// directly against the API could still carry a `javascript:` / `data:` URI —
+// this returns null for those so callers can render them as inert text or a
+// disabled control instead of an active exploit. Accepts http(s), mailto,
+// tel, and scheme-less relative URLs (which can only navigate, never
+// execute).
+export function safeUrl(value) {
+  const v = (value || '').trim()
+  if (!v) return null
+  try {
+    const url = new URL(v)
+    const p = url.protocol
+    if (p === 'http:' || p === 'https:' || p === 'mailto:' || p === 'tel:') return v
+    return null
+  } catch {
+    // No scheme at all — safe as a relative navigation. Reject anything
+    // that looks like it's trying to be a scheme we don't recognise.
+    if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return null
+    return v
+  }
+}
+
 // Turns a single File/Blob (or null) into a stable object URL for preview
 // purposes, revoking the previous one whenever `file` changes and on
 // unmount. Calling URL.createObjectURL(file) directly inside JSX (the

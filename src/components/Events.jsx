@@ -15,6 +15,8 @@ import { useToast } from './Toast.jsx'
 import { eventIcebreaker } from '../icebreaker.js'
 import EventFormEnhanced from './EventFormEnhanced'
 import { buildIcs, downloadIcs, icsFilenameFor } from '../ics.js'
+import { safeUrl } from '../utils.js'
+import { renderRichTextExtended } from '../richTextExtended.jsx'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -52,6 +54,22 @@ function timeAgo(iso) {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
   return new Date(iso).toLocaleDateString()
+}
+
+// The short timezone abbreviation the viewer's browser is currently in
+// (e.g. "SAST", "GMT", "PST"). We append this to every rendered event time
+// so an alumnus abroad seeing "8:00 PM" for a Stellenbosch braai
+// immediately knows whether they're looking at their own local time or the
+// event's — the underlying ISO stamp is already UTC, so all we need is a
+// label. Falls back gracefully on browsers where the abbreviation isn't
+// available.
+function localTimezoneLabel(date) {
+  try {
+    const parts = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(date)
+    return parts.find((p) => p.type === 'timeZoneName')?.value || ''
+  } catch {
+    return ''
+  }
 }
 
 function eventMatches(e, needle) {
@@ -202,22 +220,56 @@ export default function Events({ session, profile, onMessage }) {
     setLoadingMorePast(false)
   }
 
+  // Splice single events into the loaded list on realtime rather than
+  // calling loadInitial() again — otherwise any external edit/insert/delete
+  // wipes any "Load more" pages the user has paginated in and dumps them
+  // back at page 1. Same fix Feed.jsx and Jobs.jsx already do.
+  async function handleEventInsert(payload) {
+    const newId = payload.new?.id
+    if (!newId) return
+    const { data } = await supabase.from('events').select(EVENTS_SELECT).eq('id', newId).maybeSingle()
+    if (!data) return
+    setEvents((prev) => (prev.some((e) => e.id === data.id) ? prev : [data, ...prev]))
+  }
+  async function handleEventUpdate(payload) {
+    const changedId = payload.new?.id
+    if (!changedId) return
+    const { data } = await supabase.from('events').select(EVENTS_SELECT).eq('id', changedId).maybeSingle()
+    if (!data) return
+    setEvents((prev) => prev.map((e) => (e.id === data.id ? data : e)))
+  }
+  function handleEventDelete(payload) {
+    const oldId = payload.old?.id
+    if (!oldId) return
+    setEvents((prev) => prev.filter((e) => e.id !== oldId))
+  }
+  // Someone else's RSVP just changes a count — refresh only that row's
+  // `rsvps` aggregate rather than the whole page.
+  async function refreshRsvpCount(eventId) {
+    const { count } = await supabase
+      .from('event_rsvps')
+      .select('event_id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+    setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, rsvps: [{ count: count ?? 0 }] } : e)))
+  }
+
   useEffect(() => {
     loadInitial()
     loadSavedIds()
     const channel = supabase
       .channel('events')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, loadInitial)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, handleEventInsert)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'events' }, handleEventUpdate)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'events' }, handleEventDelete)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_rsvps' }, (payload) => {
         // Our own RSVP toggles are already reflected optimistically the
-        // instant you click — reloading here too would re-fetch mid-flight
-        // and can momentarily stomp your latest click with stale data
-        // (the classic "only updates after I leave and come back" bug).
-        // Only reload when the change belongs to someone else, so the
-        // "X going" counts stay live without fighting your own clicks.
+        // instant you click — refreshing the count here too can momentarily
+        // stomp your latest click with stale data (the classic "only updates
+        // after I leave and come back" bug). Only recount for other people.
         const affectedUser = payload.new?.user_id || payload.old?.user_id
         if (affectedUser === session.user.id) return
-        loadInitial()
+        const eventId = payload.new?.event_id || payload.old?.event_id
+        if (eventId) refreshRsvpCount(eventId)
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -266,6 +318,22 @@ export default function Events({ session, profile, onMessage }) {
     // value and compute the wrong next state.
     const knownGoing = eventId in rsvpDesiredRef.current ? rsvpDesiredRef.current[eventId] : myRsvps.has(eventId)
     const desired = !knownGoing
+
+    // Client-side capacity check — the server should also enforce this via
+    // RLS/trigger, but blocking obviously-full events client-side avoids a
+    // round-trip and gives the toast the correct reason instead of a raw
+    // policy error. Only applies when trying to add yourself; cancellations
+    // are always allowed.
+    if (desired) {
+      const target = events.find((e) => e.id === eventId)
+      const cap = target?.max_registrations
+      const currentCount = target?.rsvps?.[0]?.count ?? 0
+      if (typeof cap === 'number' && cap > 0 && currentCount >= cap) {
+        showToast(`This event is full (${cap} spots).`, { type: 'error' })
+        return
+      }
+    }
+
     applyRsvpUi(eventId, desired, knownGoing) // instant feedback, every single click
     rsvpDesiredRef.current[eventId] = desired
 
@@ -628,7 +696,10 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
       <div className="event-date-block" style={isPast ? { background: 'var(--maroon)' } : undefined}>
         <div className="event-date-month">{MONTHS[d.getMonth()]}</div>
         <div className="event-date-day">{d.getDate()}</div>
-        <div className="event-date-time">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        <div className="event-date-time">
+          {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {localTimezoneLabel(d) && <span className="event-date-tz"> {localTimezoneLabel(d)}</span>}
+        </div>
       </div>
       <div className="event-card-body">
         {e.image_url && (
@@ -642,7 +713,18 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
           {e.updated_at && <span className="edited-tag">edited</span>}
         </h3>
         {e.location && <p className="event-location">📍 {e.location}</p>}
-        {e.description && <p className="event-desc">{e.description.trimEnd()}</p>}
+        {e.description && (
+          <div className="event-desc rendered-html">
+            {renderRichTextExtended(e.description.trimEnd())}
+          </div>
+        )}
+        {safeUrl(e.event_url) && (
+          <p className="event-link-row">
+            🔗 <a href={safeUrl(e.event_url)} target="_blank" rel="noopener noreferrer">
+              {e.event_url.replace(/^https?:\/\//, '')}
+            </a>
+          </p>
+        )}
         <p className="event-meta">Posted by {e.profiles?.full_name || 'a member'}</p>
 
         <div className="event-actions">
@@ -785,7 +867,9 @@ function EventComments({ eventId, session, profile }) {
   const [items, setItems] = useState([])
   const [draft, setDraft] = useState('')
   const [error, setError] = useState(null)
+  const [sending, setSending] = useState(false)
   const canPost = profile?.approved
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -799,11 +883,13 @@ function EventComments({ eventId, session, profile }) {
   useEffect(() => { load() }, [eventId])
 
   async function send() {
-    if (!draft.trim()) return
+    if (!draft.trim() || sending) return
     setError(null)
+    setSending(true)
     const { error } = await supabase
       .from('event_comments')
       .insert({ event_id: eventId, author_id: session.user.id, content: draft.trim() })
+    setSending(false)
     if (error) {
       setError(error.message.includes('policy')
         ? 'Commenting unlocks once your account is approved.'
@@ -814,8 +900,13 @@ function EventComments({ eventId, session, profile }) {
   }
 
   async function remove(id) {
-    await supabase.from('event_comments').delete().eq('id', id)
-    load()
+    const prev = items
+    setItems((cur) => cur.filter((c) => c.id !== id))
+    const { error } = await supabase.from('event_comments').delete().eq('id', id)
+    if (error) {
+      setItems(prev)
+      showToast('Could not delete comment.', { type: 'error' })
+    }
   }
 
   return (

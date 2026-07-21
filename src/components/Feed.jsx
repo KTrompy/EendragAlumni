@@ -526,6 +526,12 @@ function Composer({ session, profile, onPosted, openRef }) {
     setOpen(false)
     setTitle(''); setBody(''); setFiles([]); setError(null)
     setVideoFile(null)
+    // Allow the draft-restore effect to fire again next time this modal
+    // opens — without this, the ref stayed true for the composer's whole
+    // lifetime and reopening in the same tab showed a blank editor even
+    // though the draft was still saved in localStorage (and would come
+    // back after any page refresh, which was inconsistent).
+    draftRestoredRef.current = false
   }
 
   // Lets a CTA outside this component (the Feed empty state) trigger the
@@ -1057,7 +1063,9 @@ function Comments({ postId, session, profile, onOpenProfile }) {
   const [items, setItems] = useState([])
   const [draft, setDraft] = useState('')
   const [error, setError] = useState(null)
+  const [sending, setSending] = useState(false)
   const canPost = profile?.approved
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -1083,11 +1091,13 @@ function Comments({ postId, session, profile, onOpenProfile }) {
   }, [postId])
 
   async function send() {
-    if (!draft.trim()) return
+    if (!draft.trim() || sending) return
     setError(null)
+    setSending(true)
     const { error } = await supabase
       .from('post_comments')
       .insert({ post_id: postId, author_id: session.user.id, content: draft.trim() })
+    setSending(false)
     if (error) {
       setError(error.message.includes('policy')
         ? 'Commenting unlocks once your account is approved.'
@@ -1098,8 +1108,17 @@ function Comments({ postId, session, profile, onOpenProfile }) {
   }
 
   async function remove(id) {
-    await supabase.from('post_comments').delete().eq('id', id)
-    load()
+    // Optimistic — the row is gone from the UI immediately, and rolled back
+    // (via a full reload) if the delete errored out. Silent .then(load)
+    // before this made a failed delete look like a successful one: the
+    // comment re-appeared with no explanation.
+    const prev = items
+    setItems((cur) => cur.filter((c) => c.id !== id))
+    const { error } = await supabase.from('post_comments').delete().eq('id', id)
+    if (error) {
+      setItems(prev)
+      showToast('Could not delete comment.', { type: 'error' })
+    }
   }
 
   return (

@@ -6,7 +6,7 @@ import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
 import ReportButton from './ReportButton.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
-import { normalizeExpertise, formatExperienceRange, formatExperienceDuration } from '../utils.js'
+import { normalizeExpertise, formatExperienceRange, formatExperienceDuration, safeUrl } from '../utils.js'
 
 const dash = '—'
 
@@ -81,6 +81,9 @@ export default function PersonProfile({ session, me, onMessage }) {
     })
 
     supabase.rpc('get_profile_contact', { target_id: personId }).then(({ data, error }) => {
+      // Same `cancelled` guard as the profile fetch above — rapidly
+      // switching between /people/:x and /people/:y could otherwise let an
+      // older RPC resolve after a newer one and show the wrong contact.
       if (cancelled) return
       setContact(error ? {} : (data?.[0] || {}))
     })
@@ -122,6 +125,8 @@ export default function PersonProfile({ session, me, onMessage }) {
 
   const p = person
   const isMe = p.id === session.user.id
+  const linkedinHref = safeUrl(p.linkedin_url)
+  const websiteHref = safeUrl(p.business_website)
 
   const roleLine = p.occupation && p.company
     ? `${p.occupation} @ ${p.company}`
@@ -172,8 +177,8 @@ export default function PersonProfile({ session, me, onMessage }) {
                   <button className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
                     <MessageIcon />
                   </button>
-                  {p.linkedin_url && (
-                    <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer" className="header-icon-btn profile-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
+                  {linkedinHref && (
+                    <a href={linkedinHref} target="_blank" rel="noopener noreferrer" className="header-icon-btn profile-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
                       <LinkedInIcon />
                     </a>
                   )}
@@ -258,16 +263,16 @@ export default function PersonProfile({ session, me, onMessage }) {
           <div className="profile-fact-strip profile-fact-strip-noborder">
             <Fact label="Open to opportunities" value={p.is_open_to_opportunities ? 'Yes' : 'Not right now'} />
             {p.availability && <Fact label="Availability" value={p.availability} />}
-            {p.business_website && (
+            {websiteHref && (
               <div className="profile-fact">
                 <span className="profile-fact-label">Website</span>
                 <a
                   className="profile-fact-value"
-                  href={p.business_website}
+                  href={websiteHref}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {p.business_website.replace(/^https?:\/\//, '')}
+                  {websiteHref.replace(/^https?:\/\//, '')}
                 </a>
               </div>
             )}
@@ -297,8 +302,8 @@ export default function PersonProfile({ session, me, onMessage }) {
       )}
 
       <div className="profile-actions">
-        {p.linkedin_url && (
-          <a className="linkedin-link" href={p.linkedin_url} target="_blank" rel="noopener noreferrer">
+        {linkedinHref && (
+          <a className="linkedin-link" href={linkedinHref} target="_blank" rel="noopener noreferrer">
             <LinkedInIconSmall /> LinkedIn
           </a>
         )}

@@ -250,10 +250,10 @@ export function DirectoryFilterPanel({ f }) {
         />
       </FilterSection>
 
-      <FilterSection title="Mentoring" defaultOpen={false}>
+      <FilterSection title="Open to opportunities" defaultOpen={false}>
         <label className="filter-checkbox-row">
           <input type="checkbox" checked={f.draftFilters.mentoringOnly} onChange={(e) => f.setDraft('mentoringOnly', e.target.checked)} />
-          Only show Eendragters offering mentoring
+          Only show Eendragters open to opportunities
         </label>
       </FilterSection>
 

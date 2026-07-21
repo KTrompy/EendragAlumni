@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '../supabaseClient'
+import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
 import DateTimePicker from './DateTimePicker.jsx'
 import RichTextToolbarExtended from './RichTextToolbarExtended.jsx'
 import { renderRichTextExtended } from '../richTextExtended.jsx'
+import { isSafeHttpUrl } from '../utils.js'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -47,6 +48,9 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
   }, [])
 
   function handleCancel() {
+    // A save in flight is doing real work (uploads, DB write) — closing
+    // from under it just orphans the request without cleaning up.
+    if (busy) return
     setIsClosing(true)
     setTimeout(onCancel, 200)
   }
@@ -111,6 +115,11 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
       return
     }
 
+    if (eventUrl.trim() && !isSafeHttpUrl(eventUrl)) {
+      setError('Event URL should start with http:// or https://.')
+      return
+    }
+
     setBusy(true)
     setError(null)
 
@@ -134,8 +143,13 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
 
       // Handle image upload
       let imageUrl = initial?.image_url || ''
+      const prevImageUrl = initial?.image_url || ''
       if (imageFile) {
         imageUrl = await uploadImage(initial?.id) || ''
+      } else if (isEdit && !imagePreview && prevImageUrl) {
+        // User cleared the image without uploading a new one — drop the URL
+        // so the row no longer references a file we're about to delete.
+        imageUrl = ''
       }
 
       const payload = {
@@ -170,6 +184,12 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
             : dbError.message
         )
       } else {
+        // Best-effort cleanup: if we replaced (or cleared) the image, the old
+        // file's URL is no longer referenced by anything and would otherwise
+        // sit orphaned in the event-images bucket forever.
+        if (isEdit && prevImageUrl && prevImageUrl !== imageUrl) {
+          deleteStorageFilesFromUrls('event-images', prevImageUrl)
+        }
         onCreated()
       }
     } catch (err) {
@@ -349,6 +369,7 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
             {busy ? 'Saving…' : isEdit ? 'Save changes' : 'Post event'}
           </button>
         </div>
+
       </div>
     </div>
   )

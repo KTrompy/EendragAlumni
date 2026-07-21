@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
-import { normalizeExpertise } from '../utils.js'
+import { normalizeExpertise, safeUrl } from '../utils.js'
 
 const dash = '—'
 
@@ -86,9 +86,15 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
 
   useEffect(() => {
     setContact(null)
+    let cancelled = false
     supabase.rpc('get_profile_contact', { target_id: p.id }).then(({ data, error }) => {
+      // Guard against a stale RPC resolving after the modal has switched to
+      // a different person — otherwise the wrong contact info could
+      // momentarily replace the newly-opened profile's own.
+      if (cancelled) return
       setContact(error ? {} : (data?.[0] || {}))
     })
+    return () => { cancelled = true }
   }, [p.id])
 
   const roleLine = p.occupation && p.company
@@ -99,6 +105,8 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
     ? `${contact.city}, ${contact.country}`
     : (contact?.country || contact?.city || '')
 
+  const linkedinHref = safeUrl(p.linkedin_url)
+  const websiteHref = safeUrl(p.business_website)
   const experience = Array.isArray(p.experience) ? p.experience : []
   const expertise = normalizeExpertise(p.expertise)
   const servicesOffered = Array.isArray(p.services_offered) ? p.services_offered : []
@@ -181,16 +189,16 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
               <div className="profile-fact-strip">
                 <Fact label="Open to opportunities" value={p.is_open_to_opportunities ? 'Yes' : 'Not right now'} />
                 {p.availability && <Fact label="Availability" value={p.availability} />}
-                {p.business_website && (
+                {websiteHref && (
                   <div className="profile-fact">
                     <span className="profile-fact-label">Website</span>
                     <a
                       className="profile-fact-value"
-                      href={p.business_website}
+                      href={websiteHref}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {p.business_website.replace(/^https?:\/\//, '')}
+                      {websiteHref.replace(/^https?:\/\//, '')}
                     </a>
                   </div>
                 )}
@@ -220,8 +228,8 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
           )}
         </div>
         <div className="modal-footer">
-          {p.linkedin_url && (
-            <a className="linkedin-link" href={p.linkedin_url} target="_blank" rel="noopener noreferrer">
+          {linkedinHref && (
+            <a className="linkedin-link" href={linkedinHref} target="_blank" rel="noopener noreferrer">
               <LinkedInIconSmall /> LinkedIn
             </a>
           )}

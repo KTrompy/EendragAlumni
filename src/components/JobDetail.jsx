@@ -12,6 +12,7 @@ import DeleteButton from './DeleteButton.jsx'
 import { useToast } from './Toast.jsx'
 import { matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
+import { safeUrl } from '../utils.js'
 import { JOB_FIELDS, POSTER_FIELDS, JobForm, JobLogo, PdfIcon } from './Jobs.jsx'
 
 // Same plain-div marker Leaflet trick BusinessDetail's mini map uses —
@@ -143,9 +144,16 @@ export default function JobDetail({ session, profile, onMessage }) {
   const poster = job.profiles
   const reason = !isMine ? matchReason(profile, poster) : null
   const hasPin = typeof job.lat === 'number' && typeof job.lng === 'number'
-  const companyWebsite = job.company_website
-    ? (/^https?:\/\//.test(job.company_website) ? job.company_website : `https://${job.company_website}`)
+  // Legacy rows might carry a scheme-less domain (e.g. "example.com") — add
+  // https:// so the click actually leaves the app. safeUrl afterwards is
+  // what filters out any javascript:/data: URIs the old code would have
+  // happily wrapped in https:// prefix without noticing.
+  const rawCompanyWebsite = job.company_website
+    ? (/^https?:\/\//i.test(job.company_website) ? job.company_website : `https://${job.company_website}`)
     : null
+  const companyWebsite = safeUrl(rawCompanyWebsite)
+  const applyHref = safeUrl(job.apply_url)
+  const attachmentHref = safeUrl(job.attachment_url)
 
   if (editing) {
     return (
@@ -218,8 +226,8 @@ export default function JobDetail({ session, profile, onMessage }) {
               <PinIcon /> {job.location || 'Location not set'}
             </p>
 
-            {job.attachment_url && (
-              <a className="job-detail-attachment-link" href={job.attachment_url} target="_blank" rel="noopener noreferrer">
+            {attachmentHref && (
+              <a className="job-detail-attachment-link" href={attachmentHref} target="_blank" rel="noopener noreferrer">
                 <PdfIcon /> {job.attachment_name || 'Attachment'} <span className="job-detail-download-hint">file download</span>
               </a>
             )}
@@ -259,8 +267,8 @@ export default function JobDetail({ session, profile, onMessage }) {
               >
                 {isSaved ? 'Saved' : 'Save'}
               </button>
-              {job.apply_url && (
-                <a className="btn primary small" href={job.apply_url} target="_blank" rel="noopener noreferrer">
+              {applyHref && (
+                <a className="btn primary small" href={applyHref} target="_blank" rel="noopener noreferrer">
                   Apply now
                 </a>
               )}

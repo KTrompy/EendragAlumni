@@ -19,7 +19,13 @@ export default function Auth() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return 'Enter a valid email address.'
     if (mode !== 'forgot') {
       if (!password) return 'Enter your password.'
-      if (mode === 'signup' && password.length < 6) return 'Password must be at least 6 characters.'
+      // 10 chars is the shortest length that meaningfully resists the kind
+      // of low-effort password-spraying attack an alumni directory (with
+      // real people's contact details behind it) actually has to worry
+      // about. Below that, Supabase's default rate limiter isn't enough on
+      // its own. See also m11 in the audit — captcha/rate-limit changes
+      // live in the Supabase dashboard, not this file.
+      if (mode === 'signup' && password.length < 10) return 'Password must be at least 10 characters.'
     }
     return null
   }
@@ -88,7 +94,7 @@ export default function Auth() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onClear={() => setPassword('')}
-                placeholder="At least 6 characters"
+                placeholder={mode === 'signup' ? 'At least 10 characters' : 'Your password'}
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               />
             </label>

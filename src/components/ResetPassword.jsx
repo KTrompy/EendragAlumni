@@ -17,7 +17,7 @@ export default function ResetPassword({ onDone }) {
 
   async function submit() {
     setError(null)
-    if (password.length < 6) { setError('Password needs to be at least 6 characters.'); return }
+    if (password.length < 10) { setError('Password needs to be at least 10 characters.'); return }
     if (password !== confirm) { setError("Passwords don't match."); return }
     setBusy(true)
     const { error: err } = await supabase.auth.updateUser({ password })
@@ -47,7 +47,7 @@ export default function ResetPassword({ onDone }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onClear={() => setPassword('')}
-                placeholder="At least 6 characters"
+                placeholder="At least 10 characters"
                 autoComplete="new-password"
               />
             </label>

@@ -13,7 +13,7 @@ import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
 import { matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
-import { useIsWide } from '../utils.js'
+import { useIsWide, isSafeHttpUrl, safeUrl } from '../utils.js'
 import { geocodeCity } from '../geocode.js'
 import { INDUSTRIES } from '../constants.js'
 
@@ -45,6 +45,18 @@ const EMPTY_FILTERS = {
   locations: [],
   industries: [],
   postedWithin: '', // '' | '7' | '30'
+  includeClosed: false, // hide listings whose closing_date has passed by default
+}
+
+// True once `closing_date` (a plain YYYY-MM-DD, no time) is strictly before
+// *today*, using local-day comparison rather than `new Date(str) < new Date()`
+// which would treat every closing date as "expired at 00:00 UTC" and drop
+// today's listings from the moment the SA workday starts. A blank closing
+// date is treated as ongoing (never closed).
+function isJobClosed(job) {
+  if (!job?.closing_date) return false
+  const d = new Date(job.closing_date + 'T23:59:59')
+  return Number.isFinite(d.getTime()) && d.getTime() < Date.now()
 }
 
 function timeAgo(iso) {
@@ -174,23 +186,47 @@ export default function Jobs({ session, profile, onMessage }) {
     setLoadingMore(false)
   }
 
+  // Splices one row into the loaded list on realtime — never a full reload,
+  // otherwise every external post wipes any "Load more" pages the user has
+  // paginated in and dumps them back at page 1.
+  async function handleRealtimeInsert(payload) {
+    const newId = payload.new?.id
+    if (!newId) return
+    const { data } = await supabase
+      .from('jobs')
+      .select(`${JOB_FIELDS}, profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`)
+      .eq('id', newId)
+      .maybeSingle()
+    if (!data) return
+    setJobs((prev) => (prev.some((j) => j.id === data.id) ? prev : [data, ...prev]))
+  }
+  async function handleRealtimeUpdate(payload) {
+    const changedId = payload.new?.id
+    if (!changedId) return
+    const { data } = await supabase
+      .from('jobs')
+      .select(`${JOB_FIELDS}, profiles!jobs_posted_by_fkey ( ${POSTER_FIELDS} )`)
+      .eq('id', changedId)
+      .maybeSingle()
+    if (!data) return
+    setJobs((prev) => prev.map((j) => (j.id === data.id ? data : j)))
+  }
+  function handleRealtimeDelete(payload) {
+    const oldId = payload.old?.id
+    if (!oldId) return
+    setJobs((prev) => prev.filter((j) => j.id !== oldId))
+  }
+
   useEffect(() => {
     loadFirstPage()
     loadSavedIds()
-    let debounceTimer
     const channel = supabase
       .channel('jobs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
-        // Skip reload if this is a deletion we just triggered locally
-        if (payload.eventType === 'DELETE') return
-        clearTimeout(debounceTimer)
-        debounceTimer = setTimeout(() => loadPage({ replace: true }), 300)
-      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, handleRealtimeInsert)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, handleRealtimeUpdate)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, handleRealtimeDelete)
       .subscribe()
-    return () => {
-      clearTimeout(debounceTimer)
-      supabase.removeChannel(channel)
-    }
+    return () => supabase.removeChannel(channel)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -278,7 +314,7 @@ export default function Jobs({ session, profile, onMessage }) {
       if (!hay.includes(needle)) return false
     }
     if (filters.type && j.employment_type !== filters.type) return false
-    if (filters.remoteOnly && !(j.location || '').toLowerCase().includes('remote')) return false
+    if (filters.remoteOnly && !/\bremote\b|work from home|wfh/i.test(j.location || '')) return false
     if (filters.companies.length > 0 && !filters.companies.includes(j.company)) return false
     if (filters.locations.length > 0 && !filters.locations.includes(j.location)) return false
     if (filters.industries.length > 0 && !filters.industries.includes(j.industry)) return false
@@ -286,6 +322,7 @@ export default function Jobs({ session, profile, onMessage }) {
       const cutoff = Date.now() - Number(filters.postedWithin) * 86400000
       if (new Date(j.created_at).getTime() < cutoff) return false
     }
+    if (!filters.includeClosed && !savedOnly && isJobClosed(j)) return false
     return true
   })
 
@@ -319,6 +356,17 @@ export default function Jobs({ session, profile, onMessage }) {
           <button className={!filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', false)}>All</button>
           <button className={filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', true)}>🌍 Remote-friendly</button>
         </div>
+      </FilterSection>
+
+      <FilterSection title="Status">
+        <label className="filter-checkbox-row">
+          <input
+            type="checkbox"
+            checked={filters.includeClosed}
+            onChange={(e) => set('includeClosed', e.target.checked)}
+          />
+          Show closed listings
+        </label>
       </FilterSection>
 
       <FilterSection title="Posted">
@@ -447,6 +495,8 @@ export default function Jobs({ session, profile, onMessage }) {
           const isMine = j.posted_by === session.user.id
           const isNew = Date.now() - new Date(j.created_at).getTime() < NEW_WINDOW_MS
           const reason = !isMine ? matchReason(profile, j.profiles) : null
+          const closed = isJobClosed(j)
+          const applyHref = safeUrl(j.apply_url)
 
           if (editingId === j.id) {
             return (
@@ -492,7 +542,8 @@ export default function Jobs({ session, profile, onMessage }) {
                 <div className="job-card-content">
                   <h3 className="job-title">
                     {j.title}
-                    {isNew && <span className="job-badge job-badge-new">New</span>}
+                    {closed && <span className="job-badge" style={{ background: 'var(--ink-soft)' }}>Closed</span>}
+                    {!closed && isNew && <span className="job-badge job-badge-new">New</span>}
                     {j.employment_type && <span className="job-badge">{j.employment_type}</span>}
                     {j.updated_at && <span className="edited-tag">edited</span>}
                   </h3>
@@ -519,12 +570,12 @@ export default function Jobs({ session, profile, onMessage }) {
                   style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {j.apply_url && (
-                    <a className="btn primary small" href={j.apply_url} target="_blank" rel="noopener noreferrer">
+                  {applyHref && !closed && (
+                    <a className="btn primary small" href={applyHref} target="_blank" rel="noopener noreferrer">
                       Apply now
                     </a>
                   )}
-                  {j.contact_email && (
+                  {j.contact_email && !closed && (
                     <button
                       className="btn primary small"
                       onClick={() => openMailto(j.contact_email, `Application: ${j.title}`)}
@@ -696,6 +747,15 @@ const JOB_DRAFT_FIELDS = [
   'apply_method', 'apply_url', 'contact_email', 'additional_email', 'company_website', 'closing_date',
 ]
 
+// Basic email shape — matches Auth.jsx's own signup check. Only catches
+// obviously-malformed addresses; Supabase/mail providers do the real
+// validation when someone actually applies.
+function isPlausibleEmail(value) {
+  const v = (value || '').trim()
+  if (!v) return false
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+}
+
 // Default "closing date" offered on a brand new listing — three months out,
 // same span Maties Connect defaults to. Just a starting point; posters can
 // change or clear it.
@@ -802,6 +862,10 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
   }, [form, isEdit])
 
   function handleCancel() {
+    // A save in flight shouldn't be interrupted from underneath itself —
+    // the row is either being inserted or a file is being uploaded, and
+    // closing here just orphans the request without cleaning up.
+    if (busy) return
     if (isEdit) { onCancel(); return }
     setIsClosing(true)
     setTimeout(onCancel, 200)
@@ -874,11 +938,20 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
     if (!form.title.trim() || !form.company.trim() || !form.location.trim() || !hasText(form.description)) {
       setError('Title, company, location and description are required.'); return
     }
-    if (form.apply_method === 'email' && !form.contact_email.trim()) {
-      setError('Please provide an email address for candidates to apply to.'); return
+    if (form.apply_method === 'email' && !isPlausibleEmail(form.contact_email)) {
+      setError('Please enter a valid email address for candidates to apply to.'); return
+    }
+    if (form.apply_method === 'email' && form.additional_email.trim() && !isPlausibleEmail(form.additional_email)) {
+      setError('The additional email address doesn\'t look right — leave it blank or fix the typo.'); return
     }
     if (form.apply_method === 'site' && !form.apply_url.trim()) {
       setError('Please provide a link candidates can apply through.'); return
+    }
+    if (form.apply_method === 'site' && !isSafeHttpUrl(form.apply_url)) {
+      setError('Application link should start with http:// or https://.'); return
+    }
+    if (form.company_website.trim() && !isSafeHttpUrl(form.company_website)) {
+      setError('Company website should start with http:// or https://.'); return
     }
     setBusy(true); setError(null)
     try {
@@ -1102,7 +1175,7 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
           {error && <p className="form-error">{error}</p>}
         </div>
         <div className="btn-row">
-          <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
+          <button className="btn ghost" onClick={handleCancel} disabled={isClosing || busy}>Cancel</button>
           <button className="btn primary" onClick={submit} disabled={busy}>
             {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'Post job')}
           </button>

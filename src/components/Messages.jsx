@@ -84,6 +84,10 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   const channelRef = useRef(null)
   const bottomRef = useRef(null)
   const chatScrollRef = useRef(null)
+  // Mirrors the currently loaded message ids for the realtime reaction
+  // handler — the handler's closure captured `messages` at subscribe time
+  // and would otherwise miss reactions on newly-received messages.
+  const loadedMessageIdsRef = useRef(new Set())
   // Whether the next `messages` update should auto-scroll to the bottom.
   // True on opening a thread or sending/receiving while already near the
   // bottom; explicitly false when prepending older history, so scrolling up
@@ -135,9 +139,14 @@ export default function Messages({ session, profile, initialTarget, initialDraft
 
   useEffect(() => {
     if (!initialTarget) return
+    let cancelled = false
     supabase
       .rpc('get_or_create_conversation', { other_user: initialTarget.id })
       .then(({ data, error }) => {
+        // Rapidly clicking Message on different profiles fires overlapping
+        // RPCs — if a stale one resolves last, without this guard it would
+        // steal focus back to the wrong thread.
+        if (cancelled) return
         if (error) {
           setError(
             error.message.includes('approved')
@@ -151,6 +160,8 @@ export default function Messages({ session, profile, initialTarget, initialDraft
         }
         onTargetConsumed()
       })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTarget])
 
   async function loadReactionsFor(messageIds) {
@@ -219,7 +230,26 @@ export default function Messages({ session, profile, initialTarget, initialDraft
           const el = chatScrollRef.current
           const nearBottom = !el || (el.scrollHeight - el.scrollTop - el.clientHeight < 120)
           shouldAutoScrollRef.current = nearBottom || payload.new.sender_id === me
-          setMessages((m) => [...m, payload.new])
+          setMessages((m) => {
+            // Dedupe: skip if we already have this row by id (our own send()
+            // just swapped in the real row, or the echo landed twice), or
+            // if this looks like an echo of our own optimistic row that
+            // hasn't been reconciled yet.
+            if (m.some((existing) => existing.id === payload.new.id)) return m
+            if (payload.new.sender_id === me) {
+              const optIdx = m.findIndex((existing) =>
+                existing.__optimistic
+                && existing.content === payload.new.content
+                && Math.abs(new Date(existing.created_at) - new Date(payload.new.created_at)) < 10000
+              )
+              if (optIdx !== -1) {
+                const next = m.slice()
+                next[optIdx] = payload.new
+                return next
+              }
+            }
+            return [...m, payload.new]
+          })
           loadThreads()
           // A message arriving while this thread is the open one counts as
           // read immediately — re-stamp so it doesn't linger in the badge.
@@ -243,15 +273,25 @@ export default function Messages({ session, profile, initialTarget, initialDraft
         }
       )
       .on(
+        // Filter is best-effort: the postgres_changes subscription can only
+        // scope by message_reactions columns, and there's no conversation_id
+        // there — so we still filter client-side by "message we know about
+        // in this thread" to avoid state accretion from every reaction
+        // firing app-wide.
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'message_reactions' },
         (payload) => {
           setReactionsByMessage((prev) => {
-            const existing = prev[payload.new.message_id] || []
+            const msgId = payload.new.message_id
+            const existing = prev[msgId]
+            // If this message isn't loaded in the current thread, ignore
+            // the row entirely rather than growing state indefinitely.
+            if (!existing && !loadedMessageIdsRef.current.has(msgId)) return prev
+            const arr = existing || []
             // Guard against double-adding — our own reactions are already
             // applied optimistically in toggleReaction below.
-            if (existing.some((r) => r.user_id === payload.new.user_id && r.emoji === payload.new.emoji)) return prev
-            return { ...prev, [payload.new.message_id]: [...existing, payload.new] }
+            if (arr.some((r) => r.user_id === payload.new.user_id && r.emoji === payload.new.emoji)) return prev
+            return { ...prev, [msgId]: [...arr, payload.new] }
           })
         }
       )
@@ -342,22 +382,62 @@ export default function Messages({ session, profile, initialTarget, initialDraft
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    loadedMessageIdsRef.current = new Set(messages.map((m) => m.id))
+  }, [messages])
+
   async function send() {
-    if (!draft.trim() || !activeId) return
+    const trimmed = draft.trim()
+    if (!trimmed || !activeId) return
     setError(null)
     clearTimeout(typingTimeoutRef.current)
-    const { error } = await supabase
+
+    // Optimistic — the message renders immediately so the sender sees
+    // confirmation without waiting on the realtime echo (which is slow or
+    // missing when the websocket is disconnected). Uses a negative "temp"
+    // id so the realtime INSERT handler can spot our own echo (by matching
+    // content + sender + rough time) and swap the temp row for the real
+    // one instead of duplicating it.
+    const tempId = -Date.now()
+    const nowIso = new Date().toISOString()
+    const optimistic = {
+      id: tempId,
+      conversation_id: activeId,
+      sender_id: me,
+      content: trimmed,
+      created_at: nowIso,
+      edited_at: null,
+      deleted_at: null,
+      __optimistic: true,
+    }
+    shouldAutoScrollRef.current = true
+    setMessages((prev) => [...prev, optimistic])
+    setDraft('')
+
+    const { data, error } = await supabase
       .from('messages')
-      .insert({ conversation_id: activeId, sender_id: me, content: draft.trim() })
+      .insert({ conversation_id: activeId, sender_id: me, content: trimmed })
+      .select('id, sender_id, content, created_at, edited_at, deleted_at')
+      .single()
     if (error) {
+      // Roll back the optimistic row and put the draft back so the user
+      // isn't left wondering where their message went.
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      setDraft(trimmed)
       setError(
         error.message.includes('policy')
           ? 'Messaging unlocks once your account is approved.'
           : error.message
       )
-    } else {
-      setDraft('')
+      return
     }
+    // Swap the temp row for the real one (or drop it if the realtime echo
+    // beat us and already appended a real copy).
+    setMessages((prev) => {
+      const withoutTemp = prev.filter((m) => m.id !== tempId)
+      if (withoutTemp.some((m) => m.id === data.id)) return withoutTemp
+      return [...withoutTemp, data]
+    })
   }
 
   // Broadcasts a "typing" ping to the other participant, throttled so it
