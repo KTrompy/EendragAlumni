@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -59,7 +60,18 @@ function daySeparatorLabel(iso) {
   })
 }
 
-export default function Messages({ session, profile, initialTarget, initialDraft, onTargetConsumed, onRead, onBrowseDirectory, hideTitle }) {
+export default function Messages({ session, profile, initialTarget, initialDraft, onTargetConsumed, onRead, onBrowseDirectory, hideTitle, onClose }) {
+  const navigate = useNavigate()
+
+  // Clicking the header avatar/name jumps to the other person's profile
+  // page — the chat panel is a floating overlay, so we also close it on
+  // the way out so the profile isn't hidden behind it.
+  function openOtherProfile(personId) {
+    if (!personId) return
+    onClose?.()
+    navigate(`/people/${personId}`)
+  }
+
   const [threads, setThreads] = useState([])
   const [activeId, setActiveId] = useState(null)
   const [messages, setMessages] = useState([])
@@ -637,15 +649,24 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                 >
                   <BackIcon />
                 </button>
-                <Avatar url={active?.other?.avatar_url} name={active?.other?.full_name} size={38} />
-                <div className="chat-header-text">
-                  <span className="chat-header-name">{active?.other?.full_name || 'Conversation'}</span>
-                  {typingOther ? (
-                    <span className="chat-header-sub chat-header-typing">typing…</span>
-                  ) : active?.other?.grad_year && (
-                    <span className="chat-header-sub">Class of {active.other.grad_year}</span>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  className="chat-header-person"
+                  onClick={() => openOtherProfile(active?.other?.id)}
+                  disabled={!active?.other?.id}
+                  aria-label={active?.other?.full_name ? `Open ${active.other.full_name}'s profile` : 'Open profile'}
+                  title="View profile"
+                >
+                  <Avatar url={active?.other?.avatar_url} name={active?.other?.full_name} size={38} />
+                  <div className="chat-header-text">
+                    <span className="chat-header-name">{active?.other?.full_name || 'Conversation'}</span>
+                    {typingOther ? (
+                      <span className="chat-header-sub chat-header-typing">typing…</span>
+                    ) : active?.other?.grad_year && (
+                      <span className="chat-header-sub">Class of {active.other.grad_year}</span>
+                    )}
+                  </div>
+                </button>
               </div>
               <div className="chat-scroll" ref={chatScrollRef}>
                 {hasMoreOlder && (

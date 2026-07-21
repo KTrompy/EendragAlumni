@@ -127,6 +127,7 @@ export default function FloatingMessages({
               onTargetConsumed={onTargetConsumed}
               onRead={refreshUnread}
               onBrowseDirectory={onBrowseDirectory}
+              onClose={() => onOpenChange(false)}
               hideTitle
             />
           </div>

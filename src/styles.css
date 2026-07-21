@@ -3841,6 +3841,31 @@ button.delete-danger svg { flex-shrink: 0; }
   align-items: center;
 }
 .chat-back:hover { background: var(--paper); }
+/* The avatar + name in the chat header is now a button that opens the
+   other person's profile page — strip the default button chrome so it
+   still reads as header content, but add a subtle hover to hint it's
+   clickable. */
+.chat-header-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.chat-header-person:hover { background: var(--paper); }
+.chat-header-person:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.chat-header-person:disabled { cursor: default; }
+.chat-header-person:disabled:hover { background: none; }
+
 .chat-header-text {
   display: flex;
   flex-direction: column;
