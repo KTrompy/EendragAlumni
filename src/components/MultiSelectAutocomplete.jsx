@@ -14,6 +14,12 @@ export default function MultiSelectAutocomplete({
   // entry (and Enter adds it directly) so people can note something not
   // on the list — used for Main areas of expertise's "Other".
   allowCustom = false,
+  // Extra class(es) for the <input> itself — e.g. "onboarding-input" so it
+  // matches the centered, full-width look every other onboarding field
+  // gets (see CityAutocomplete/CountryAutocomplete's inputClassName). Left
+  // unset, callers like the directory/jobs filters get the same bare input
+  // they always have.
+  inputClassName,
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -76,6 +82,7 @@ export default function MultiSelectAutocomplete({
       )}
       <div className="city-autocomplete">
         <input
+          className={inputClassName}
           value={query}
           onChange={(e) => { setQuery(e.target.value) }}
           onFocus={handleFocus}

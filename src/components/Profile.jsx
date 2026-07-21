@@ -845,7 +845,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                   className={form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
                   onClick={() => set('is_open_to_opportunities', true)}
                 >
-                  Yes, reach out
+                  Yes
                 </button>
                 <button
                   type="button"

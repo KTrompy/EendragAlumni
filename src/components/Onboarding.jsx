@@ -478,7 +478,7 @@ export default function Onboarding({ session, profile, onDone }) {
                 className={form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
                 onClick={() => set('is_open_to_opportunities', true)}
               >
-                Yes, reach out
+                Yes
               </button>
               <button
                 className={!form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
@@ -514,6 +514,7 @@ export default function Onboarding({ session, profile, onDone }) {
               options={EXPERTISE_BY_INDUSTRY[form.industry] || EXPERTISE_OPTIONS}
               placeholder={form.industry ? 'Search your expertise, or type your own' : 'Pick an industry above to see relevant options'}
               allowCustom
+              inputClassName="onboarding-input"
             />
           </>
         )
