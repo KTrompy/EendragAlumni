@@ -219,7 +219,6 @@ export default function Home({ session, profile, onMessage }) {
         { count: postsCount },
         { count: rsvpCount },
         { count: photosCount },
-        { count: mentoringCount },
         { data: matchedCommunity },
         { data: matchedBusinesses },
       ] = await Promise.all([
@@ -244,7 +243,6 @@ export default function Home({ session, profile, onMessage }) {
         supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', uid),
         supabase.from('event_rsvps').select('event_id', { count: 'exact', head: true }).eq('user_id', uid),
         supabase.from('photos').select('id', { count: 'exact', head: true }).eq('uploaded_by', uid),
-        supabase.from('mentoring_matches').select('id', { count: 'exact', head: true }).or(`mentor_id.eq.${uid},mentee_id.eq.${uid}`),
         communityFilters.length
           ? supabase
               .from('profiles')
@@ -341,7 +339,6 @@ export default function Home({ session, profile, onMessage }) {
       if (groups.length > 0) earned.add('joined_group')
       if ((rsvpCount || 0) > 0) earned.add('event_goer')
       if ((photosCount || 0) > 0) earned.add('photo_sharer')
-      if ((mentoringCount || 0) > 0) earned.add('mentor_connect')
       setEarnedKeys(earned)
 
       setLoading(false)

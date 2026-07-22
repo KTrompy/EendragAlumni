@@ -4,8 +4,6 @@ import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
-import DeleteButton from './DeleteButton.jsx'
-import { useToast } from './Toast.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import { normalizeExpertise } from '../utils.js'
 
@@ -16,7 +14,6 @@ const POSTER_FIELDS =
 
 const TABS = [
   { id: 'find', label: 'Find a Mentor' },
-  { id: 'relationships', label: 'My Relationships' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -24,9 +21,7 @@ export default function Mentoring({ session, profile, onMessage }) {
   const [params, setParams] = useSearchParams()
   const tab = TABS.find((t) => t.id === params.get('tab'))?.id || 'find'
   const [mentors, setMentors] = useState([])
-  const [myMatches, setMyMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const showToast = useToast()
   const navigate = useNavigate()
 
   function goToProfile(person) {
@@ -42,49 +37,17 @@ export default function Mentoring({ session, profile, onMessage }) {
 
   async function load() {
     setLoading(true)
-    const [{ data: mentorProfiles }, { data: matches }] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select(POSTER_FIELDS)
-        .eq('is_open_to_opportunities', true)
-        .neq('id', session.user.id),
-      supabase.from('mentoring_matches').select('id, mentor_id, mentee_id, status, requested_by, created_at, responded_at')
-        .or(`mentor_id.eq.${session.user.id},mentee_id.eq.${session.user.id}`),
-    ])
+    const { data: mentorProfiles } = await supabase
+      .from('profiles')
+      .select(POSTER_FIELDS)
+      .eq('is_open_to_opportunities', true)
+      .neq('id', session.user.id)
 
     setMentors(mentorProfiles || [])
-    setMyMatches(matches || [])
     setLoading(false)
   }
 
   useEffect(() => { load() }, [session.user.id])
-
-  async function requestMentor(mentorId) {
-    const { error } = await supabase.from('mentoring_matches').insert({
-      mentor_id: mentorId, mentee_id: session.user.id, requested_by: session.user.id, status: 'pending',
-    })
-    if (error) {
-      showToast(error.message.includes('duplicate') ? 'You already requested this mentor.' : 'Could not send request.', { type: 'error' })
-      return
-    }
-    showToast('Mentorship requested')
-    load()
-  }
-
-  async function respondToMatch(matchId, status) {
-    const { error } = await supabase.from('mentoring_matches').update({ status, responded_at: new Date().toISOString() }).eq('id', matchId)
-    if (error) { showToast('Could not update request.', { type: 'error' }); return }
-    load()
-  }
-
-  async function removeMatch(matchId) {
-    await supabase.from('mentoring_matches').delete().eq('id', matchId)
-    load()
-  }
-
-  function messageAbout(person, context) {
-    onMessage?.({ id: person.id, full_name: person.full_name }, buildIcebreaker(profile, person) || `Hi! Reaching out about ${context}.`)
-  }
 
   return (
     <section className="panel">
@@ -103,24 +66,10 @@ export default function Mentoring({ session, profile, onMessage }) {
         <>
           {tab === 'find' && (
             <FindMentorTab
-              session={session}
               mentors={mentors}
-              myMatches={myMatches}
-              onRequest={requestMentor}
               onOpenProfile={goToProfile}
               onMessage={onMessage}
               profile={profile}
-            />
-          )}
-          {tab === 'relationships' && (
-            <RelationshipsTab
-              session={session}
-              matches={myMatches}
-              mentors={mentors}
-              onRespond={respondToMatch}
-              onRemove={removeMatch}
-              onOpenProfile={goToProfile}
-              onMessage={messageAbout}
             />
           )}
           {tab === 'settings' && (
@@ -135,7 +84,7 @@ export default function Mentoring({ session, profile, onMessage }) {
 /* ============================================================
    Find a Mentor — with search, industry filter, card layout
    ============================================================ */
-function FindMentorTab({ session, mentors, myMatches, onRequest, onOpenProfile, onMessage, profile }) {
+function FindMentorTab({ mentors, onOpenProfile, onMessage, profile }) {
   const [search, setSearch] = useState('')
   const [industryFilter, setIndustryFilter] = useState('')
 
@@ -199,7 +148,6 @@ function FindMentorTab({ session, mentors, myMatches, onRequest, onOpenProfile, 
       ) : (
         <div className="mentor-card-grid">
           {filtered.map((person) => {
-            const existing = myMatches.find((match) => match.mentor_id === person.id && match.mentee_id === session.user.id)
             const expertise = normalizeExpertise(person.expertise)
             const roleLine = person.occupation && person.company ? `${person.occupation} @ ${person.company}` : (person.occupation || person.company || '')
 
@@ -236,145 +184,10 @@ function FindMentorTab({ session, mentors, myMatches, onRequest, onOpenProfile, 
                       </a>
                     )}
                   </div>
-                  {existing && (
-                    <span className={`mentoring-status-pill ${existing.status}`}>{statusLabel(existing.status)}</span>
-                  )}
                 </div>
               </div>
             )
           })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function statusLabel(s) {
-  return { pending: 'Requested', active: 'Connected', declined: 'Declined' }[s] || s
-}
-
-/* ============================================================
-   Relationships — simple pending / active / declined list
-   ============================================================ */
-function RelationshipsTab({ session, matches, mentors, onRespond, onRemove, onOpenProfile, onMessage }) {
-  const asMentor = matches.filter((m) => m.mentor_id === session.user.id)
-  const asMentee = matches.filter((m) => m.mentee_id === session.user.id)
-  const [ending, setEnding] = useState(null) // matchId currently confirming "end"
-
-  // Mentors list only has profiles of people open to mentoring — the other
-  // side of a match (a mentee, or a mentor who's since closed their
-  // profile flag) might not be in it, so we fetch on demand instead.
-  const [otherProfiles, setOtherProfiles] = useState({})
-  useEffect(() => {
-    const known = new Set(mentors.map((m) => m.id))
-    const missingIds = [...new Set(matches.map((m) => (m.mentor_id === session.user.id ? m.mentee_id : m.mentor_id)))]
-      .filter((id) => !known.has(id) && !otherProfiles[id])
-    if (missingIds.length === 0) return
-    supabase.from('profiles').select('id, full_name, avatar_url, occupation, company').in('id', missingIds).then(({ data }) => {
-      if (data) setOtherProfiles((prev) => ({ ...prev, ...Object.fromEntries(data.map((p) => [p.id, p])) }))
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matches, mentors])
-
-  function personFor(id) {
-    return mentors.find((m) => m.id === id) || otherProfiles[id]
-  }
-
-  function renderRelationship(m, otherRole) {
-    const otherId = otherRole === 'mentor' ? m.mentor_id : m.mentee_id
-    const person = personFor(otherId)
-    if (!person) return null
-    const roleLine = person.occupation && person.company ? `${person.occupation} @ ${person.company}` : (person.occupation || person.company || '')
-
-    return (
-      <li key={m.id} className="relationship-card">
-        <div className="relationship-card-head">
-          <div className="relationship-card-left" role="button" tabIndex={0} onClick={() => onOpenProfile(person)} onKeyDown={(e) => { if (e.key === 'Enter') onOpenProfile(person) }}>
-            <Avatar url={person.avatar_url} name={person.full_name} size={48} />
-            <div className="relationship-card-info">
-              <div className="relationship-card-name-line">
-                <span className="person-row-name">{person.full_name}</span>
-                <span className={`mentoring-status-pill ${m.status}`}>{statusLabel(m.status)}</span>
-              </div>
-              <p className="person-row-meta">
-                {otherRole === 'mentor' ? 'Your mentor' : 'Your mentee'}
-                {roleLine ? ` · ${roleLine}` : ''}
-              </p>
-            </div>
-          </div>
-          <div className="relationship-card-actions" onClick={(e) => e.stopPropagation()}>
-            {m.status === 'pending' && otherRole === 'mentee' && (
-              <>
-                <button className="btn primary small" onClick={() => onRespond(m.id, 'active')}>Accept</button>
-                <button className="btn ghost small" onClick={() => onRespond(m.id, 'declined')}>Decline</button>
-              </>
-            )}
-            {m.status === 'pending' && otherRole === 'mentor' && (
-              <span className="hint" style={{ fontSize: 12 }}>Waiting for response</span>
-            )}
-            {m.status === 'active' && (
-              <>
-                <button className="btn ghost small" onClick={() => onMessage(person, 'mentoring')}>Message</button>
-                {ending === m.id ? (
-                  <>
-                    <span className="hint" style={{ fontSize: 12 }}>End this relationship?</span>
-                    <button className="btn ghost small delete-danger" onClick={() => { onRemove(m.id); setEnding(null) }}>Confirm</button>
-                    <button className="btn ghost small" onClick={() => setEnding(null)}>Cancel</button>
-                  </>
-                ) : (
-                  <button className="btn ghost small" onClick={() => setEnding(m.id)}>End</button>
-                )}
-              </>
-            )}
-            {m.status === 'declined' && (
-              <DeleteButton onConfirm={() => onRemove(m.id)} label="Remove" message="This can't be undone." className="icon-btn-delete post-delete-btn delete-danger" />
-            )}
-          </div>
-        </div>
-      </li>
-    )
-  }
-
-  const active = [...asMentor, ...asMentee].filter((m) => m.status === 'active')
-  const declined = [...asMentor, ...asMentee].filter((m) => m.status === 'declined')
-
-  return (
-    <div className="mentoring-relationships">
-      {asMentor.filter((m) => m.status === 'pending').length > 0 && (
-        <div className="groups-section">
-          <h3 className="feed-section-label">Pending requests for you to mentor</h3>
-          <ul className="relationship-list">
-            {asMentor.filter((m) => m.status === 'pending').map((m) => renderRelationship(m, 'mentee'))}
-          </ul>
-        </div>
-      )}
-
-      <div className="groups-section">
-        <h3 className="feed-section-label">Active relationships</h3>
-        {active.length === 0 ? (
-          <p className="empty small">No active mentoring relationships yet — find a mentor or wait for requests.</p>
-        ) : (
-          <ul className="relationship-list">
-            {active.map((m) => renderRelationship(m, m.mentor_id === session.user.id ? 'mentee' : 'mentor'))}
-          </ul>
-        )}
-      </div>
-
-      {asMentee.filter((m) => m.status === 'pending').length > 0 && (
-        <div className="groups-section">
-          <h3 className="feed-section-label">Your pending requests</h3>
-          <ul className="relationship-list">
-            {asMentee.filter((m) => m.status === 'pending').map((m) => renderRelationship(m, 'mentor'))}
-          </ul>
-        </div>
-      )}
-
-      {declined.length > 0 && (
-        <div className="groups-section">
-          <h3 className="feed-section-label">Declined</h3>
-          <ul className="relationship-list">
-            {declined.map((m) => renderRelationship(m, m.mentor_id === session.user.id ? 'mentee' : 'mentor'))}
-          </ul>
         </div>
       )}
     </div>
