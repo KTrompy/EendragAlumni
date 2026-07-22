@@ -96,6 +96,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   const channelRef = useRef(null)
   const bottomRef = useRef(null)
   const chatScrollRef = useRef(null)
+  const draftInputRef = useRef(null)
   // Mirrors the currently loaded message ids for the realtime reaction
   // handler — the handler's closure captured `messages` at subscribe time
   // and would otherwise miss reactions on newly-received messages.
@@ -397,6 +398,15 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   useEffect(() => {
     loadedMessageIdsRef.current = new Set(messages.map((m) => m.id))
   }, [messages])
+
+  // Grows the composer with the draft's content, up to a max height, then
+  // switches to an internal scrollbar rather than growing forever.
+  useEffect(() => {
+    const el = draftInputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`
+  }, [draft])
 
   async function send() {
     const trimmed = draft.trim()
@@ -810,13 +820,20 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                 <div ref={bottomRef} />
               </div>
               <div className="chat-input">
-                <input
+                <textarea
+                  ref={draftInputRef}
                   value={draft}
                   onChange={(e) => { setDraft(e.target.value); handleTyping() }}
-                  onKeyDown={(e) => e.key === 'Enter' && send()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      send()
+                    }
+                  }}
                   placeholder={profile?.approved ? 'Type a message…' : 'Messaging unlocks after approval'}
                   disabled={!profile?.approved}
                   maxLength={4000}
+                  rows={1}
                 />
                 <button
                   className="chat-send"

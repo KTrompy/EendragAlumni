@@ -820,7 +820,8 @@ input, textarea, select { font: inherit; }
     padding-bottom: max(10px, env(safe-area-inset-bottom));
     gap: 10px;
   }
-  .chat-panel-body .chat-input input { padding: 12px 16px; font-size: 15px; }
+  .chat-panel-body .chat-input input,
+  .chat-panel-body .chat-input textarea { padding: 12px 16px; font-size: 15px; }
   .chat-panel-body .chat-send { width: 42px; height: 42px; }
 
   .chat-panel-body .date-separator span { font-size: 10.5px; }
@@ -4179,18 +4180,26 @@ button.delete-danger svg { flex-shrink: 0; }
   padding: 10px 12px;
   border-top: 1px solid var(--line);
   background: var(--card);
-  align-items: center;
+  align-items: flex-end;
   flex-shrink: 0;
 }
-.chat-input input {
+.chat-input input,
+.chat-input textarea {
   flex: 1;
   border: 1px solid var(--line);
   background: var(--paper);
-  border-radius: 999px;
+  border-radius: 18px;
   padding: 10px 16px;
   font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  max-height: 140px;
+  overflow-y: auto;
+  line-height: 1.4;
 }
-.chat-input input:focus { outline: 2px solid var(--orange); border-color: transparent; background: var(--card); }
+.chat-input input:focus,
+.chat-input textarea:focus { outline: 2px solid var(--orange); border-color: transparent; background: var(--card); }
+.chat-input .chat-send { margin-bottom: 1px; }
 /* Round send button with paper-plane icon — replaces the old "Send" text btn. */
 .chat-send {
   width: 40px;
@@ -6977,10 +6986,17 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 
 /* ---------- Card grid + person card ---------- */
+/* Eendragters directory overrides the shared .card-grid (1/2/3 col) with a
+   denser 4-column layout on desktop so more of the community is visible per
+   scroll — 3 columns kept at ~1024px, then 4 kicks in as soon as there's
+   room for cards to still read comfortably. */
 .eendragters-page .card-grid { gap: 18px; }
 @media (min-width: 480px) { .eendragters-page .card-grid { gap: 20px; } }
 @media (min-width: 560px) { .eendragters-page .card-grid { gap: 22px; } }
 @media (min-width: 900px) { .eendragters-page .card-grid { gap: 26px; } }
+@media (min-width: 1200px) {
+  .eendragters-page .card-grid { grid-template-columns: repeat(4, 1fr); gap: 24px; }
+}
 
 .eendragters-page .person-card {
   border-radius: 20px;
@@ -7085,6 +7101,7 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .group-card:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); }
 .group-card-cover {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 10;
   background: var(--bg-strong, #f0ede8);
@@ -7093,10 +7110,28 @@ button.delete-danger svg { flex-shrink: 0; }
   place-items: center;
   overflow: hidden;
 }
-/* object-fit: contain — show the whole cover photo, letterboxed against the
-   neutral background above rather than cropped, same treatment as every
-   other photo on the site (business covers, profile photos, feed images). */
-.group-card-cover img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* Two-layer cover: a blurred copy of the image fills the box behind, and the
+   sharp image sits on top with object-fit: contain so nothing is ever cropped
+   regardless of aspect ratio (portrait, square or landscape all look intentional
+   instead of leaving a neutral bar). */
+.group-card-cover-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(22px) brightness(0.9);
+  transform: scale(1.15);
+  z-index: 0;
+}
+.group-card-cover-fg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  z-index: 1;
+}
 .group-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; }
 .group-card-name { font-weight: 700; font-size: 14px; color: var(--ink); }
 .group-card-meta { font-size: 12px; color: var(--ink-soft); }

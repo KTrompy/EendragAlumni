@@ -124,9 +124,16 @@ function GroupCard({ group: g, joined, onClick }) {
   return (
     <button className="group-card" onClick={onClick}>
       <div className="group-card-cover">
-        {g.cover_image_url
-          ? <img src={g.cover_image_url} alt="" loading="lazy" />
-          : <GroupPlaceholderIcon />}
+        {g.cover_image_url ? (
+          <>
+            {/* Blurred copy of the same image fills the box so portrait or
+                square covers don't leave ugly gray bars; the sharp copy
+                on top uses object-fit: contain to guarantee nothing gets
+                cropped. */}
+            <img src={g.cover_image_url} className="group-card-cover-bg" alt="" aria-hidden="true" loading="lazy" />
+            <img src={g.cover_image_url} className="group-card-cover-fg" alt="" loading="lazy" />
+          </>
+        ) : <GroupPlaceholderIcon />}
       </div>
       <div className="group-card-body">
         <span className="group-card-name">{g.name}</span>
