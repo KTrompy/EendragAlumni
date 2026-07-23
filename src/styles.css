@@ -431,7 +431,7 @@ input, textarea, select { font: inherit; }
 .sidebar-link.signout { color: var(--ink-soft); }
 .sidebar-link.signout:hover { background: var(--orange-soft); color: var(--danger); }
 
-/* "More" toggle — collapses Mentoring/Events/Groups/Photos/Merchandise
+/* "More" toggle — collapses Mentoring/Events/Groups/Merchandise
    (and Admin) out of the always-visible sidebar rail. Reuses .sidebar-link
    for consistent hover/active styling, just adds the trailing chevron. */
 .sidebar-more-toggle { width: 100%; }
@@ -1659,7 +1659,7 @@ button.delete-danger svg { flex-shrink: 0; }
 
 /* ---------- Mobile nav drawer (hamburger menu) ----------
    Reaches the sections that don't fit in the bottom tab bar's five slots
-   (Groups/Mentoring/Photos/Business Directory/Admin) — same content as the
+   (Groups/Mentoring/Business Directory/Admin) — same content as the
    desktop sidebar (.sidebar-nav/.sidebar-link/.sidebar-footer, reused as-is
    here), just in a slide-in panel triggered by .nav-toggle. Deliberately a
    separate z-index/slide-from-left from .filter-panel (which slides in from
@@ -6626,7 +6626,7 @@ button.delete-danger svg { flex-shrink: 0; }
   .brand-motto { font-size: 9px; letter-spacing: 0.1em; }
 
   /* Mobile gets an avatar (→ profile) in the header plus a bottom tab bar
-     for the five core sections — but Groups/Mentoring/Photos/Business
+     for the five core sections — but Groups/Mentoring/Business
      Directory/Admin don't fit in either of those, so the hamburger (hidden
      everywhere else — the sidebar already covers nav on wider screens)
      comes back here to open the full menu (see .mobile-nav-panel). */
@@ -8159,221 +8159,6 @@ button.delete-danger svg { flex-shrink: 0; }
   .feed-layout[data-active-mobile-tab="events"] .home-tabsection[data-tab="events"] { display: block; }
 }
 
-/* ===========================================================
-   Photos (album list + individual album)
-   =========================================================== */
-.photos-page { max-width: 1200px; }
-.photos-header { margin-bottom: 24px; }
-.photos-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-.photos-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--line);
-}
-.photos-tab {
-  background: none;
-  border: none;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: all 0.2s ease;
-}
-.photos-tab:hover { color: var(--ink); }
-.photos-tab.active { color: var(--maroon); border-bottom-color: var(--maroon); }
-.photos-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  min-width: 200px;
-  color: var(--ink-soft);
-}
-.photos-search-input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  font-size: 14px;
-  color: var(--ink);
-}
-.photos-search-input::placeholder { color: var(--ink-soft); }
-.photos-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-.photos-filters {
-  display: flex;
-  gap: 8px;
-}
-.photo-filter-btn {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.photo-filter-btn:hover { border-color: var(--orange); }
-.photo-filter-btn.active { background: var(--maroon); color: white; border-color: var(--maroon); }
-.photos-sort {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.sort-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  text-transform: uppercase;
-}
-.select-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-.select-wrap::after {
-  content: '';
-  position: absolute;
-  right: 13px;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  border-right: 2px solid var(--maroon);
-  border-bottom: 2px solid var(--maroon);
-  transform: translateY(-65%) rotate(45deg);
-  pointer-events: none;
-}
-.select-wrap select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 7px 34px 7px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink);
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.select-wrap select:hover { border-color: var(--orange); }
-.select-wrap select:focus {
-  outline: none;
-  border-color: var(--maroon);
-  box-shadow: 0 0 0 3px rgba(90, 26, 43, 0.12);
-}
-.photos-header-action {
-  margin-bottom: 20px;
-}
-.album-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 18px;
-}
-.album-grid-3col {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-@media (max-width: 1024px) {
-  .album-grid-3col { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 640px) {
-  .album-grid-3col { grid-template-columns: 1fr; }
-  .photos-controls { flex-direction: column; align-items: stretch; }
-  .photos-search-bar { min-width: auto; }
-  .photos-toolbar { flex-direction: column; align-items: stretch; }
-}
-.album-card {
-  display: flex;
-  flex-direction: column;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-  text-align: left;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
-}
-.album-card:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); }
-.album-card-collage {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  display: grid;
-  gap: 2px;
-  background: var(--line);
-  color: var(--line-strong);
-}
-.album-card-collage.tiles-1 { grid-template-columns: 1fr; place-items: center; background: var(--paper); }
-.album-card-collage.tiles-2 { grid-template-columns: 1fr 1fr; }
-.album-card-collage.tiles-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-.album-card-collage.tiles-3 img:first-child { grid-row: 1 / 3; }
-.album-card-collage.tiles-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-.album-card-collage img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.album-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; }
-.album-card-title { font-weight: 700; font-size: 14px; color: var(--ink); }
-.album-card-meta { font-size: 12px; color: var(--ink-soft); }
-
-/* ---------- Individual album page ---------- */
-.album-header-row { align-items: flex-start; }
-.album-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.album-max-size { font-size: 11.5px; color: var(--ink-soft); white-space: nowrap; }
-.album-owner-actions { display: flex; gap: 4px; margin-left: 6px; }
-.album-edit-btn { color: var(--ink-soft); border: 1px solid var(--line); }
-.album-edit-btn:hover { background: var(--orange-soft); color: var(--orange-dark); }
-
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-  margin-top: 16px;
-  grid-auto-rows: auto;
-}
-.photo-grid-item {
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  border: 1px solid var(--line);
-  padding: 0;
-  background: var(--paper);
-  cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.photo-grid-item:hover { transform: scale(1.02); }
-.photo-grid-item:hover img { opacity: 0.95; }
-.photo-grid-item img { width: 100%; height: auto; object-fit: contain; display: block; transition: opacity 0.15s ease; }
-
-/* ---------- Photo lightbox (with prev/next) ---------- */
-.photo-lightbox { flex-direction: column; }
-.photo-lightbox img { max-width: 90vw; max-height: 82vh; object-fit: contain; border-radius: 4px; }
 .lightbox-close {
   position: absolute;
   top: 16px;
@@ -8424,8 +8209,6 @@ button.delete-danger svg { flex-shrink: 0; }
 .lightbox-delete:hover { color: var(--orange-soft); }
 
 @media (max-width: 640px) {
-  .album-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .photo-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
   .lightbox-nav { width: 36px; height: 36px; }
   .lightbox-prev { left: 6px; }
   .lightbox-next { right: 6px; }

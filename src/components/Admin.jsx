@@ -18,7 +18,6 @@ const SUBTABS = [
   { id: 'businesses', label: 'Businesses' },
   { id: 'merch', label: 'Merchandise' },
   { id: 'groups', label: 'Groups' },
-  { id: 'photos', label: 'Photos' },
 ]
 
 function timeAgo(iso) {
@@ -56,7 +55,6 @@ const COUNT_TABLES = [
   ['businesses', 'businesses'],
   ['merch', 'merchandise'],
   ['groups', 'groups'],
-  ['photos', 'photo_albums'],
 ]
 
 export default function Admin({ session }) {
@@ -128,7 +126,6 @@ export default function Admin({ session }) {
         <StatCard label="Businesses" value={counts.businesses} />
         <StatCard label="Merchandise" value={counts.merch} />
         <StatCard label="Groups" value={counts.groups} />
-        <StatCard label="Photo albums" value={counts.photos} />
       </div>
 
       <div className="admin-subtabs" role="tablist" aria-label="Admin sections">
@@ -185,7 +182,6 @@ export default function Admin({ session }) {
       {subtab === 'businesses' && <BusinessesModeration />}
       {subtab === 'merch' && <MerchModeration />}
       {subtab === 'groups' && <GroupsModeration />}
-      {subtab === 'photos' && <PhotosModeration />}
     </section>
   )
 }
@@ -745,53 +741,6 @@ function GroupsModeration() {
               {g.description && <p className="admin-row-preview">{truncate(g.description)}</p>}
             </div>
             <DeleteButton onConfirm={() => remove(g.id)} label="Delete group" message="This removes the group, its posts and its member list. This can't be undone." />
-          </li>
-        )
-      })}
-    </ul>
-  )
-}
-
-/* ---------- Photos moderation ---------- */
-function PhotosModeration() {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const showToast = useToast()
-
-  async function load() {
-    const { data } = await supabase
-      .from('photo_albums')
-      .select('id, title, description, created_at, profiles!photo_albums_created_by_fkey ( full_name ), photos(count)')
-      .order('created_at', { ascending: false })
-      .limit(200)
-    setItems(data || [])
-    setLoading(false)
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function remove(id) {
-    const { error } = await supabase.from('photo_albums').delete().eq('id', id)
-    if (error) { showToast('Could not delete album.', { type: 'error' }); return }
-    setItems((prev) => prev.filter((a) => a.id !== id))
-  }
-
-  if (loading) return <LoadingState message="Loading albums…" />
-  if (items.length === 0) return <EmptyState icon="feed" message="No photo albums yet." />
-
-  return (
-    <ul className="admin-list">
-      {items.map((a) => {
-        const photoCount = a.photos?.[0]?.count ?? 0
-        return (
-          <li className="admin-row" key={a.id}>
-            <div className="admin-row-info">
-              <span className="admin-row-name">{a.title}</span>
-              <span className="admin-row-meta">
-                {photoCount} {photoCount === 1 ? 'photo' : 'photos'} · Created by {a.profiles?.full_name || 'a member'} · {timeAgo(a.created_at)}
-              </span>
-            </div>
-            <DeleteButton onConfirm={() => remove(a.id)} label="Delete album" message="This removes the album and every photo in it. This can't be undone." />
           </li>
         )
       })}

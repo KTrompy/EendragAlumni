@@ -9,8 +9,6 @@ import Home from './components/Home.jsx'
 import Feed from './components/Feed.jsx'
 import Groups from './components/Groups.jsx'
 import GroupDetail from './components/GroupDetail.jsx'
-import Photos from './components/Photos.jsx'
-import AlbumDetail from './components/AlbumDetail.jsx'
 import Mentoring from './components/Mentoring.jsx'
 import People from './components/People.jsx'
 import { Avatar } from './components/Directory.jsx'
@@ -50,7 +48,6 @@ const TABS = [
   { id: 'mentoring', label: 'Mentoring', path: '/mentoring', icon: MentoringIcon },
   { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
   { id: 'groups', label: 'Groups', path: '/groups', icon: GroupsIcon },
-  { id: 'photos', label: 'Photos', path: '/photos', icon: PhotosIcon },
   { id: 'merch', label: 'Merchandise', path: '/merch', icon: MerchIcon },
   { id: 'businesses', label: 'Business Directory', path: '/businesses', icon: BusinessIcon },
 ]
@@ -448,7 +445,7 @@ export default function App() {
   const navTabs = profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS
   const activeTabId = navTabs.find((t) => location.pathname.startsWith(t.path))?.id
   // Desktop sidebar shows five core sections up front; everything else
-  // (Mentoring/Events/Groups/Photos/Merchandise, plus Admin) collapses
+  // (Mentoring/Events/Groups/Merchandise, plus Admin) collapses
   // behind a "More" toggle so the rail doesn't run long. Filtering
   // navTabs (rather than listing IDs in this order) keeps whatever order
   // TABS already defines.
@@ -629,8 +626,6 @@ export default function App() {
               <Route path="/feed/:postId" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/groups" element={<Groups session={session} />} />
               <Route path="/groups/:groupId" element={<GroupDetail session={session} profile={profile} onMessage={openMessage} />} />
-              <Route path="/photos" element={<Photos session={session} />} />
-              <Route path="/photos/:albumId" element={<AlbumDetail session={session} profile={profile} />} />
               <Route path="/mentoring" element={<Mentoring session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/events" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/events/:eventId" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
@@ -705,7 +700,7 @@ export default function App() {
       </nav>
 
       {/* Mobile-only "everything else" menu — the bottom tab bar only has
-          room for five core sections, so Groups/Mentoring/Photos/Business
+          room for five core sections, so Groups/Mentoring/Business
           Directory (and Admin, when relevant) live behind the header
           hamburger instead. Same navTabs/activeTabId/goTo the desktop
           sidebar uses, just in a slide-in drawer (see .mobile-nav-panel). */}
@@ -884,14 +879,6 @@ function GroupsIcon() {
       <path d="M2.5 20c0-3.5 2.9-6 6.5-6s6.5 2.5 6.5 6" />
       <circle cx="17" cy="8.5" r="2.4" />
       <path d="M15.7 14c2.6.4 4.3 2.3 4.3 6" />
-    </svg>
-  )
-}
-function PhotosIcon() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" />
-      <circle cx="12" cy="13" r="3.5" />
     </svg>
   )
 }

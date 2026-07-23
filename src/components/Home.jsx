@@ -218,7 +218,6 @@ export default function Home({ session, profile, onMessage }) {
         { data: badgeDefs },
         { count: postsCount },
         { count: rsvpCount },
-        { count: photosCount },
         { data: matchedCommunity },
         { data: matchedBusinesses },
       ] = await Promise.all([
@@ -242,7 +241,6 @@ export default function Home({ session, profile, onMessage }) {
         supabase.from('badges').select('id, key, name, description').order('sort_order', { ascending: true }),
         supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', uid),
         supabase.from('event_rsvps').select('event_id', { count: 'exact', head: true }).eq('user_id', uid),
-        supabase.from('photos').select('id', { count: 'exact', head: true }).eq('uploaded_by', uid),
         communityFilters.length
           ? supabase
               .from('profiles')
@@ -338,7 +336,6 @@ export default function Home({ session, profile, onMessage }) {
       if ((postsCount || 0) > 0) earned.add('first_post')
       if (groups.length > 0) earned.add('joined_group')
       if ((rsvpCount || 0) > 0) earned.add('event_goer')
-      if ((photosCount || 0) > 0) earned.add('photo_sharer')
       setEarnedKeys(earned)
 
       setLoading(false)
