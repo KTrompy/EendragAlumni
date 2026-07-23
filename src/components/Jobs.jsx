@@ -358,31 +358,22 @@ export default function Jobs({ session, profile, onMessage }) {
         </div>
       </FilterSection>
 
-      <FilterSection title="Status">
-        <label className="filter-checkbox-row">
-          <input
-            type="checkbox"
-            checked={filters.includeClosed}
-            onChange={(e) => set('includeClosed', e.target.checked)}
-          />
-          Show closed listings
-        </label>
-      </FilterSection>
-
-      <FilterSection title="Posted">
-        <div className="select-wrap">
-          <select value={filters.postedWithin} onChange={(e) => set('postedWithin', e.target.value)}>
-            {postedOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-          </select>
-        </div>
-      </FilterSection>
-
       <FilterSection title="Industry">
         <MultiSelectAutocomplete
           values={filters.industries}
           onChange={(v) => set('industries', v)}
           options={industryOptions}
           placeholder="Search or add industries"
+        />
+      </FilterSection>
+
+      <FilterSection title="Location">
+        <MultiSelectAutocomplete
+          values={filters.locations}
+          onChange={(v) => set('locations', v)}
+          options={locationOptions}
+          placeholder="Search or add locations"
+          allowCustom
         />
       </FilterSection>
 
@@ -396,14 +387,23 @@ export default function Jobs({ session, profile, onMessage }) {
         />
       </FilterSection>
 
-      <FilterSection title="Location">
-        <MultiSelectAutocomplete
-          values={filters.locations}
-          onChange={(v) => set('locations', v)}
-          options={locationOptions}
-          placeholder="Search or add locations"
-          allowCustom
-        />
+      <FilterSection title="Posted">
+        <div className="select-wrap">
+          <select value={filters.postedWithin} onChange={(e) => set('postedWithin', e.target.value)}>
+            {postedOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Status">
+        <label className="filter-checkbox-row">
+          <input
+            type="checkbox"
+            checked={filters.includeClosed}
+            onChange={(e) => set('includeClosed', e.target.checked)}
+          />
+          Show closed listings
+        </label>
       </FilterSection>
     </>
   )
