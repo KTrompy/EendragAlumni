@@ -7002,29 +7002,56 @@ button.delete-danger svg { flex-shrink: 0; }
 @media (min-width: 560px) { .eendragters-page .card-grid { gap: 22px; } }
 @media (min-width: 900px) { .eendragters-page .card-grid { gap: 26px; } }
 
-/* Mobile keeps 3 profiles per row (instead of the shared grid's 1 column
-   below 640px) so the directory reads as a browsable grid on phones too.
-   Cards get a compact treatment to match — smaller type/padding and the
-   tags/expertise lines dropped — so three-across doesn't turn into
-   overlapping or truncated-into-uselessness text at ~110px card widths. */
+/* Mobile stays 1 card per row (the shared grid's default below 640px),
+   but the card itself turns sideways — a small square photo on the left,
+   name/details stacked to the right — instead of the tall stacked photo
+   layout. That cuts each card's height dramatically (one compact row
+   instead of a photo-then-text column) while still surfacing all the
+   same info. Note the real DOM here uses the person-card-* class names
+   (Directory.jsx), not the unprefixed person-* ones used elsewhere. */
 @media (max-width: 639px) {
-  .eendragters-page .card-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .eendragters-page .person-info { padding: 6px 6px 5px; gap: 0; }
-  .eendragters-page .person-name { font-size: 11.5px; margin-bottom: 1px; }
-  .eendragters-page .person-industry,
-  .eendragters-page .person-occupation,
-  .eendragters-page .person-location { font-size: 9px; margin-top: 1px; }
-  .eendragters-page .person-tags,
-  .eendragters-page .person-expertise { display: none; }
-  .eendragters-page .person-grad-badge {
-    font-size: 8px;
-    padding: 2px 5px;
-    top: 5px;
-    right: 5px;
+  .eendragters-page .card-grid { grid-template-columns: 1fr; gap: 10px; }
+  .eendragters-page .person-card { flex-direction: row; height: auto; }
+  .eendragters-page .person-card-photo {
+    width: 80px;
+    aspect-ratio: 1;
+    flex-shrink: 0;
+    border-bottom: none;
+    border-right: 2px solid var(--orange);
+    border-radius: var(--radius) 0 0 var(--radius);
   }
-  .eendragters-page .person-actions { padding: 3px; gap: 3px; }
-  .eendragters-page .person-action { padding: 5px; }
-  .eendragters-page .person-action svg { width: 14px; height: 14px; }
+  .eendragters-page .person-photo-initials { font-size: 24px; }
+  .eendragters-page .person-card-overlay { bottom: 6px; left: 56px; right: auto; }
+  .eendragters-page .person-card-footer {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .eendragters-page .person-card-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+  }
+  .eendragters-page .person-card-name { font-size: 14px; }
+  .eendragters-page .person-card-meta {
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .eendragters-page .person-card-role,
+  .eendragters-page .person-card-location { font-size: 11px; margin-top: 0; }
+  .eendragters-page .person-card-actions {
+    flex-direction: column;
+    flex-shrink: 0;
+    border-top: none;
+    padding-top: 0;
+    gap: 4px;
+  }
+  .eendragters-page .person-action { padding: 6px; }
+  .eendragters-page .person-action .icon-btn { width: 15px; height: 15px; }
 }
 @media (min-width: 1200px) {
   .eendragters-page .card-grid { grid-template-columns: repeat(4, 1fr); gap: 24px; }
@@ -8157,15 +8184,32 @@ button.delete-danger svg { flex-shrink: 0; }
 .badge-card strong { font-size: 13px; color: var(--ink); }
 .badge-card span { font-size: 11.5px; color: var(--ink-soft); line-height: 1.35; }
 
-/* ---------- Mobile section tabs (Home dashboard) ---------- */
+/* ---------- Mobile section nav (Home dashboard) ---------- */
+/* Used to be a tab strip that hid every section but the active one —
+   now every section always renders (mobile matches desktop) and this
+   is just a jump nav: tap a pill, Home.jsx scrollIntoView's the matching
+   #home-section-* (see jumpToSection). Sticks just below the mobile
+   masthead (64px — same offset used elsewhere for "just under the
+   header" mobile positioning, e.g. .notif-dropdown) so it stays
+   reachable while scrolling, and is deliberately narrower than its
+   content so the row starts pre-scrolled-looking — the next pill is
+   visibly cut off/faded at the right edge as a "there's more" hint,
+   rather than the full set laid out flush with nothing to suggest you
+   can scroll it. */
 .home-mobile-tabs { display: none; }
 @media (max-width: 720px) {
   .home-mobile-tabs {
     display: flex;
     gap: 8px;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding: 10px 0 12px;
     margin-bottom: 14px;
+    position: sticky;
+    top: 64px;
+    z-index: 30;
+    background: var(--paper);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 30px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 30px), transparent 100%);
   }
   .home-mobile-tab {
     flex-shrink: 0;
@@ -8178,17 +8222,15 @@ button.delete-danger svg { flex-shrink: 0; }
     color: var(--ink-soft);
     white-space: nowrap;
   }
-  .home-mobile-tab.active {
+  .home-mobile-tab:active {
     background: var(--maroon);
     border-color: var(--maroon);
     color: #fff;
   }
-  .feed-layout[data-active-mobile-tab] .home-tabsection { display: none; }
-  .feed-layout[data-active-mobile-tab="posts"] .home-tabsection[data-tab="posts"] { display: block; }
-  .feed-layout[data-active-mobile-tab="groups"] .home-tabsection[data-tab="groups"] { display: block; }
-  .feed-layout[data-active-mobile-tab="community"] .home-tabsection[data-tab="community"] { display: block; }
-  .feed-layout[data-active-mobile-tab="businesses"] .home-tabsection[data-tab="businesses"] { display: block; }
-  .feed-layout[data-active-mobile-tab="events"] .home-tabsection[data-tab="events"] { display: block; }
+  /* Offsets scrollIntoView's landing spot so a jumped-to section clears
+     both the sticky masthead and the sticky pill row above instead of
+     tucking in underneath them. */
+  .home-tabsection { scroll-margin-top: 112px; }
 }
 
 .lightbox-close {

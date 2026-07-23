@@ -16,11 +16,12 @@ const COMPLETION_FIELDS = [
   'grad_year', 'degree', 'industry', 'linkedin_url',
 ]
 
-// The mobile-only pill tabs above the two-column layout — same sections
-// that sit side-by-side on desktop, just switched one-at-a-time on a small
-// screen. Purely a CSS concern (see .home-mobile-tabs / [data-active-mobile-tab]
-// in styles.css) — desktop ignores `mobileTab` entirely and shows every
-// section at once.
+// The mobile-only pill row above the two-column layout — same sections
+// that sit side-by-side on desktop. On mobile every section still renders
+// (nothing is hidden), the pills just act as a jump nav: tap one and the
+// page smooth-scrolls to that section, same idea as an in-page anchor
+// link. See .home-mobile-tabs in styles.css for the sticky/peek styling
+// and .home-tabsection's scroll-margin-top for the landing offset.
 const MOBILE_TABS = [
   { id: 'posts', label: 'Recent feed posts' },
   { id: 'community', label: 'My Community' },
@@ -84,11 +85,20 @@ export default function Home({ session, profile, onMessage }) {
   const [community, setCommunity] = useState([])
   const [nearbyBusinesses, setNearbyBusinesses] = useState([])
   const [showBadges, setShowBadges] = useState(false)
-  const [mobileTab, setMobileTab] = useState('posts')
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const pct = completionPercent(profile)
   const firstName = (profile?.full_name || '').trim().split(' ')[0] || 'there'
+
+  // Mobile pill row jumps to the matching section instead of switching
+  // tabs — every section always renders (desktop and mobile alike), so
+  // this just needs to scroll it into view. scroll-margin-top on
+  // .home-tabsection (styles.css) keeps the landing spot clear of the
+  // sticky masthead + sticky pill row; html { scroll-behavior: smooth }
+  // (also styles.css) gives it the glide.
+  function jumpToSection(id) {
+    document.getElementById(`home-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   // "My Community" is a horizontally-scrolling strip (2 full cards + a peek
   // of the next) rather than a static grid, so people know there's more to
@@ -384,23 +394,22 @@ export default function Home({ session, profile, onMessage }) {
         </div>
       </div>
 
-      <div className="home-mobile-tabs" role="tablist" aria-label="Home sections">
+      <nav className="home-mobile-tabs" aria-label="Jump to home section">
         {MOBILE_TABS.map((t) => (
           <button
             key={t.id}
-            role="tab"
-            aria-selected={mobileTab === t.id}
-            className={mobileTab === t.id ? 'home-mobile-tab active' : 'home-mobile-tab'}
-            onClick={() => setMobileTab(t.id)}
+            type="button"
+            className="home-mobile-tab"
+            onClick={() => jumpToSection(t.id)}
           >
             {t.label}
           </button>
         ))}
-      </div>
+      </nav>
 
-      <div className="feed-layout home-feed-layout" data-active-mobile-tab={mobileTab}>
+      <div className="feed-layout home-feed-layout">
         <div className="feed-main">
-          <div className="home-tabsection" data-tab="posts">
+          <div className="home-tabsection" id="home-section-posts">
             <div className="feed-widget home-feed-widget">
               <div className="home-section-head">
                 <h3 className="feed-section-label">Recent feed posts</h3>
@@ -455,7 +464,7 @@ export default function Home({ session, profile, onMessage }) {
             </div>
           </div>
 
-          <div className="home-tabsection" data-tab="groups">
+          <div className="home-tabsection" id="home-section-groups">
             <div className="feed-widget home-feed-widget">
               <div className="home-section-head">
                 <h3 className="feed-section-label">My Groups</h3>
@@ -486,7 +495,7 @@ export default function Home({ session, profile, onMessage }) {
             </div>
           </div>
 
-          <div className="home-tabsection" data-tab="businesses">
+          <div className="home-tabsection" id="home-section-businesses">
             <div className="feed-widget home-feed-widget">
               <div className="home-section-head">
                 <h3 className="feed-section-label">Businesses near me</h3>
@@ -517,7 +526,7 @@ export default function Home({ session, profile, onMessage }) {
         </div>
 
         <aside className="feed-sidebar">
-          <div className="home-tabsection" data-tab="community">
+          <div className="home-tabsection" id="home-section-community">
             <div className="feed-widget home-community-widget">
               <div className="home-section-head" style={{ marginBottom: 4 }}>
                 <h3 className="feed-section-label" style={{ margin: 0 }}>My Community</h3>
@@ -595,7 +604,7 @@ export default function Home({ session, profile, onMessage }) {
             </div>
           </div>
 
-          <div className="home-tabsection" data-tab="events">
+          <div className="home-tabsection" id="home-section-events">
             {upcomingEvent && (
               <div className="feed-widget home-event-widget" onClick={() => navigate('/events')} role="button" tabIndex={0}>
                 <div className="home-event-date">
