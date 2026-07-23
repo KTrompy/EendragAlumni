@@ -825,7 +825,7 @@ input, textarea, select { font: inherit; }
     gap: 10px;
   }
   .chat-panel-body .chat-input input,
-  .chat-panel-body .chat-input textarea { padding: 12px 16px; font-size: 15px; }
+  .chat-panel-body .chat-input textarea { padding: 12px 16px; font-size: 16px; } /* 16px+ stops iOS auto-zoom on focus */
   .chat-panel-body .chat-send { width: 42px; height: 42px; }
 
   .chat-panel-body .date-separator span { font-size: 10.5px; }
@@ -4200,7 +4200,7 @@ button.delete-danger svg { flex-shrink: 0; }
   background: var(--paper);
   border-radius: 18px;
   padding: 10px 16px;
-  font-size: 14px;
+  font-size: 16px; /* iOS Safari auto-zooms on focus for any input under 16px */
   font-family: inherit;
   resize: none;
   max-height: 140px;
