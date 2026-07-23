@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { supabase, isAuthError } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import ResetPassword from './components/ResetPassword.jsx'
-import GlobalSearch from './components/GlobalSearch.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Home from './components/Home.jsx'
 import Feed from './components/Feed.jsx'
@@ -79,7 +78,6 @@ export default function App() {
   const [dmDraft, setDmDraft] = useState('') // optional prefilled first message
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false) // mobile hamburger menu
-  const [searchOpen, setSearchOpen] = useState(false) // header site-wide search modal
   // True the instant Supabase fires PASSWORD_RECOVERY (someone clicked the
   // reset-password link from Auth.jsx's "Forgot password?" flow) — that
   // event carries a real session, so without this flag the check below
@@ -471,15 +469,6 @@ export default function App() {
           <div className="masthead-actions">
             <button
               className="header-icon-btn"
-              onClick={() => setSearchOpen(true)}
-              aria-label="Search"
-              title="Search"
-            >
-              <HeaderSearchIcon />
-            </button>
-
-            <button
-              className="header-icon-btn"
               onClick={() => setMessagesOpen((o) => !o)}
               aria-label="Messages"
               title="Messages"
@@ -738,8 +727,6 @@ export default function App() {
         </>
       )}
 
-      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-
       <FloatingMessages
         session={session}
         profile={profile}
@@ -913,14 +900,6 @@ function SignOutIcon() {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="M16 17l5-5-5-5" />
       <path d="M21 12H9" />
-    </svg>
-  )
-}
-function HeaderSearchIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="7" />
-      <path d="m21 21-4.35-4.35" />
     </svg>
   )
 }
