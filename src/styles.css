@@ -35,6 +35,10 @@
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
+/* Prevent any child from widening the page past the viewport — the
+   safety net that stops stray long words, wide tables, or unconstrained
+   flex/grid children from introducing a horizontal scrollbar on mobile. */
+html { overflow-x: hidden; }
 /* Site-wide smooth scroll — anchor jumps and any scrollIntoView/scrollTo
    calls (Home's community carousel already opts in per-widget, Events and
    Messages both jump to a specific card/message on open) glide instead of
@@ -445,7 +449,7 @@ input, textarea, select { font: inherit; }
 }
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 65px); }
 
-.content { flex: 1; padding: 18px 24px 60px; }
+.content { flex: 1; padding: 18px 24px 60px; max-width: 100%; overflow-x: hidden; }
 /* Every top-level page is a `.panel` (Home, Feed, Jobs, Events, Directory,
    Profile, etc.) — a small shared fade-in here means navigating between
    them always feels like a continuous transition rather than an abrupt
@@ -2880,7 +2884,7 @@ button.delete-danger svg { flex-shrink: 0; }
   /* See .directory-layout mobile override — reset the desktop min-height
      added to give the sticky sidebar room, otherwise short single-column
      pages get extra empty space at the bottom. */
-  .feed-layout { grid-template-columns: 1fr; min-height: 0; }
+  .feed-layout, .home-feed-layout { grid-template-columns: 1fr; min-height: 0; }
   .feed-sidebar { position: static; }
 }
 
@@ -3457,7 +3461,9 @@ button.delete-danger svg { flex-shrink: 0; }
   line-height: 1.6;
   font-size: 14px;
   word-break: break-word;
+  overflow-x: hidden;
 }
+.post-body img { max-width: 100%; height: auto; }
 /* When there's a title above it (the two are always rendered as direct
    siblings when both exist), add a hairline to separate the two rather
    than relying on spacing alone. */
@@ -3675,6 +3681,7 @@ button.delete-danger svg { flex-shrink: 0; }
   border-radius: 8px 12px 12px 12px;
   padding: 8px 12px;
   flex: 1;
+  min-width: 0;
 }
 .comment-author {
   font-weight: 700;
@@ -3688,7 +3695,7 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .comment-author:hover { color: var(--orange-dark); }
 .comment-meta { color: var(--ink-soft); font-size: 11px; margin-left: 6px; }
-.comment-text { margin: 2px 0 0; white-space: pre-wrap; font-size: 13.5px; line-height: 1.45; color: var(--ink); }
+.comment-text { margin: 2px 0 0; white-space: pre-wrap; font-size: 13.5px; line-height: 1.45; color: var(--ink); word-break: break-word; }
 .comment-delete {
   background: none; border: none;
   color: var(--ink-soft); font-size: 12px;
@@ -7740,6 +7747,7 @@ button.delete-danger svg { flex-shrink: 0; }
   font-size: 28px;
   line-height: 1.15;
   color: var(--maroon);
+  word-break: break-word;
 }
 .home-banner-sub {
   margin: 0;
@@ -8121,7 +8129,7 @@ button.delete-danger svg { flex-shrink: 0; }
   transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 .home-business-card:hover { border-color: var(--orange); box-shadow: var(--shadow-card); }
-.home-business-card-head { display: flex; align-items: center; gap: 12px; width: 100%; }
+.home-business-card-head { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; }
 .home-business-card-head .job-logo { width: 46px; height: 46px; font-size: 17px; }
 .home-business-card-head strong {
   font-size: 15.5px;
