@@ -6625,6 +6625,10 @@ button.delete-danger svg { flex-shrink: 0; }
   .job-card, .event-card { grid-template-columns: 1fr; }
   .job-card > div:first-child { display: flex; flex-direction: column; }
   .job-card > .btn, .event-card > .btn { justify-self: end; margin-top: 8px; }
+  /* Bigger bookmark toggle + icon on mobile — the desktop 34px/16px size
+     reads as a tiny tap target on a phone screen. */
+  .job-save-btn, .event-save-btn { width: 42px; height: 42px; }
+  .job-save-btn svg, .event-save-btn svg { width: 20px; height: 20px; }
   .events-header-actions { width: 100%; }
   .events-header-actions .btn { margin-left: auto; }
   .create-panel { padding: 14px; }
