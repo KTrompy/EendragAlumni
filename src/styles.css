@@ -456,7 +456,7 @@ input, textarea, select { font: inherit; }
    swap, instead of that only being true on the handful of pages that
    opted into their own "animation: fade-in" individually (profile-page
    and others below still do — harmless, just redundant with this). */
-.panel { animation: fade-in 0.3s var(--ease); }
+.panel { animation: fade-in 0.3s var(--ease); max-width: 100%; }
 .panel.narrow { max-width: 620px; margin: 0 auto; }
 /* Person-profile page only: center relative to the whole page (nav +
    content), not just the leftover content column to the right of the nav.
@@ -1571,7 +1571,7 @@ button.delete-danger svg { flex-shrink: 0; }
    Directory.jsx. */
 .directory-layout {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 24px;
   align-items: start;
   margin-top: 16px;
@@ -2854,7 +2854,7 @@ button.delete-danger svg { flex-shrink: 0; }
    screens — see the max-width: 960px query near the bottom of this block. */
 .feed-layout {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 18px;
   align-items: start;
   /* See .directory-layout for the rationale — the grid needs a min-height
@@ -2869,13 +2869,14 @@ button.delete-danger svg { flex-shrink: 0; }
   gap: 12px;
   position: sticky;
   top: 85px;
+  min-width: 0;
 }
 /* Home dashboard only: even 50/50 split between the feed column and the
    sidebar, and more breathing room between stacked sections, so "Recent
    posts / My Groups / Businesses" and the sidebar widgets each read as
    distinct blocks instead of running together. */
 .home-feed-layout {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 28px;
 }
 .home-feed-layout .feed-main { display: flex; flex-direction: column; gap: 26px; }
@@ -2884,7 +2885,7 @@ button.delete-danger svg { flex-shrink: 0; }
   /* See .directory-layout mobile override — reset the desktop min-height
      added to give the sticky sidebar room, otherwise short single-column
      pages get extra empty space at the bottom. */
-  .feed-layout, .home-feed-layout { grid-template-columns: 1fr; min-height: 0; }
+  .feed-layout, .home-feed-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; }
   .feed-sidebar { position: static; }
 }
 
@@ -2987,6 +2988,7 @@ button.delete-danger svg { flex-shrink: 0; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   padding: 14px 16px 10px;
+  overflow: hidden;
 }
 .feed-widget-head { margin-bottom: 8px; }
 .feed-widget-head h3 {
@@ -5894,7 +5896,7 @@ button.delete-danger svg { flex-shrink: 0; }
    Calendar toggle. */
 .events-layout {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 18px;
   align-items: start;
   /* See .directory-layout — min-height so the sticky sidebar has scroll
@@ -6648,8 +6650,8 @@ button.delete-danger svg { flex-shrink: 0; }
   .nav-toggle { display: inline-flex; align-items: center; justify-content: center; }
   .tabs { display: none !important; }
   .sidebar { display: none; }
-  .app-body { display: block; }
-  .app-main { min-height: 0; }
+  .app-body { display: block; overflow-x: hidden; }
+  .app-main { min-height: 0; overflow-x: hidden; }
   .panel.narrow.person-profile-page { transform: none; }
   .masthead-inner {
     display: grid;
@@ -7408,7 +7410,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .business-detail-page .profile-back-btn { margin-bottom: 12px; }
 .business-detail-layout {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 18px;
   align-items: start;
   /* See .directory-layout — min-height so the sticky sidebar stays pinned
@@ -7571,7 +7573,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .job-detail-page .profile-back-btn { margin-bottom: 12px; }
 .job-detail-layout {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 24px;
   align-items: start;
   /* See .directory-layout — min-height so the sticky sidebar stays pinned
