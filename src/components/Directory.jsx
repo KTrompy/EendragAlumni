@@ -144,7 +144,6 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
     : (p.country || p.city || '')
 
   const expertise = normalizeExpertise(p.expertise)
-  const willingToHelp = (p.services_offered || []).length > 0
 
   return (
     <li>
@@ -156,7 +155,6 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
         onKeyDown={onKey}
         aria-label={`Open profile for ${p.full_name || 'alumnus'}`}
       >
-        {willingToHelp && <span className="person-card-ribbon">Willing to help!</span>}
         <PhotoBlock url={p.avatar_url} name={p.full_name} className="person-card-photo" />
         <div className="person-card-overlay">
           <OnlineDot lastSeen={p.last_seen} />

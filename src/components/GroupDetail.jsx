@@ -1046,12 +1046,10 @@ function GroupMembersTab({ groupId, session, isGroupAdmin, onOpenProfile }) {
         {sorted.map((m) => {
           const p = m.profiles
           if (!p) return null
-          const willingToHelp = (p.services_offered || []).length > 0
           const roleLine = p.occupation && p.company ? `${p.occupation} @ ${p.company}` : (p.occupation || p.company || '')
           return (
             <li key={p.id}>
               <div className="person-row" role="button" tabIndex={0} onClick={() => onOpenProfile?.(p)} onKeyDown={(e) => { if (e.key === 'Enter') onOpenProfile?.(p) }}>
-                {willingToHelp && <span className="person-row-ribbon">Willing to help!</span>}
                 <Avatar url={p.avatar_url} name={p.full_name} size={48} />
                 <div className="person-row-info">
                   <div className="person-row-name-line">
