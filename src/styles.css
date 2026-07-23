@@ -8299,6 +8299,14 @@ button.delete-danger svg { flex-shrink: 0; }
   }
   .home-post-preview-list::-webkit-scrollbar,
   .home-business-grid::-webkit-scrollbar { display: none; }
+
+  /* My Community keeps its free-scrolling multi-card strip (see the base
+     .home-community-grid rule above) on mobile too — just without the
+     prev/next arrow buttons, since a swipe/touch-drag is the natural way
+     to scroll it on a touchscreen and the arrows only add clutter here.
+     Desktop keeps the arrows, since a mouse has no swipe gesture. */
+  .home-community-scroll-btn { display: none; }
+
   .home-business-grid .home-business-card {
     flex: 0 0 100%;
     width: 100%;
