@@ -25,9 +25,9 @@ const COMPLETION_FIELDS = [
 const MOBILE_TABS = [
   { id: 'posts', label: 'Recent feed posts' },
   { id: 'community', label: 'My Community' },
-  { id: 'groups', label: 'My Groups' },
   { id: 'businesses', label: 'Businesses near me' },
   { id: 'events', label: 'Upcoming events' },
+  { id: 'groups', label: 'My Groups' },
 ]
 
 function completionPercent(profile) {
@@ -167,6 +167,25 @@ export default function Home({ session, profile, onMessage }) {
     if (drag.moved) el.scrollLeft = drag.startScroll - dx
   }
   const endCommunityDrag = () => { communityDragRef.current.down = false }
+
+  // Mobile-only "Recent feed posts" carousel: one post per screen,
+  // swipe/scroll horizontally between them, with dot indicators below
+  // showing which post you're on. Desktop keeps the plain stacked list
+  // (see .home-post-preview-list base rule vs. its max-width:720px
+  // override in styles.css) — postsScrollRef/postIndex only matter once
+  // that override turns the list into a horizontal scroll-snap strip.
+  const postsScrollRef = useRef(null)
+  const [postIndex, setPostIndex] = useState(0)
+  const updatePostIndex = () => {
+    const el = postsScrollRef.current
+    if (!el || el.clientWidth === 0) return
+    setPostIndex(Math.round(el.scrollLeft / el.clientWidth))
+  }
+  const scrollToPost = (idx) => {
+    const el = postsScrollRef.current
+    if (!el) return
+    el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' })
+  }
   const handleCommunityCardClick = (e, action) => {
     if (communityDragRef.current.moved) {
       e.preventDefault()
@@ -419,7 +438,7 @@ export default function Home({ session, profile, onMessage }) {
               {recentPosts.length === 0 ? (
                 <p className="empty small">No posts yet — be the first to share something.</p>
               ) : (
-                <ul className="home-post-preview-list">
+                <ul className="home-post-preview-list" ref={postsScrollRef} onScroll={updatePostIndex}>
                   {recentPosts.map((p) => {
                     const text = p.content && p.content !== '(no text)' ? truncate(plainText(p.content)) : ''
                     const thumb = p.image_urls?.[0] || null
@@ -460,6 +479,22 @@ export default function Home({ session, profile, onMessage }) {
                     )
                   })}
                 </ul>
+              )}
+
+              {recentPosts.length > 1 && (
+                <div className="home-post-dots" role="tablist" aria-label="Recent posts">
+                  {recentPosts.map((p, i) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={i === postIndex ? 'home-post-dot active' : 'home-post-dot'}
+                      role="tab"
+                      aria-selected={i === postIndex}
+                      aria-label={`Post ${i + 1} of ${recentPosts.length}`}
+                      onClick={() => scrollToPost(i)}
+                    />
+                  ))}
+                </div>
               )}
             </div>
           </div>

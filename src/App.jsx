@@ -65,11 +65,11 @@ const PRIMARY_TAB_IDS = ['directory', 'home', 'jobs', 'feed', 'businesses']
 // out move to the mobile header/avatar instead, so the bar stays to four
 // core sections now that Map lives inside Eendragters).
 const MOBILE_TABS = [
-  { id: 'directory', label: 'Eendragters', path: '/directory', icon: PeopleIcon },
   { id: 'home', label: 'Home', path: '/home', icon: HomeIcon },
+  { id: 'directory', label: 'Eendragters', path: '/directory', icon: PeopleIcon },
+  { id: 'jobs', label: 'Jobs', path: '/jobs', icon: JobsIcon },
   { id: 'feed', label: 'Feed', path: '/feed', icon: FeedIcon },
   { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
-  { id: 'jobs', label: 'Jobs', path: '/jobs', icon: JobsIcon },
 ]
 
 export default function App() {

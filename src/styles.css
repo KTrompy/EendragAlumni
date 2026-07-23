@@ -7829,6 +7829,10 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-feed-layout .empty.small { font-size: 14px; padding: 10px 0; }
 
 .home-post-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+/* Dot indicators for the mobile single-post carousel (see the
+   max-width:720px override below) — hidden on desktop, where the list
+   above stays a plain stacked column and there's nothing to page through. */
+.home-post-dots { display: none; }
 /* Each post is its own card (background + border) rather than a hairline
    row, so posts read as distinct blocks and the avatar/thumbnail always
    have breathing room instead of sitting flush against the widget edge. */
@@ -8241,6 +8245,66 @@ button.delete-danger svg { flex-shrink: 0; }
      both the sticky masthead and the sticky pill row above instead of
      tucking in underneath them. */
   .home-tabsection { scroll-margin-top: 112px; }
+
+  /* Mobile-only section order: posts, community, businesses, events,
+     groups, donate — deliberately different from the desktop two-column
+     order (.feed-main: posts/groups/businesses, .feed-sidebar:
+     community/events/donate). display:contents on the two column
+     wrappers drops their boxes so their children become direct flex
+     items of .home-feed-layout, letting `order` reorder across what used
+     to be the column boundary. */
+  .home-feed-layout { display: flex; flex-direction: column; gap: 26px; }
+  .home-feed-layout .feed-main,
+  .home-feed-layout .feed-sidebar { display: contents; }
+  .home-feed-layout #home-section-posts { order: 1; }
+  .home-feed-layout #home-section-community { order: 2; }
+  .home-feed-layout #home-section-businesses { order: 3; }
+  .home-feed-layout #home-section-events { order: 4; }
+  .home-feed-layout #home-section-groups { order: 5; }
+  .home-feed-layout .home-donate-card { order: 6; }
+
+  /* "Recent feed posts" becomes a one-post-at-a-time carousel on mobile:
+     horizontal scroll-snap turns the stacked list into full-width slides
+     (postsScrollRef/onScroll in Home.jsx track which slide is centered),
+     and the dots below let you jump straight to a post or see how many
+     there are. Desktop is untouched — .home-post-preview-list stays the
+     plain flex column defined above, and .home-post-dots stays hidden. */
+  .home-post-preview-list {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+    scrollbar-width: none;
+  }
+  .home-post-preview-list::-webkit-scrollbar { display: none; }
+  .home-post-preview-list .home-post-preview {
+    flex: 0 0 100%;
+    width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  .home-post-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding-top: 12px;
+  }
+  .home-post-dot {
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    border-radius: 50%;
+    border: none;
+    background: var(--line-strong);
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+  .home-post-dot.active {
+    background: var(--orange);
+    transform: scale(1.3);
+  }
 }
 
 .lightbox-close {
