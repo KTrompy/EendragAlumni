@@ -7975,7 +7975,16 @@ button.delete-danger svg { flex-shrink: 0; }
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  touch-action: pan-y;
+  /* pan-y alone blocks the browser's native horizontal swipe handling —
+     fine when arrows were the only mobile control, but now that mobile
+     relies on a direct finger swipe (no arrows there, see the
+     max-width:720px override hiding .home-community-scroll-btn) this has
+     to allow horizontal panning too, or a touch swipe has nothing to
+     grab onto (mouse-drag is handled separately via the pointer
+     handlers in Home.jsx, which this doesn't affect). Listing both axes
+     lets the browser commit natively to whichever direction the swipe
+     actually goes, so vertical page-scroll still works from here too. */
+  touch-action: pan-x pan-y;
   cursor: grab;
 }
 .home-community-grid:active { cursor: grabbing; }
