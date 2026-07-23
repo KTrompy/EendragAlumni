@@ -111,6 +111,7 @@ export default function Home({ session, profile, onMessage }) {
   // Drives which arrow(s) show: back only once scrolled off the start,
   // forward only while there's more strip left to reveal.
   const [communityScrollState, setCommunityScrollState] = useState({ canBack: false, canForward: false })
+  const [communityIndex, setCommunityIndex] = useState(0)
 
   const updateCommunityScrollState = () => {
     const el = communityScrollRef.current
@@ -119,6 +120,17 @@ export default function Home({ session, profile, onMessage }) {
       canBack: el.scrollLeft > 4,
       canForward: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
     })
+    // Only meaningful on mobile, where the mobile CSS override makes each
+    // card exactly one clientWidth wide (see max-width:720px in
+    // styles.css) — on desktop the cards are ~102px each so this index
+    // doesn't line up with anything, but nothing reads it there since
+    // .home-carousel-dots stays hidden outside that breakpoint.
+    if (el.clientWidth > 0) setCommunityIndex(Math.round(el.scrollLeft / el.clientWidth))
+  }
+  const scrollToCommunityIndex = (idx) => {
+    const el = communityScrollRef.current
+    if (!el) return
+    el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' })
   }
 
   // useLayoutEffect (not useEffect) — this measures the scroll strip's
@@ -183,6 +195,21 @@ export default function Home({ session, profile, onMessage }) {
   }
   const scrollToPost = (idx) => {
     const el = postsScrollRef.current
+    if (!el) return
+    el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' })
+  }
+
+  // Same mobile-only carousel treatment for "Businesses near me" — see
+  // postsScrollRef above for the shared reasoning.
+  const businessesScrollRef = useRef(null)
+  const [businessIndex, setBusinessIndex] = useState(0)
+  const updateBusinessIndex = () => {
+    const el = businessesScrollRef.current
+    if (!el || el.clientWidth === 0) return
+    setBusinessIndex(Math.round(el.scrollLeft / el.clientWidth))
+  }
+  const scrollToBusiness = (idx) => {
+    const el = businessesScrollRef.current
     if (!el) return
     el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' })
   }
@@ -482,12 +509,12 @@ export default function Home({ session, profile, onMessage }) {
               )}
 
               {recentPosts.length > 1 && (
-                <div className="home-post-dots" role="tablist" aria-label="Recent posts">
+                <div className="home-carousel-dots" role="tablist" aria-label="Recent posts">
                   {recentPosts.map((p, i) => (
                     <button
                       key={p.id}
                       type="button"
-                      className={i === postIndex ? 'home-post-dot active' : 'home-post-dot'}
+                      className={i === postIndex ? 'home-carousel-dot active' : 'home-carousel-dot'}
                       role="tab"
                       aria-selected={i === postIndex}
                       aria-label={`Post ${i + 1} of ${recentPosts.length}`}
@@ -539,7 +566,7 @@ export default function Home({ session, profile, onMessage }) {
               {nearbyBusinesses.length === 0 ? (
                 <p className="empty small">No businesses listed yet.</p>
               ) : (
-                <div className="home-business-grid">
+                <div className="home-business-grid" ref={businessesScrollRef} onScroll={updateBusinessIndex}>
                   {nearbyBusinesses.map((b) => (
                     <button key={b.id} className="home-business-card" onClick={() => navigate(`/businesses/${b.id}`)}>
                       <div className="home-business-card-head">
@@ -551,6 +578,22 @@ export default function Home({ session, profile, onMessage }) {
                         <LocationDotIcon /> {[b.city, b.country].filter(Boolean).join(', ') || 'Location not set'}
                       </p>
                     </button>
+                  ))}
+                </div>
+              )}
+
+              {nearbyBusinesses.length > 1 && (
+                <div className="home-carousel-dots" role="tablist" aria-label="Businesses near me">
+                  {nearbyBusinesses.map((b, i) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className={i === businessIndex ? 'home-carousel-dot active' : 'home-carousel-dot'}
+                      role="tab"
+                      aria-selected={i === businessIndex}
+                      aria-label={`Business ${i + 1} of ${nearbyBusinesses.length}`}
+                      onClick={() => scrollToBusiness(i)}
+                    />
                   ))}
                 </div>
               )}
@@ -630,6 +673,22 @@ export default function Home({ session, profile, onMessage }) {
                       <ChevronRightIcon />
                     </button>
                   )}
+                </div>
+              )}
+
+              {community.length > 1 && (
+                <div className="home-carousel-dots" role="tablist" aria-label="Suggested connections">
+                  {community.map((m, i) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className={i === communityIndex ? 'home-carousel-dot active' : 'home-carousel-dot'}
+                      role="tab"
+                      aria-selected={i === communityIndex}
+                      aria-label={`Connection ${i + 1} of ${community.length}`}
+                      onClick={() => scrollToCommunityIndex(i)}
+                    />
+                  ))}
                 </div>
               )}
 

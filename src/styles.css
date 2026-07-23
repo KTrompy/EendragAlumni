@@ -7829,10 +7829,11 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-feed-layout .empty.small { font-size: 14px; padding: 10px 0; }
 
 .home-post-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-/* Dot indicators for the mobile single-post carousel (see the
-   max-width:720px override below) — hidden on desktop, where the list
-   above stays a plain stacked column and there's nothing to page through. */
-.home-post-dots { display: none; }
+/* Dot indicators shared by the mobile single-card carousels (posts,
+   businesses, community — see the max-width:720px override below) —
+   hidden on desktop, where each section keeps its own non-carousel
+   layout and there's nothing to page through. */
+.home-carousel-dots { display: none; }
 /* Each post is its own card (background + border) rather than a hairline
    row, so posts read as distinct blocks and the avatar/thumbnail always
    have breathing room instead of sitting flush against the widget edge. */
@@ -8253,7 +8254,18 @@ button.delete-danger svg { flex-shrink: 0; }
      wrappers drops their boxes so their children become direct flex
      items of .home-feed-layout, letting `order` reorder across what used
      to be the column boundary. */
-  .home-feed-layout { display: flex; flex-direction: column; gap: 26px; }
+  /* align-items defaults to "start" via the base .feed-layout rule (top-
+     aligned grid columns) — fine for the desktop grid, but once this
+     becomes a *column* flex container, "start" is the CROSS-axis (i.e.
+     horizontal) alignment. That sizes each flattened section to its own
+     content width (fit-content) instead of stretching to the screen's
+     full width, and a fit-content width around a horizontal scroll-snap
+     strip fits ALL its un-shrunk slides side by side rather than one
+     screen-width's worth — which is what was pushing post/business/
+     community cards off the right edge of the screen. "stretch" makes
+     every section fill the full width again, same as normal block
+     stacking. */
+  .home-feed-layout { display: flex; flex-direction: column; align-items: stretch; gap: 26px; }
   .home-feed-layout .feed-main,
   .home-feed-layout .feed-sidebar { display: contents; }
   .home-feed-layout #home-section-posts { order: 1; }
@@ -8263,13 +8275,17 @@ button.delete-danger svg { flex-shrink: 0; }
   .home-feed-layout #home-section-groups { order: 5; }
   .home-feed-layout .home-donate-card { order: 6; }
 
-  /* "Recent feed posts" becomes a one-post-at-a-time carousel on mobile:
-     horizontal scroll-snap turns the stacked list into full-width slides
-     (postsScrollRef/onScroll in Home.jsx track which slide is centered),
-     and the dots below let you jump straight to a post or see how many
-     there are. Desktop is untouched — .home-post-preview-list stays the
-     plain flex column defined above, and .home-post-dots stays hidden. */
-  .home-post-preview-list {
+  /* Shared "one card at a time, swipe, dots below" carousel treatment for
+     Recent feed posts / Businesses near me / My Community on mobile.
+     Each strip is a horizontal scroll-snap row of full-width slides;
+     Home.jsx tracks which slide is centered (via onScroll) and renders
+     .home-carousel-dots to match — tapping a dot jumps straight to that
+     slide. Desktop is untouched: each list/grid keeps its own base
+     layout above, and .home-carousel-dots stays hidden. */
+  .home-post-preview-list,
+  .home-business-grid,
+  .home-community-grid {
+    display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -8278,21 +8294,30 @@ button.delete-danger svg { flex-shrink: 0; }
     gap: 0;
     scrollbar-width: none;
   }
-  .home-post-preview-list::-webkit-scrollbar { display: none; }
-  .home-post-preview-list .home-post-preview {
+  .home-post-preview-list::-webkit-scrollbar,
+  .home-business-grid::-webkit-scrollbar,
+  .home-community-grid::-webkit-scrollbar { display: none; }
+  .home-post-preview-list .home-post-preview,
+  .home-business-grid .home-business-card,
+  .home-community-grid .home-community-card {
     flex: 0 0 100%;
     width: 100%;
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }
-  .home-post-dots {
+  /* Arrows are the desktop-width affordance for the community strip —
+     redundant (and cramped) once each slide is full-width and dots do
+     the same job, so they're hidden here in favor of the dots below. */
+  .home-community-scroll-btn { display: none; }
+
+  .home-carousel-dots {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 8px;
     padding-top: 12px;
   }
-  .home-post-dot {
+  .home-carousel-dot {
     width: 7px;
     height: 7px;
     padding: 0;
@@ -8301,7 +8326,7 @@ button.delete-danger svg { flex-shrink: 0; }
     background: var(--line-strong);
     transition: background 0.18s ease, transform 0.18s ease;
   }
-  .home-post-dot.active {
+  .home-carousel-dot.active {
     background: var(--orange);
     transform: scale(1.3);
   }
