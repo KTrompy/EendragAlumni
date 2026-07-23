@@ -111,7 +111,6 @@ export default function Home({ session, profile, onMessage }) {
   // Drives which arrow(s) show: back only once scrolled off the start,
   // forward only while there's more strip left to reveal.
   const [communityScrollState, setCommunityScrollState] = useState({ canBack: false, canForward: false })
-  const [communityIndex, setCommunityIndex] = useState(0)
 
   const updateCommunityScrollState = () => {
     const el = communityScrollRef.current
@@ -120,17 +119,6 @@ export default function Home({ session, profile, onMessage }) {
       canBack: el.scrollLeft > 4,
       canForward: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
     })
-    // Only meaningful on mobile, where the mobile CSS override makes each
-    // card exactly one clientWidth wide (see max-width:720px in
-    // styles.css) — on desktop the cards are ~102px each so this index
-    // doesn't line up with anything, but nothing reads it there since
-    // .home-carousel-dots stays hidden outside that breakpoint.
-    if (el.clientWidth > 0) setCommunityIndex(Math.round(el.scrollLeft / el.clientWidth))
-  }
-  const scrollToCommunityIndex = (idx) => {
-    const el = communityScrollRef.current
-    if (!el) return
-    el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' })
   }
 
   // useLayoutEffect (not useEffect) — this measures the scroll strip's
@@ -673,22 +661,6 @@ export default function Home({ session, profile, onMessage }) {
                       <ChevronRightIcon />
                     </button>
                   )}
-                </div>
-              )}
-
-              {community.length > 1 && (
-                <div className="home-carousel-dots" role="tablist" aria-label="Suggested connections">
-                  {community.map((m, i) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className={i === communityIndex ? 'home-carousel-dot active' : 'home-carousel-dot'}
-                      role="tab"
-                      aria-selected={i === communityIndex}
-                      aria-label={`Connection ${i + 1} of ${community.length}`}
-                      onClick={() => scrollToCommunityIndex(i)}
-                    />
-                  ))}
                 </div>
               )}
 

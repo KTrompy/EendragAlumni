@@ -8276,15 +8276,18 @@ button.delete-danger svg { flex-shrink: 0; }
   .home-feed-layout .home-donate-card { order: 6; }
 
   /* Shared "one card at a time, swipe, dots below" carousel treatment for
-     Recent feed posts / Businesses near me / My Community on mobile.
-     Each strip is a horizontal scroll-snap row of full-width slides;
-     Home.jsx tracks which slide is centered (via onScroll) and renders
-     .home-carousel-dots to match — tapping a dot jumps straight to that
-     slide. Desktop is untouched: each list/grid keeps its own base
-     layout above, and .home-carousel-dots stays hidden. */
+     Recent feed posts / Businesses near me on mobile. Each strip is a
+     horizontal scroll-snap row of full-width slides; Home.jsx tracks
+     which slide is centered (via onScroll) and renders .home-carousel-
+     dots to match — tapping a dot jumps straight to that slide. Desktop
+     is untouched: each list/grid keeps its own base layout above, and
+     .home-carousel-dots stays hidden.
+     My Community is deliberately NOT part of this — it keeps its
+     original free-scrolling, un-snapped multi-card strip (small cards,
+     several peeking in at once) on both mobile and desktop; see
+     .home-community-grid's base rule above. */
   .home-post-preview-list,
-  .home-business-grid,
-  .home-community-grid {
+  .home-business-grid {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -8295,20 +8298,14 @@ button.delete-danger svg { flex-shrink: 0; }
     scrollbar-width: none;
   }
   .home-post-preview-list::-webkit-scrollbar,
-  .home-business-grid::-webkit-scrollbar,
-  .home-community-grid::-webkit-scrollbar { display: none; }
+  .home-business-grid::-webkit-scrollbar { display: none; }
   .home-post-preview-list .home-post-preview,
-  .home-business-grid .home-business-card,
-  .home-community-grid .home-community-card {
+  .home-business-grid .home-business-card {
     flex: 0 0 100%;
     width: 100%;
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }
-  /* Arrows are the desktop-width affordance for the community strip —
-     redundant (and cramped) once each slide is full-width and dots do
-     the same job, so they're hidden here in favor of the dots below. */
-  .home-community-scroll-btn { display: none; }
 
   .home-carousel-dots {
     display: flex;
