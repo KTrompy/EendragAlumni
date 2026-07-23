@@ -882,6 +882,7 @@ input, textarea, select { font: inherit; }
   border: 1px solid transparent;
   padding: 9px 18px;
   font-weight: 600;
+  text-decoration: none;
   transition: transform 0.15s var(--ease), background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .btn:active { transform: translateY(1px); }
