@@ -206,7 +206,7 @@ export default function PersonProfile({ session, me, onMessage }) {
           stagger) makes the page scannable at a glance instead of reading
           as one long wall of facts. */}
       <div className="profile-section profile-overview-section">
-        <div className="profile-fact-strip">
+        <div className="profile-fact-strip profile-fact-strip-noborder">
           <Fact label="Year left / leaving Eendrag" value={p.grad_year || dash} />
           <Fact label="Degree studied" value={p.degree || dash} />
           <Fact label="Industry" value={p.industry || dash} />
