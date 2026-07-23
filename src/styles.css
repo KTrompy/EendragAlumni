@@ -8299,13 +8299,27 @@ button.delete-danger svg { flex-shrink: 0; }
   }
   .home-post-preview-list::-webkit-scrollbar,
   .home-business-grid::-webkit-scrollbar { display: none; }
-  .home-post-preview-list .home-post-preview,
   .home-business-grid .home-business-card {
     flex: 0 0 100%;
     width: 100%;
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }
+  /* Posts get a visible gap between slides — width is shaved down by the
+     gap and pushed over with margin-right instead of using the
+     container's `gap` property, so each slide + its margin still adds up
+     to exactly one clientWidth. That keeps the swipe landing exactly on
+     the next post (scroll-snap-align:start) and keeps scrollToPost's
+     `idx * clientWidth` math in Home.jsx correct — a plain container gap
+     would've thrown both off by the gap amount per slide. */
+  .home-post-preview-list .home-post-preview {
+    flex: 0 0 calc(100% - 14px);
+    width: calc(100% - 14px);
+    margin-right: 14px;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  .home-post-preview-list .home-post-preview:last-child { margin-right: 0; }
 
   .home-carousel-dots {
     display: flex;
