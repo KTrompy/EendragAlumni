@@ -14,7 +14,6 @@ import DateTimePicker from './DateTimePicker.jsx'
 import { useToast } from './Toast.jsx'
 import { eventIcebreaker } from '../icebreaker.js'
 import EventFormEnhanced from './EventFormEnhanced'
-import { buildIcs, downloadIcs, icsFilenameFor } from '../ics.js'
 import { safeUrl } from '../utils.js'
 import { renderRichTextExtended } from '../richTextExtended.jsx'
 
@@ -443,13 +442,6 @@ export default function Events({ session, profile, onMessage }) {
             </button>
           </div>
           <button
-            className="filters-toggle-btn"
-            onClick={() => downloadIcs('eendrag-hub-events', buildIcs(savedOnly ? savedEvents : upcoming, { calendarName: 'Eendrag Hub Events' }))}
-            title={savedOnly ? 'Download your saved events as a calendar file' : 'Download upcoming events as a calendar file'}
-          >
-            <CalendarPlusIcon /> Export .ics
-          </button>
-          <button
             className={savedOnly ? 'filters-toggle-btn on' : 'filters-toggle-btn'}
             onClick={() => setSavedOnly((s) => !s)}
             aria-pressed={savedOnly}
@@ -744,13 +736,6 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
           </button>
           <button className="post-action" onClick={copyLink} title="Copy a link to this event">
             <LinkIcon /> {copied ? 'Copied!' : 'Share'}
-          </button>
-          <button
-            className="post-action"
-            onClick={() => downloadIcs(icsFilenameFor(e.title), buildIcs(e))}
-            title="Download a .ics file for Google/Apple/Outlook Calendar"
-          >
-            <CalendarPlusIcon /> Add to calendar
           </button>
           {isMine && (
             <button className="post-action" onClick={() => setEditing(true)} title="Edit event">
@@ -1212,16 +1197,6 @@ function CalendarViewIcon() {
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18" />
       <path d="M8 3v4M16 3v4" />
-    </svg>
-  )
-}
-function CalendarPlusIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M3 10h18" />
-      <path d="M8 3v4M16 3v4" />
-      <path d="M12 13v6M9 16h6" />
     </svg>
   )
 }
