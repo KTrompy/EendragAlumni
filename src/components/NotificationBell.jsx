@@ -11,7 +11,7 @@ function timeAgo(iso) {
 
 // Where a notification should take you when clicked — matches the tabs
 // this app already has (see App.jsx TABS).
-const ENTITY_TAB = { post: 'feed', event: 'events', conversation: null }
+const ENTITY_TAB = { post: 'feed', event: 'events', job: 'jobs', conversation: null }
 
 // Bell + dropdown in the header. Polls once on mount, then stays live via
 // Supabase realtime (new row insert) so a badge appears without a refresh —

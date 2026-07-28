@@ -2895,6 +2895,133 @@ button.delete-danger svg { flex-shrink: 0; }
 .modal.confirm-modal { max-width: 420px; }
 .modal.confirm-modal .modal-body p { margin: 0 0 10px; line-height: 1.5; }
 
+/* ---------- Apply modal (ApplyModal.jsx) ---------- */
+.modal-apply { max-width: 520px; }
+.apply-modal-subtitle {
+  font-size: 14px;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+.apply-modal-hint {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 18px;
+  line-height: 1.45;
+}
+.apply-modal-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+.apply-modal-counter {
+  display: block;
+  text-align: right;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.apply-modal-uploads {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.apply-modal-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.apply-modal-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--paper);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.apply-modal-file-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  margin-left: 2px;
+}
+.apply-modal-file-remove:hover { color: var(--danger); }
+
+/* ---------- Job applications list (JobApplications.jsx) ---------- */
+.job-detail-applications-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.job-applications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.job-application-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+.job-application-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.job-application-header .job-poster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.job-application-person {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.job-application-person strong { font-size: 14px; }
+.job-application-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.job-application-time {
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.job-application-cover {
+  margin-bottom: 10px;
+}
+.job-application-cover p {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0;
+  white-space: pre-wrap;
+}
+.job-application-files {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .linkedin-link {
   display: inline-flex;
   align-items: center;
@@ -4940,8 +5067,8 @@ button.delete-danger svg { flex-shrink: 0; }
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px 18px 10px;
-  margin-bottom: 16px;
+  padding: 18px 18px 14px;
+  margin-bottom: 18px;
 }
 .job-form-section-title {
   font-family: var(--display);
@@ -4952,9 +5079,12 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--maroon);
   margin: 0 0 14px;
 }
+/* Radio rows inside job form sections need bottom margin so the fields
+   below them don't sit flush against the buttons. */
+.job-form-section .filter-radio-row { margin-bottom: 14px; }
 .job-form-panel { max-width: 640px; }
 @media (max-width: 640px) {
-  .job-form-section { padding: 14px 14px 6px; }
+  .job-form-section { padding: 14px 14px 8px; }
 }
 
 /* ---------- Donate ---------- */

@@ -13,7 +13,8 @@ import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
 import { matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
-import { useIsWide, isSafeHttpUrl, safeUrl } from '../utils.js'
+import ApplyModal from './ApplyModal.jsx'
+import { useIsWide, isSafeHttpUrl } from '../utils.js'
 import { geocodeCity } from '../geocode.js'
 import { INDUSTRIES } from '../constants.js'
 
@@ -79,13 +80,6 @@ function hasText(html) {
   return plainText(html).trim().length > 0
 }
 
-// Opens the mail client without ever putting the raw address in the
-// rendered HTML — a static scraper reading the page source won't find it,
-// since it's only ever assembled at the moment of a real click.
-function openMailto(address, subject) {
-  window.location.href = `mailto:${address}?subject=${encodeURIComponent(subject)}`
-}
-
 export default function Jobs({ session, profile, onMessage }) {
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -101,6 +95,8 @@ export default function Jobs({ session, profile, onMessage }) {
   const [savedOnly, setSavedOnly] = useState(false)
   const [savedJobs, setSavedJobs] = useState([])
   const [savedLoading, setSavedLoading] = useState(false)
+  const [applyJob, setApplyJob] = useState(null)
+  const [appliedIds, setAppliedIds] = useState(new Set())
   const showToast = useToast()
   const isWide = useIsWide(900)
   const navigate = useNavigate()
@@ -114,6 +110,11 @@ export default function Jobs({ session, profile, onMessage }) {
   async function loadSavedIds() {
     const { data } = await supabase.from('saved_jobs').select('job_id').eq('user_id', session.user.id)
     setSavedIds(new Set((data || []).map((r) => r.job_id)))
+  }
+
+  async function loadAppliedIds() {
+    const { data } = await supabase.from('job_applications').select('job_id').eq('applicant_id', session.user.id)
+    setAppliedIds(new Set((data || []).map((r) => r.job_id)))
   }
 
   // "Saved" is its own query against whatever's bookmarked, not a filter
@@ -220,6 +221,7 @@ export default function Jobs({ session, profile, onMessage }) {
   useEffect(() => {
     loadFirstPage()
     loadSavedIds()
+    loadAppliedIds()
     const channel = supabase
       .channel('jobs')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, handleRealtimeInsert)
@@ -496,7 +498,6 @@ export default function Jobs({ session, profile, onMessage }) {
           const isNew = Date.now() - new Date(j.created_at).getTime() < NEW_WINDOW_MS
           const reason = !isMine ? matchReason(profile, j.profiles) : null
           const closed = isJobClosed(j)
-          const applyHref = safeUrl(j.apply_url)
 
           if (editingId === j.id) {
             return (
@@ -570,17 +571,13 @@ export default function Jobs({ session, profile, onMessage }) {
                   style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {applyHref && !closed && (
-                    <a className="btn primary small" href={applyHref} target="_blank" rel="noopener noreferrer">
-                      Apply now
-                    </a>
-                  )}
-                  {j.contact_email && !closed && (
+                  {!isMine && !closed && (
                     <button
                       className="btn primary small"
-                      onClick={() => openMailto(j.contact_email, `Application: ${j.title}`)}
+                      onClick={() => appliedIds.has(j.id) ? null : setApplyJob(j)}
+                      disabled={appliedIds.has(j.id)}
                     >
-                      Apply
+                      {appliedIds.has(j.id) ? 'Applied' : 'Apply'}
                     </button>
                   )}
                   {!isMine && (
@@ -683,6 +680,18 @@ export default function Jobs({ session, profile, onMessage }) {
         </>
       )}
 
+      {applyJob && (
+        <ApplyModal
+          job={applyJob}
+          session={session}
+          profile={profile}
+          onClose={() => setApplyJob(null)}
+          onApplied={() => {
+            setAppliedIds((prev) => new Set(prev).add(applyJob.id))
+          }}
+        />
+      )}
+
     </section>
   )
 }
@@ -746,15 +755,6 @@ const JOB_DRAFT_FIELDS = [
   'title', 'company', 'location', 'employment_type', 'industry', 'description',
   'apply_method', 'apply_url', 'contact_email', 'additional_email', 'company_website', 'closing_date',
 ]
-
-// Basic email shape — matches Auth.jsx's own signup check. Only catches
-// obviously-malformed addresses; Supabase/mail providers do the real
-// validation when someone actually applies.
-function isPlausibleEmail(value) {
-  const v = (value || '').trim()
-  if (!v) return false
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
-}
 
 // Default "closing date" offered on a brand new listing — three months out,
 // same span Maties Connect defaults to. Just a starting point; posters can
@@ -958,18 +958,6 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
     if (!form.title.trim() || !form.company.trim() || !form.location.trim() || !hasText(form.description)) {
       setError('Title, company, location and description are required.'); return
     }
-    if (form.apply_method === 'email' && !isPlausibleEmail(form.contact_email)) {
-      setError('Please enter a valid email address for candidates to apply to.'); return
-    }
-    if (form.apply_method === 'email' && form.additional_email.trim() && !isPlausibleEmail(form.additional_email)) {
-      setError('The additional email address doesn\'t look right — leave it blank or fix the typo.'); return
-    }
-    if (form.apply_method === 'site' && !form.apply_url.trim()) {
-      setError('Please provide a link candidates can apply through.'); return
-    }
-    if (form.apply_method === 'site' && !isSafeHttpUrl(form.apply_url)) {
-      setError('Application link should start with http:// or https://.'); return
-    }
     if (form.company_website.trim() && !isSafeHttpUrl(form.company_website)) {
       setError('Company website should start with http:// or https://.'); return
     }
@@ -1003,9 +991,9 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
         employment_type: form.employment_type,
         industry: form.industry.trim(),
         description: trimTrailingHtml(sanitizeHtml(form.description)),
-        apply_url: form.apply_method === 'site' ? form.apply_url.trim() : '',
-        contact_email: form.apply_method === 'email' ? form.contact_email.trim() : '',
-        additional_email: form.apply_method === 'email' ? form.additional_email.trim() : '',
+        apply_url: '',
+        contact_email: '',
+        additional_email: '',
         company_website: form.company_website.trim(),
         closing_date: form.closing_date || null,
         logo_url: finalLogoUrl,
@@ -1154,42 +1142,12 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
             </div>
           </div>
 
-          {/* ── Section 4: How to apply ── */}
+          {/* ── Section 4: Closing date ── */}
           <div className="job-form-section">
-            <h4 className="job-form-section-title">How should candidates apply? *</h4>
-            <div className="filter-radio-row">
-              <button
-                type="button"
-                className={form.apply_method === 'email' ? 'on' : ''}
-                onClick={() => set('apply_method', 'email')}
-              >
-                Via email
-              </button>
-              <button
-                type="button"
-                className={form.apply_method === 'site' ? 'on' : ''}
-                onClick={() => set('apply_method', 'site')}
-              >
-                Through a link
-              </button>
-            </div>
-
-            {form.apply_method === 'email' ? (
-              <div className="field-row">
-                <label className="field"><span>Contact email *</span>
-                  <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
-                </label>
-                <label className="field"><span>CC (optional)</span>
-                  <input type="email" value={form.additional_email} onChange={(e) => set('additional_email', e.target.value)} placeholder="colleague@company.com" />
-                </label>
-              </div>
-            ) : (
-              <label className="field">
-                <span>Application link *</span>
-                <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
-              </label>
-            )}
-
+            <h4 className="job-form-section-title">Closing date</h4>
+            <p className="form-hint" style={{ marginTop: 0 }}>
+              Candidates apply directly through the platform — you'll see their applications on the listing page.
+            </p>
             <label className="field"><span>Closing date</span>
               <input type="date" value={form.closing_date} onChange={(e) => set('closing_date', e.target.value)} />
             </label>

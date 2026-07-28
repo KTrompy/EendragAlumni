@@ -13,6 +13,8 @@ import { useToast } from './Toast.jsx'
 import { matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
 import { safeUrl } from '../utils.js'
+import ApplyModal from './ApplyModal.jsx'
+import JobApplications from './JobApplications.jsx'
 import { JOB_FIELDS, POSTER_FIELDS, JobForm, JobLogo, PdfIcon } from './Jobs.jsx'
 
 // Same plain-div marker Leaflet trick BusinessDetail's mini map uses —
@@ -39,14 +41,6 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-// Opens the mail client without ever putting the raw address in the
-// rendered HTML — same trick Jobs.jsx uses on the card/list view.
-function openMailto(job) {
-  const to = job.contact_email
-  const cc = job.additional_email ? `&cc=${encodeURIComponent(job.additional_email)}` : ''
-  window.location.href = `mailto:${to}?subject=${encodeURIComponent(`Application: ${job.title}`)}${cc}`
-}
-
 // The standalone job listing page — reached from the job board's card
 // instead of the old floating JobModal popup, same "modal → real page"
 // migration Directory/Businesses already went through. Logo + title sit
@@ -62,6 +56,8 @@ export default function JobDetail({ session, profile, onMessage }) {
   const [editing, setEditing] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showApply, setShowApply] = useState(false)
+  const [hasApplied, setHasApplied] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -86,6 +82,13 @@ export default function JobDetail({ session, profile, onMessage }) {
       .eq('job_id', jobId)
       .maybeSingle()
       .then(({ data }) => { if (!cancelled) setIsSaved(!!data) })
+    supabase
+      .from('job_applications')
+      .select('id')
+      .eq('applicant_id', session.user.id)
+      .eq('job_id', jobId)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancelled) setHasApplied(!!data) })
     return () => { cancelled = true }
   }, [jobId, session.user.id])
 
@@ -152,7 +155,6 @@ export default function JobDetail({ session, profile, onMessage }) {
     ? (/^https?:\/\//i.test(job.company_website) ? job.company_website : `https://${job.company_website}`)
     : null
   const companyWebsite = safeUrl(rawCompanyWebsite)
-  const applyHref = safeUrl(job.apply_url)
   const attachmentHref = safeUrl(job.attachment_url)
 
   if (editing) {
@@ -267,14 +269,13 @@ export default function JobDetail({ session, profile, onMessage }) {
               >
                 {isSaved ? 'Saved' : 'Save'}
               </button>
-              {applyHref && (
-                <a className="btn primary small" href={applyHref} target="_blank" rel="noopener noreferrer">
-                  Apply now
-                </a>
-              )}
-              {job.contact_email && (
-                <button className="btn primary small" onClick={() => openMailto(job)}>
-                  Apply
+              {!isMine && (
+                <button
+                  className="btn primary small"
+                  onClick={() => !hasApplied && setShowApply(true)}
+                  disabled={hasApplied}
+                >
+                  {hasApplied ? 'Applied' : 'Apply'}
                 </button>
               )}
               {!isMine && (
@@ -327,6 +328,23 @@ export default function JobDetail({ session, profile, onMessage }) {
           </div>
         </aside>
       </div>
+
+      {isMine && (
+        <div className="job-detail-applications-section">
+          <h3 className="profile-card-section-title">Applications</h3>
+          <JobApplications jobId={job.id} session={session} />
+        </div>
+      )}
+
+      {showApply && (
+        <ApplyModal
+          job={job}
+          session={session}
+          profile={profile}
+          onClose={() => setShowApply(false)}
+          onApplied={() => setHasApplied(true)}
+        />
+      )}
     </section>
   )
 }

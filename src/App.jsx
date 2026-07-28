@@ -415,6 +415,7 @@ export default function App() {
     if (target === 'messages') { setMessagesOpen(true); return }
     if (entityId && entityType === 'post') { goTo(`/feed/${entityId}`); return }
     if (entityId && entityType === 'event') { goTo(`/events/${entityId}`); return }
+    if (entityId && entityType === 'job') { goTo(`/jobs/${entityId}`); return }
     const tab = TABS.find((t) => t.id === target)
     if (tab) goTo(tab.path)
   }
