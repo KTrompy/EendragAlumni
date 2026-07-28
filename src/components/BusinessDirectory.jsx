@@ -849,11 +849,13 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
           {/* ── Section 3: Description ── */}
           <div className="job-form-section">
             <h4 className="job-form-section-title">Description *</h4>
-            <BusinessDescriptionEditor
-              value={form.description}
-              onChange={(html) => set('description', html)}
-              placeholder="What you do, who you serve, why a fellow Eendragter should reach out…"
-            />
+            <div className="rte-box">
+              <BusinessDescriptionEditor
+                value={form.description}
+                onChange={(html) => set('description', html)}
+                placeholder="What you do, who you serve, why a fellow Eendragter should reach out…"
+              />
+            </div>
           </div>
 
           {/* ── Section 4: Location & contact ── */}
