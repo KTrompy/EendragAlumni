@@ -78,10 +78,6 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
       setError('Please add a short cover message.')
       return
     }
-    if (!cvFile) {
-      setError('Please upload your CV.')
-      return
-    }
     setBusy(true)
     setError(null)
     try {
@@ -147,7 +143,7 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
           </p>
 
           <p className="apply-modal-hint">
-            Add a short cover message and upload your CV in Word or PDF format before sending.
+            Add a short cover message. Optionally upload your CV or cover letter in Word or PDF format.
           </p>
 
           <label className="field">
@@ -165,7 +161,7 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
           <div className="apply-modal-uploads">
             <div className="apply-modal-upload-row">
               <button type="button" className="btn ghost small" onClick={() => cvRef.current?.click()}>
-                <UploadIcon /> {cvFile ? 'Replace CV' : 'Upload CV *'}
+                <UploadIcon /> {cvFile ? 'Replace CV' : 'Upload CV'}
               </button>
               {cvFile && (
                 <span className="apply-modal-file-chip">
