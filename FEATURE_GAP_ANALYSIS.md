@@ -29,7 +29,6 @@ You're actually **very close** to Maties Connect's feature set. You have 80%+ of
 ### Engagement Features (Partial)
 - ✅ **Notifications** - NotificationBell component
 - ✅ **Profile Customization** - Profile editor
-- ✅ **Merchandise** - Merchandise shop
 - ✅ **Donations** - Donation system
 
 ---

@@ -17,8 +17,6 @@ import Jobs from './components/Jobs.jsx'
 import JobDetail from './components/JobDetail.jsx'
 import BusinessDirectory from './components/BusinessDirectory.jsx'
 import BusinessDetail from './components/BusinessDetail.jsx'
-import Merchandise from './components/Merchandise.jsx'
-import MerchDetail from './components/MerchDetail.jsx'
 import Donate from './components/Donate.jsx'
 import Admin from './components/Admin.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
@@ -44,7 +42,6 @@ const TABS = [
   { id: 'feed', label: 'Feed', path: '/feed', icon: FeedIcon },
   { id: 'mentoring', label: 'Mentoring', path: '/mentoring', icon: MentoringIcon },
   { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
-  { id: 'merch', label: 'Merchandise', path: '/merch', icon: MerchIcon },
   { id: 'businesses', label: 'Business Directory', path: '/businesses', icon: BusinessIcon },
 ]
 
@@ -441,7 +438,7 @@ export default function App() {
   const navTabs = profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS
   const activeTabId = navTabs.find((t) => location.pathname.startsWith(t.path))?.id
   // Desktop sidebar shows five core sections up front; everything else
-  // (Mentoring/Events/Merchandise, plus Admin) collapses
+  // (Mentoring/Events, plus Admin) collapses
   // behind a "More" toggle so the rail doesn't run long. Filtering
   // navTabs (rather than listing IDs in this order) keeps whatever order
   // TABS already defines.
@@ -618,8 +615,6 @@ export default function App() {
               <Route path="/jobs/:jobId" element={<JobDetail session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/businesses" element={<BusinessDirectory session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/businesses/:businessId" element={<BusinessDetail session={session} profile={profile} onMessage={openMessage} />} />
-              <Route path="/merch" element={<Merchandise session={session} profile={profile} onMessage={openMessage} />} />
-              <Route path="/merch/:itemId" element={<MerchDetail session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/donate" element={<Donate />} />
               <Route
                 path="/admin"
@@ -862,13 +857,6 @@ function BusinessIcon() {
       <path d="M4 21h16" />
       <path d="M9.5 21v-6a2.5 2.5 0 0 1 5 0v6" />
       <path d="M8 12.5h.01M16 12.5h.01" />
-    </svg>
-  )
-}
-function MerchIcon() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 3.5L4 6.5l2 3-1.5 1.5v9.5a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-9.5L18 9.5l2-3-4-3-1.5 2h-5z" />
     </svg>
   )
 }

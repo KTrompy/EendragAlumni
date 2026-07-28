@@ -48,9 +48,9 @@ export function isNetworkError(error) {
 }
 
 // Best-effort cleanup for storage files whose owning row (a post,
-// a business listing, a merch item, …) has just been deleted.
+// a business listing, …) has just been deleted.
 // Every upload flow in this app (post-images, post-videos, avatars,
-// business-logos/covers, merch-images) writes to a
+// business-logos/covers) writes to a
 // public bucket and saves the resulting public URL on the row — but
 // nothing removed the underlying file once that row went away, so deleted
 // posts/listings/albums left their images and videos behind in storage

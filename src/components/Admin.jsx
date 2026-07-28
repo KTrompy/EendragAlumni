@@ -16,7 +16,6 @@ const SUBTABS = [
   { id: 'jobs', label: 'Jobs' },
   { id: 'events', label: 'Events' },
   { id: 'businesses', label: 'Businesses' },
-  { id: 'merch', label: 'Merchandise' },
 ]
 
 function timeAgo(iso) {
@@ -42,17 +41,11 @@ function truncate(text, n = 140) {
   return t.length > n ? t.slice(0, n).trimEnd() + '…' : t
 }
 
-function formatPrice(price) {
-  const n = Number(price)
-  return `R${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
 const COUNT_TABLES = [
   ['posts', 'posts'],
   ['jobs', 'jobs'],
   ['events', 'events'],
   ['businesses', 'businesses'],
-  ['merch', 'merchandise'],
 ]
 
 export default function Admin({ session }) {
@@ -122,7 +115,6 @@ export default function Admin({ session }) {
         <StatCard label="Jobs" value={counts.jobs} />
         <StatCard label="Events" value={counts.events} />
         <StatCard label="Businesses" value={counts.businesses} />
-        <StatCard label="Merchandise" value={counts.merch} />
       </div>
 
       <div className="admin-subtabs" role="tablist" aria-label="Admin sections">
@@ -177,7 +169,6 @@ export default function Admin({ session }) {
       {subtab === 'jobs' && <JobsModeration />}
       {subtab === 'events' && <EventsModeration />}
       {subtab === 'businesses' && <BusinessesModeration />}
-      {subtab === 'merch' && <MerchModeration />}
     </section>
   )
 }
@@ -624,65 +615,6 @@ function BusinessesModeration() {
               {b.promoted ? 'Unfeature' : 'Feature'}
             </button>
             <DeleteButton onConfirm={() => remove(b.id)} label="Delete business" message="This removes the business listing. This can't be undone." />
-          </div>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-/* ---------- Merchandise moderation ---------- */
-function MerchModeration() {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const showToast = useToast()
-
-  async function load() {
-    const { data } = await supabase
-      .from('merchandise')
-      .select('id, name, price, category, is_available, created_at, profiles!merchandise_created_by_fkey ( full_name )')
-      .order('created_at', { ascending: false })
-      .limit(200)
-    setItems(data || [])
-    setLoading(false)
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function remove(id) {
-    const { error } = await supabase.from('merchandise').delete().eq('id', id)
-    if (error) { showToast('Could not delete item.', { type: 'error' }); return }
-    setItems((prev) => prev.filter((i) => i.id !== id))
-  }
-
-  async function toggleAvailable(item) {
-    const next = !item.is_available
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_available: next } : i)))
-    const { error } = await supabase.from('merchandise').update({ is_available: next }).eq('id', item.id)
-    if (error) setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_available: !next } : i)))
-  }
-
-  if (loading) return <LoadingState message="Loading merchandise…" />
-  if (items.length === 0) return <EmptyState icon="merch" message="No merchandise listed yet." />
-
-  return (
-    <ul className="admin-list">
-      {items.map((i) => (
-        <li className="admin-row" key={i.id}>
-          <div className="admin-row-info">
-            <span className="admin-row-name">
-              {i.name}
-              {!i.is_available && <span className="admin-badge pending" style={{ marginLeft: 8 }}>Sold out</span>}
-            </span>
-            <span className="admin-row-meta">
-              {i.category} · {formatPrice(i.price)} · Added by {i.profiles?.full_name || 'an admin'} · {timeAgo(i.created_at)}
-            </span>
-          </div>
-          <div className="admin-row-actions">
-            <button className="btn ghost small" onClick={() => toggleAvailable(i)}>
-              {i.is_available ? 'Mark sold out' : 'Mark available'}
-            </button>
-            <DeleteButton onConfirm={() => remove(i.id)} label="Delete item" message="This removes the item from the store. This can't be undone." />
           </div>
         </li>
       ))}
