@@ -5083,7 +5083,7 @@ button.delete-danger svg { flex-shrink: 0; }
 /* Radio rows inside job form sections need bottom margin so the fields
    below them don't sit flush against the buttons. */
 .job-form-section .filter-radio-row { margin-bottom: 14px; }
-.job-form-panel { max-width: 640px; }
+.job-form-panel, .business-form-panel { max-width: 640px; }
 @media (max-width: 640px) {
   .job-form-section { padding: 14px 14px 8px; }
 }

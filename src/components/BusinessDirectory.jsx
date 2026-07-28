@@ -779,106 +779,121 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
 
   return (
     <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
-      <div className={isEdit ? 'create-panel inline' : `create-panel ${isClosing ? 'closing' : ''}`}>
+      <div className={isEdit ? 'create-panel inline' : `create-panel business-form-panel ${isClosing ? 'closing' : ''}`}>
         <h3>{isEdit ? 'Edit business' : 'List your business'}</h3>
         <div className="create-panel-content">
           <p className="form-hint">Takes about two minutes — fellow Eendragters love supporting their own.</p>
 
-          <div className="field-row">
-            <label className="field"><span>Business name *</span>
-              <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Eendrag Coffee Co." />
-            </label>
-            <label className="field"><span>Category *</span>
-              <div className="select-wrap">
-                <select value={form.category} onChange={(e) => set('category', e.target.value)}>
-                  {LISTING_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-            </label>
-          </div>
-
-          <label className="field"><span>Header / tagline (optional)</span>
-            <input
-              value={form.tagline}
-              onChange={(e) => set('tagline', e.target.value)}
-              placeholder="A fun and friendly beerhouse & bistro"
-              maxLength={140}
-            />
-          </label>
-
-          <label className="field"><span>Cover image (optional)</span></label>
-          <p className="form-hint" style={{ marginTop: -8 }}>A big banner image shown above your listing's name — on the card preview and the full listing page.</p>
-          <div className="job-logo-picker business-cover-picker">
-            {coverPreview ? (
-              <img className="business-cover-preview" src={coverPreview} alt="Cover preview" />
-            ) : (
-              <div className="business-cover-preview business-cover-fallback" aria-hidden="true"><ImagePlaceholderIcon /></div>
-            )}
-            <div className="job-logo-picker-actions">
-              <button type="button" className="btn ghost small" onClick={() => coverRef.current?.click()}>
-                {coverPreview ? 'Replace image' : 'Upload image'}
-              </button>
-              {coverPreview && <button type="button" className="btn ghost small" onClick={removeCover}>Remove</button>}
+          {/* ── Section 1: Business basics ── */}
+          <div className="job-form-section">
+            <h4 className="job-form-section-title">Business details</h4>
+            <div className="field-row">
+              <label className="field"><span>Business name *</span>
+                <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Eendrag Coffee Co." />
+              </label>
+              <label className="field"><span>Category *</span>
+                <div className="select-wrap">
+                  <select value={form.category} onChange={(e) => set('category', e.target.value)}>
+                    {LISTING_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              </label>
             </div>
-            <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={pickCover} />
-          </div>
-
-          <label className="field"><span>Logo (optional)</span></label>
-          <div className="job-logo-picker">
-            {logoPreview ? (
-              <img className="job-logo job-logo-preview" src={logoPreview} alt="Logo preview" />
-            ) : (
-              <div className="job-logo job-logo-fallback" aria-hidden="true">{(form.name || '?').trim().charAt(0).toUpperCase()}</div>
-            )}
-            <div className="job-logo-picker-actions">
-              <button type="button" className="btn ghost small" onClick={() => logoRef.current?.click()}>
-                {logoPreview ? 'Replace image' : 'Upload image'}
-              </button>
-              {logoPreview && <button type="button" className="btn ghost small" onClick={removeLogo}>Remove</button>}
-            </div>
-            <input ref={logoRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={pickLogo} />
-          </div>
-
-          <label className="field"><span>Description *</span></label>
-          <BusinessDescriptionEditor
-            value={form.description}
-            onChange={(html) => set('description', html)}
-            placeholder="What you do, who you serve, why a fellow Eendragter should reach out…"
-          />
-
-          <div className="field-row" style={{ marginTop: 14 }}>
-            <label className="field"><span>Location</span>
-              <CityAutocomplete
-                value={form.city}
-                country={form.country}
-                onChange={(v) => set('city', v)}
-                onSelectCoords={handleLocationCoords}
-                placeholder="Street address, or just a city"
+            <label className="field"><span>Header / tagline (optional)</span>
+              <input
+                value={form.tagline}
+                onChange={(e) => set('tagline', e.target.value)}
+                placeholder="A fun and friendly beerhouse & bistro"
+                maxLength={140}
               />
-              <span className="hint">Start typing and choose from suggestions — a full address pins your listing more precisely</span>
-            </label>
-            <label className="field"><span>Country</span>
-              <div className="select-wrap">
-                <select value={form.country} onChange={(e) => set('country', e.target.value)}>
-                  <option value="">Select…</option>
-                  {COUNTRIES.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </div>
             </label>
           </div>
 
-          <div className="field-row" style={{ marginTop: 14 }}>
-            <label className="field"><span>Website</span>
-              <input value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="https://…" />
-            </label>
-            <label className="field"><span>Contact email</span>
-              <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@business.com" />
-            </label>
+          {/* ── Section 2: Media ── */}
+          <div className="job-form-section">
+            <h4 className="job-form-section-title">Images</h4>
+            <label className="field"><span>Cover image (optional)</span></label>
+            <p className="form-hint" style={{ marginTop: -8 }}>A big banner image shown above your listing's name — on the card preview and the full listing page.</p>
+            <div className="job-logo-picker business-cover-picker">
+              {coverPreview ? (
+                <img className="business-cover-preview" src={coverPreview} alt="Cover preview" />
+              ) : (
+                <div className="business-cover-preview business-cover-fallback" aria-hidden="true"><ImagePlaceholderIcon /></div>
+              )}
+              <div className="job-logo-picker-actions">
+                <button type="button" className="btn ghost small" onClick={() => coverRef.current?.click()}>
+                  {coverPreview ? 'Replace image' : 'Upload image'}
+                </button>
+                {coverPreview && <button type="button" className="btn ghost small" onClick={removeCover}>Remove</button>}
+              </div>
+              <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={pickCover} />
+            </div>
+
+            <label className="field" style={{ marginTop: 14 }}><span>Logo (optional)</span></label>
+            <div className="job-logo-picker">
+              {logoPreview ? (
+                <img className="job-logo job-logo-preview" src={logoPreview} alt="Logo preview" />
+              ) : (
+                <div className="job-logo job-logo-fallback" aria-hidden="true">{(form.name || '?').trim().charAt(0).toUpperCase()}</div>
+              )}
+              <div className="job-logo-picker-actions">
+                <button type="button" className="btn ghost small" onClick={() => logoRef.current?.click()}>
+                  {logoPreview ? 'Replace image' : 'Upload image'}
+                </button>
+                {logoPreview && <button type="button" className="btn ghost small" onClick={removeLogo}>Remove</button>}
+              </div>
+              <input ref={logoRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={pickLogo} />
+            </div>
           </div>
-          <label className="field"><span>Phone</span>
-            <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+27 …" />
-          </label>
-          <p className="form-hint">At least one of website, email or phone is required so people can reach you.</p>
+
+          {/* ── Section 3: Description ── */}
+          <div className="job-form-section">
+            <h4 className="job-form-section-title">Description *</h4>
+            <BusinessDescriptionEditor
+              value={form.description}
+              onChange={(html) => set('description', html)}
+              placeholder="What you do, who you serve, why a fellow Eendragter should reach out…"
+            />
+          </div>
+
+          {/* ── Section 4: Location & contact ── */}
+          <div className="job-form-section">
+            <h4 className="job-form-section-title">Location &amp; contact</h4>
+            <div className="field-row">
+              <label className="field"><span>Location</span>
+                <CityAutocomplete
+                  value={form.city}
+                  country={form.country}
+                  onChange={(v) => set('city', v)}
+                  onSelectCoords={handleLocationCoords}
+                  placeholder="Street address, or just a city"
+                />
+                <span className="hint">Start typing and choose from suggestions — a full address pins your listing more precisely</span>
+              </label>
+              <label className="field"><span>Country</span>
+                <div className="select-wrap">
+                  <select value={form.country} onChange={(e) => set('country', e.target.value)}>
+                    <option value="">Select…</option>
+                    {COUNTRIES.map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              </label>
+            </div>
+
+            <div className="field-row" style={{ marginTop: 14 }}>
+              <label className="field"><span>Website</span>
+                <input value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="https://…" />
+              </label>
+              <label className="field"><span>Contact email</span>
+                <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@business.com" />
+              </label>
+            </div>
+            <label className="field"><span>Phone</span>
+              <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+27 …" />
+            </label>
+            <p className="form-hint" style={{ marginBottom: 0 }}>At least one of website, email or phone is required so people can reach you.</p>
+          </div>
+
           {error && <p className="form-error">{error}</p>}
         </div>
         <div className="btn-row">
