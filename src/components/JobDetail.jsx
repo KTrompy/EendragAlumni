@@ -274,7 +274,7 @@ export default function JobDetail({ session, profile, onMessage }) {
               )}
               {job.contact_email && (
                 <button className="btn primary small" onClick={() => openMailto(job)}>
-                  Apply via email
+                  Apply
                 </button>
               )}
               {!isMine && (

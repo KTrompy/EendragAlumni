@@ -118,7 +118,7 @@ export default function JobModal({
           )}
           {j.contact_email && (
             <button className="btn primary small" onClick={onApplyEmail}>
-              Apply via email
+              Apply
             </button>
           )}
           {!isMine && (

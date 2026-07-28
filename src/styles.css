@@ -2811,6 +2811,64 @@ button.delete-danger svg { flex-shrink: 0; }
   border-top: 1px solid var(--line);
   padding-top: 16px;
 }
+/* ---------- CV upload / download ---------- */
+.cv-upload-area { display: flex; flex-direction: column; gap: 8px; }
+.cv-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--maroon);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.cv-upload-btn:hover { border-color: var(--orange); background: var(--orange-soft); }
+.cv-file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cv-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--maroon);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.cv-file-link:hover { border-color: var(--orange); }
+.cv-file-actions { display: flex; gap: 6px; }
+.cv-download-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--maroon);
+  font-weight: 600;
+  font-size: 14.5px;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.cv-download-link:hover { border-color: var(--orange); background: var(--orange-soft); }
+
 .modal-chips {
   display: flex;
   flex-wrap: wrap;
@@ -4773,6 +4831,9 @@ button.delete-danger svg { flex-shrink: 0; }
   padding-top: max(20px, env(safe-area-inset-top));
   padding-bottom: max(20px, env(safe-area-inset-bottom));
   animation: fade-in 0.15s ease;
+  overscroll-behavior: contain;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .create-panel-backdrop.closing {
@@ -4870,6 +4931,30 @@ button.delete-danger svg { flex-shrink: 0; }
   flex: 1;
   min-height: 0;
   padding: 20px;
+}
+
+/* Grouped sections inside the job posting form — each gets its own card-like
+   background and border so the form reads as distinct steps rather than one
+   continuous wall of fields. */
+.job-form-section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 18px 10px;
+  margin-bottom: 16px;
+}
+.job-form-section-title {
+  font-family: var(--display);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--maroon);
+  margin: 0 0 14px;
+}
+.job-form-panel { max-width: 640px; }
+@media (max-width: 640px) {
+  .job-form-section { padding: 14px 14px 6px; }
 }
 
 /* ---------- Donate ---------- */

@@ -15,6 +15,9 @@ import DeleteButton from './DeleteButton.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import { normalizeExpertise, formatExperienceRange, formatExperienceDuration, isValidGradYear, isSafeHttpUrl } from '../utils.js'
 
+const MAX_CV_SIZE = 10 * 1024 * 1024 // 10 MB
+const CV_ACCEPT = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
   industry: '', occupation: '',
@@ -77,7 +80,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   // _key rather than array index, so it doesn't get scrambled when entries
   // are added, removed or reordered.
   const [expandedExperience, setExpandedExperience] = useState(() => new Set())
+  const [cvUploading, setCvUploading] = useState(false)
   const fileRef = useRef(null)
+  const cvRef = useRef(null)
   const aboutSectionRef = useRef(null)
 
   useEffect(() => {
@@ -334,6 +339,47 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     } catch {
       setError('Could not load current photo for editing.')
     }
+  }
+
+  async function pickCv(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > MAX_CV_SIZE) { setError('CV must be under 10 MB.'); return }
+    setCvUploading(true); setError(null)
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `${session.user.id}/cv-${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('cvs')
+      .upload(path, file, { upsert: false, contentType: file.type })
+    if (upErr) { setError(upErr.message); setCvUploading(false); return }
+    const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(path)
+    // Remove old CV file if one exists
+    const prevPath = profile?.cv_url?.match(/\/cvs\/([^?]+)/)?.[1]
+    if (prevPath) supabase.storage.from('cvs').remove([prevPath]).catch(() => {})
+    const { data, error: dbErr } = await supabase
+      .from('profiles')
+      .update({ cv_url: urlData.publicUrl, cv_filename: file.name })
+      .eq('id', session.user.id)
+      .select()
+      .single()
+    if (dbErr) setError(dbErr.message)
+    else onSaved(data)
+    setCvUploading(false)
+  }
+
+  async function removeCv() {
+    setError(null)
+    const prevPath = profile?.cv_url?.match(/\/cvs\/([^?]+)/)?.[1]
+    if (prevPath) await supabase.storage.from('cvs').remove([prevPath])
+    const { data, error: dbErr } = await supabase
+      .from('profiles')
+      .update({ cv_url: null, cv_filename: null })
+      .eq('id', session.user.id)
+      .select()
+      .single()
+    if (dbErr) setError(dbErr.message)
+    else onSaved(data)
   }
 
   // Returns true/false so callers (including App's "leave without saving?"
@@ -774,6 +820,41 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </button>
       </div>
 
+      {/* CV Section */}
+      <div className="profile-section">
+        <h3 className="profile-section-title"><CvIcon /> CV / Resume</h3>
+        <p className="experience-empty" style={{ marginBottom: 12 }}>
+          Upload your CV so other Eendragters and potential employers can view it.
+        </p>
+        <div className="cv-upload-area">
+          {profile?.cv_url ? (
+            <div className="cv-file-row">
+              <a className="cv-file-link" href={profile.cv_url} target="_blank" rel="noopener noreferrer">
+                <CvFileIcon /> {profile.cv_filename || 'CV'}
+              </a>
+              <div className="cv-file-actions">
+                <button type="button" className="btn ghost small" onClick={() => cvRef.current?.click()} disabled={cvUploading}>
+                  {cvUploading ? 'Uploading…' : 'Replace'}
+                </button>
+                <button type="button" className="btn ghost small" onClick={removeCv}>Remove</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="cv-upload-btn" onClick={() => cvRef.current?.click()} disabled={cvUploading}>
+              {cvUploading ? 'Uploading…' : '+ Upload CV'}
+            </button>
+          )}
+          <input
+            ref={cvRef}
+            type="file"
+            accept={CV_ACCEPT}
+            style={{ display: 'none' }}
+            onChange={pickCv}
+          />
+          <span className="hint">PDF or Word document · Max 10 MB</span>
+        </div>
+      </div>
+
       {/* Location Section */}
       <div className="profile-section profile-section-location">
         <h3 className="profile-section-title">Location</h3>
@@ -1029,6 +1110,25 @@ function PlusIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
+function CvIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  )
+}
+
+function CvFileIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
     </svg>
   )
 }

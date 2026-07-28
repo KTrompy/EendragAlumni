@@ -256,6 +256,25 @@ export default function PersonProfile({ session, me, onMessage }) {
         </div>
       )}
 
+      {p.cv_url && (
+        <div className="profile-section">
+          <h3 className="profile-card-section-title">CV / Resume</h3>
+          <a className="cv-download-link" href={p.cv_url} target="_blank" rel="noopener noreferrer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
+              <path d="M16 13H8M16 17H8M10 9H8" />
+            </svg>
+            {p.cv_filename || 'Download CV'}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: 'auto', opacity: 0.5 }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </a>
+        </div>
+      )}
+
       {hasMentoringInfo && (
         <div className="profile-section">
           <h3 className="profile-card-section-title">Mentoring</h3>

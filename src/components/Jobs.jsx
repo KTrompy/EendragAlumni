@@ -580,7 +580,7 @@ export default function Jobs({ session, profile, onMessage }) {
                       className="btn primary small"
                       onClick={() => openMailto(j.contact_email, `Application: ${j.title}`)}
                     >
-                      Apply via email
+                      Apply
                     </button>
                   )}
                   {!isMine && (
@@ -817,12 +817,32 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
   // Lock body scroll while the "Post a role" panel floats over its
   // backdrop — without this, the job list behind it keeps scrolling along
   // with the page. Skipped for inline edits, which aren't a floating
-  // overlay in the first place.
+  // overlay in the first place. Setting overflow on both <html> and <body>
+  // and using position:fixed is needed for mobile Safari, which otherwise
+  // lets the background scroll through touch events.
   useEffect(() => {
     if (isEdit) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prevOverflow }
+    const scrollY = window.scrollY
+    const html = document.documentElement
+    const body = document.body
+    const prevHtmlOverflow = html.style.overflow
+    const prevBodyOverflow = body.style.overflow
+    const prevBodyPosition = body.style.position
+    const prevBodyTop = body.style.top
+    const prevBodyWidth = body.style.width
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.width = '100%'
+    return () => {
+      html.style.overflow = prevHtmlOverflow
+      body.style.overflow = prevBodyOverflow
+      body.style.position = prevBodyPosition
+      body.style.top = prevBodyTop
+      body.style.width = prevBodyWidth
+      window.scrollTo(0, scrollY)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1016,67 +1036,37 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
 
   return (
     <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
-      <div className={isEdit ? 'create-panel inline' : `create-panel ${isClosing ? 'closing' : ''}`}>
+      <div className={isEdit ? 'create-panel inline' : `create-panel job-form-panel ${isClosing ? 'closing' : ''}`}>
         <h3>{isEdit ? 'Edit role' : 'Post a role'}</h3>
         <div className="create-panel-content">
           <p className="form-hint">
             Takes about two minutes — the more specific the listing, the more likely a fellow Eendragter applies.
           </p>
-          <div className="field-row">
-            <label className="field"><span>Title *</span>
-              <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Junior software engineer" />
-            </label>
-            <label className="field"><span>Company *</span>
-              <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Naspers" />
-            </label>
-          </div>
 
-          <label className="field"><span>Company / role logo (optional)</span></label>
-          <div className="job-logo-picker">
-            {logoPreview ? (
-              <img className="job-logo job-logo-preview" src={logoPreview} alt="Logo preview" />
-            ) : (
-              <div className="job-logo job-logo-fallback" aria-hidden="true">
-                {(form.company || '?').trim().charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="job-logo-picker-actions">
-              <button type="button" className="btn ghost small" onClick={() => logoRef.current?.click()}>
-                {logoPreview ? 'Replace image' : 'Upload image'}
-              </button>
-              {logoPreview && (
-                <button type="button" className="btn ghost small" onClick={removeLogo}>Remove</button>
-              )}
+          {/* ── Section 1: Role basics ── */}
+          <div className="job-form-section">
+            <h4 className="job-form-section-title">Role details</h4>
+            <label className="field"><span>Job title *</span>
+              <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Junior Software Engineer" />
+            </label>
+            <div className="field-row">
+              <label className="field"><span>Location *</span>
+                <CityAutocomplete
+                  value={form.location}
+                  onChange={(v) => set('location', v)}
+                  onSelectCoords={handleLocationCoords}
+                  placeholder="e.g. Cape Town / Remote"
+                  strict={false}
+                />
+              </label>
+              <label className="field"><span>Employment type</span>
+                <div className="select-wrap">
+                  <select value={form.employment_type} onChange={(e) => set('employment_type', e.target.value)}>
+                    {TYPES.map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+              </label>
             </div>
-            <input
-              ref={logoRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              style={{ display: 'none' }}
-              onChange={pickLogo}
-            />
-          </div>
-
-          <div className="field-row">
-            <label className="field"><span>Location *</span>
-              <CityAutocomplete
-                value={form.location}
-                onChange={(v) => set('location', v)}
-                onSelectCoords={handleLocationCoords}
-                placeholder="Cape Town / Remote"
-                strict={false}
-              />
-            </label>
-            <label className="field"><span>Type</span>
-              <div className="select-wrap">
-                <select value={form.employment_type} onChange={(e) => set('employment_type', e.target.value)}>
-                  {TYPES.map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-            </label>
-          </div>
-
-          <div className="field-row">
             <label className="field"><span>Industry</span>
               <ListAutocomplete
                 value={form.industry}
@@ -1086,92 +1076,125 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
                 clearable
               />
             </label>
-            <label className="field"><span>Company website</span>
-              <input
-                type="url"
-                value={form.company_website}
-                onChange={(e) => set('company_website', e.target.value)}
-                placeholder="https://company.com"
-              />
-            </label>
-          </div>
-          <p className="form-hint" style={{ marginTop: -6 }}>
-            The company's general site — not where candidates apply.
-          </p>
-
-          <label className="field"><span>Description *</span></label>
-          <div className="rte-box">
-            <RichTextEditor
-              value={form.description}
-              onChange={(v) => set('description', v)}
-              placeholder="Role, requirements, why you'd want a fellow Eendragter…"
-            />
           </div>
 
-          <label className="field"><span>Attachment — job description PDF (optional)</span></label>
-          <div className="job-attachment-picker">
-            {attachmentPreviewName ? (
-              <span className="job-attachment-chip"><PdfIcon /> {attachmentPreviewName}</span>
-            ) : (
-              <span className="job-attachment-chip empty">No file attached</span>
-            )}
-            <div className="job-logo-picker-actions">
-              <button type="button" className="btn ghost small" onClick={() => attachmentRef.current?.click()}>
-                {attachmentPreviewName ? 'Replace PDF' : 'Upload PDF'}
-              </button>
-              {attachmentPreviewName && (
-                <button type="button" className="btn ghost small" onClick={removeAttachment}>Remove</button>
+          {/* ── Section 2: Company info ── */}
+          <div className="job-form-section">
+            <h4 className="job-form-section-title">Company</h4>
+            <div className="field-row">
+              <label className="field"><span>Company name *</span>
+                <input value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="e.g. Naspers" />
+              </label>
+              <label className="field"><span>Website</span>
+                <input
+                  type="url"
+                  value={form.company_website}
+                  onChange={(e) => set('company_website', e.target.value)}
+                  placeholder="https://company.com"
+                />
+              </label>
+            </div>
+            <div className="job-logo-picker">
+              {logoPreview ? (
+                <img className="job-logo job-logo-preview" src={logoPreview} alt="Logo preview" />
+              ) : (
+                <div className="job-logo job-logo-fallback" aria-hidden="true">
+                  {(form.company || '?').trim().charAt(0).toUpperCase()}
+                </div>
               )}
+              <div className="job-logo-picker-actions">
+                <button type="button" className="btn ghost small" onClick={() => logoRef.current?.click()}>
+                  {logoPreview ? 'Replace logo' : 'Upload logo'}
+                </button>
+                {logoPreview && (
+                  <button type="button" className="btn ghost small" onClick={removeLogo}>Remove</button>
+                )}
+              </div>
+              <input
+                ref={logoRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                onChange={pickLogo}
+              />
             </div>
-            <input
-              ref={attachmentRef}
-              type="file"
-              accept="application/pdf"
-              style={{ display: 'none' }}
-              onChange={pickAttachment}
-            />
           </div>
 
-          <label className="field" style={{ marginTop: 14 }}><span>Please select how you would like candidates to apply *</span></label>
-          <div className="filter-radio-row">
-            <button
-              type="button"
-              className={form.apply_method === 'email' ? 'on' : ''}
-              onClick={() => set('apply_method', 'email')}
-            >
-              Email
-            </button>
-            <button
-              type="button"
-              className={form.apply_method === 'site' ? 'on' : ''}
-              onClick={() => set('apply_method', 'site')}
-            >
-              Through your site
-            </button>
+          {/* ── Section 3: Description ── */}
+          <div className="job-form-section">
+            <h4 className="job-form-section-title">Description *</h4>
+            <div className="rte-box">
+              <RichTextEditor
+                value={form.description}
+                onChange={(v) => set('description', v)}
+                placeholder="Role, requirements, why you'd want a fellow Eendragter…"
+              />
+            </div>
+            <div className="job-attachment-picker">
+              {attachmentPreviewName ? (
+                <span className="job-attachment-chip"><PdfIcon /> {attachmentPreviewName}</span>
+              ) : (
+                <span className="job-attachment-chip empty">No file attached</span>
+              )}
+              <div className="job-logo-picker-actions">
+                <button type="button" className="btn ghost small" onClick={() => attachmentRef.current?.click()}>
+                  {attachmentPreviewName ? 'Replace PDF' : 'Attach PDF'}
+                </button>
+                {attachmentPreviewName && (
+                  <button type="button" className="btn ghost small" onClick={removeAttachment}>Remove</button>
+                )}
+              </div>
+              <input
+                ref={attachmentRef}
+                type="file"
+                accept="application/pdf"
+                style={{ display: 'none' }}
+                onChange={pickAttachment}
+              />
+            </div>
           </div>
 
-          {form.apply_method === 'email' ? (
-            <div className="field-row" style={{ marginTop: 10 }}>
-              <label className="field"><span>Email *</span>
-                <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
-              </label>
-              <label className="field"><span>Additional email</span>
-                <input type="email" value={form.additional_email} onChange={(e) => set('additional_email', e.target.value)} placeholder="optional second recipient" />
-              </label>
+          {/* ── Section 4: How to apply ── */}
+          <div className="job-form-section">
+            <h4 className="job-form-section-title">How should candidates apply? *</h4>
+            <div className="filter-radio-row">
+              <button
+                type="button"
+                className={form.apply_method === 'email' ? 'on' : ''}
+                onClick={() => set('apply_method', 'email')}
+              >
+                Via email
+              </button>
+              <button
+                type="button"
+                className={form.apply_method === 'site' ? 'on' : ''}
+                onClick={() => set('apply_method', 'site')}
+              >
+                Through a link
+              </button>
             </div>
-          ) : (
-            <div className="field-row" style={{ marginTop: 10 }}>
-              <label className="field"><span>Application link *</span>
+
+            {form.apply_method === 'email' ? (
+              <div className="field-row">
+                <label className="field"><span>Contact email *</span>
+                  <input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} placeholder="you@company.com" />
+                </label>
+                <label className="field"><span>CC (optional)</span>
+                  <input type="email" value={form.additional_email} onChange={(e) => set('additional_email', e.target.value)} placeholder="colleague@company.com" />
+                </label>
+              </div>
+            ) : (
+              <label className="field">
+                <span>Application link *</span>
                 <input type="url" value={form.apply_url} onChange={(e) => set('apply_url', e.target.value)} placeholder="https://…" />
               </label>
-            </div>
-          )}
+            )}
 
-          <div className="field-row" style={{ marginTop: 14 }}>
-            <label className="field"><span>Closing date for applications</span>
+            <label className="field"><span>Closing date</span>
               <input type="date" value={form.closing_date} onChange={(e) => set('closing_date', e.target.value)} />
             </label>
           </div>
+
           {error && <p className="form-error">{error}</p>}
         </div>
         <div className="btn-row">
