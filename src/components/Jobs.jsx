@@ -414,7 +414,7 @@ export default function Jobs({ session, profile, onMessage }) {
     <section className="panel">
       <div className="panel-header-row">
         <div>
-          <h2 className="panel-title">Career &amp; Volunteer Opportunities</h2>
+          <h2 className="panel-title">Career Opportunities</h2>
           <p className="panel-sub">Roles and internships posted by Eendragters, for Eendragters.</p>
         </div>
       </div>
