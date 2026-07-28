@@ -6,8 +6,6 @@ import ResetPassword from './components/ResetPassword.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Home from './components/Home.jsx'
 import Feed from './components/Feed.jsx'
-import Groups from './components/Groups.jsx'
-import GroupDetail from './components/GroupDetail.jsx'
 import Mentoring from './components/Mentoring.jsx'
 import People from './components/People.jsx'
 import { Avatar } from './components/Directory.jsx'
@@ -46,7 +44,6 @@ const TABS = [
   { id: 'feed', label: 'Feed', path: '/feed', icon: FeedIcon },
   { id: 'mentoring', label: 'Mentoring', path: '/mentoring', icon: MentoringIcon },
   { id: 'events', label: 'Events', path: '/events', icon: EventsIcon },
-  { id: 'groups', label: 'Groups', path: '/groups', icon: GroupsIcon },
   { id: 'merch', label: 'Merchandise', path: '/merch', icon: MerchIcon },
   { id: 'businesses', label: 'Business Directory', path: '/businesses', icon: BusinessIcon },
 ]
@@ -443,7 +440,7 @@ export default function App() {
   const navTabs = profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS
   const activeTabId = navTabs.find((t) => location.pathname.startsWith(t.path))?.id
   // Desktop sidebar shows five core sections up front; everything else
-  // (Mentoring/Events/Groups/Merchandise, plus Admin) collapses
+  // (Mentoring/Events/Merchandise, plus Admin) collapses
   // behind a "More" toggle so the rail doesn't run long. Filtering
   // navTabs (rather than listing IDs in this order) keeps whatever order
   // TABS already defines.
@@ -613,8 +610,6 @@ export default function App() {
               <Route path="/directory" element={<People session={session} onMessage={openMessage} onGoToProfile={() => goTo('/profile')} refetchTrigger={directoryRefetchTrigger} />} />
               <Route path="/feed" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/feed/:postId" element={<Feed session={session} profile={profile} onMessage={openMessage} />} />
-              <Route path="/groups" element={<Groups session={session} />} />
-              <Route path="/groups/:groupId" element={<GroupDetail session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/mentoring" element={<Mentoring session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/events" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/events/:eventId" element={<Events session={session} profile={profile} onMessage={openMessage} />} />
@@ -689,7 +684,7 @@ export default function App() {
       </nav>
 
       {/* Mobile-only "everything else" menu — the bottom tab bar only has
-          room for five core sections, so Groups/Mentoring/Business
+          room for five core sections, so Mentoring/Business
           Directory (and Admin, when relevant) live behind the header
           hamburger instead. Same navTabs/activeTabId/goTo the desktop
           sidebar uses, just in a slide-in drawer (see .mobile-nav-panel). */}
@@ -856,16 +851,6 @@ function MentoringIcon() {
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M8 10a5 5 0 1 1 3.5 4.77L8 17v-2.5H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h2" />
       <path d="M14 14a5 5 0 0 0 4.9-4H21a2 2 0 0 1 2 2v2.5a2 2 0 0 1-2 2h-1v2.5l-3-2.34" />
-    </svg>
-  )
-}
-function GroupsIcon() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="8" r="3" />
-      <path d="M2.5 20c0-3.5 2.9-6 6.5-6s6.5 2.5 6.5 6" />
-      <circle cx="17" cy="8.5" r="2.4" />
-      <path d="M15.7 14c2.6.4 4.3 2.3 4.3 6" />
     </svg>
   )
 }

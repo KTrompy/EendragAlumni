@@ -54,9 +54,9 @@ export default function Mentoring({ session, profile, onMessage }) {
       <h2 className="panel-title">Mentoring</h2>
       <p className="panel-sub">Flash mentoring — anyone open to mentoring shows up here, ready to connect.</p>
 
-      <div className="group-tabs mentoring-tabs" role="tablist">
+      <div className="section-tabs mentoring-tabs" role="tablist">
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'group-tab on' : 'group-tab'} onClick={() => setTab(t.id)}>
+          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'section-tab on' : 'section-tab'} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
         ))}

@@ -192,7 +192,7 @@ function AccountTab({ session, profile, onSaved }) {
 
       <div className="settings-section settings-danger">
         <h3>Delete account</h3>
-        <p className="hint">Permanently deletes your account, profile, posts, photos, messages and group/mentoring memberships. This can't be undone.</p>
+        <p className="hint">Permanently deletes your account, profile, posts, photos, messages and mentoring data. This can't be undone.</p>
         <button className="btn danger" onClick={() => setConfirmingDelete(true)}>Delete account</button>
       </div>
 

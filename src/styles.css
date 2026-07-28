@@ -7148,164 +7148,26 @@ button.delete-danger svg { flex-shrink: 0; }
   border-width: 3px;
 }
 
-/* ===========================================================
-   Groups (list page + individual group page)
-   =========================================================== */
-.groups-section { margin: 22px 0; }
-.groups-section:first-of-type { margin-top: 8px; }
 
-/* ---------- "Your Groups" cards ---------- */
-.group-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
-}
-.group-card {
+/* ---------- Shared section tabs (used by Mentoring, etc.) ---------- */
+.section-tabs {
   display: flex;
-  flex-direction: column;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-  text-align: left;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
-}
-.group-card:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); }
-.group-card-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  background: var(--bg-strong, #f0ede8);
-  color: var(--ink-soft);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-/* Two-layer cover: a blurred copy of the image fills the box behind, and the
-   sharp image sits on top with object-fit: contain so nothing is ever cropped
-   regardless of aspect ratio (portrait, square or landscape all look intentional
-   instead of leaving a neutral bar). */
-.group-card-cover-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: blur(22px) brightness(0.9);
-  transform: scale(1.15);
-  z-index: 0;
-}
-.group-card-cover-fg {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  z-index: 1;
-}
-.group-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; }
-.group-card-name { font-weight: 700; font-size: 14px; color: var(--ink); }
-.group-card-meta { font-size: 12px; color: var(--ink-soft); }
-
-/* ---------- "More Groups" rows ---------- */
-.group-row-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.group-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 16px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
-}
-.group-row:hover { box-shadow: var(--shadow-card); border-color: var(--orange); }
-.group-row-cover {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-strong, #f0ede8);
-  color: var(--ink-soft);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.group-row-cover img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.group-row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.group-row-name { font-weight: 700; font-size: 14.5px; color: var(--ink); }
-.group-row-meta { font-size: 12px; color: var(--ink-soft); }
-.group-row-desc {
-  margin: 2px 0 0;
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ---------- Individual group page: hero header ---------- */
-.group-detail-page .profile-back-btn { margin-bottom: 12px; }
-.group-hero {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
   margin-bottom: 18px;
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  padding: 16px 20px;
 }
-.group-hero-cover {
-  width: 140px;
-  min-width: 140px;
-  height: auto;
-  max-height: 200px;
-  background: var(--bg-strong, #f0ede8);
+.section-tab {
+  background: none;
+  border: none;
+  padding: 10px 4px;
+  margin-right: 22px;
   color: var(--ink-soft);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 14px;
+  border-bottom: 2px solid transparent;
 }
-.group-hero-cover img { width: 100%; height: auto; object-fit: contain; }
-.group-hero-body {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 0;
-  flex: 1;
-  min-width: 0;
-}
-.group-hero-name {
-  font-family: var(--display);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  font-size: 22px;
-  color: var(--maroon);
-  margin: 0 0 6px;
-}
-.group-hero-desc { margin: 0 0 6px; color: var(--ink-soft); max-width: 56ch; }
-.group-hero-meta { font-size: 13px; color: var(--ink-soft); font-weight: 600; }
-.group-hero-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.group-hero-settings { color: var(--ink-soft); border: 1px solid var(--line); }
-.group-hero-settings:hover { background: var(--orange-soft); color: var(--orange-dark); }
-.group-hero-delete { color: var(--ink-soft); border: 1px solid var(--line); }
-.group-hero-delete:hover { background: rgba(163, 51, 39, 0.1); color: var(--danger); border-color: var(--danger); }
-
-/* Group cover upload (in edit modal) */
-.group-cover-upload { display: flex; flex-direction: column; gap: 12px; }
-.group-cover-preview { width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-sm); overflow: hidden; background: var(--paper); display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); }
-.group-cover-preview img { width: 100%; height: 100%; object-fit: cover; }
-.group-cover-preview svg { color: var(--ink-soft); width: 48px; height: 48px; }
+.section-tab:hover { color: var(--ink); }
+.section-tab.on { color: var(--orange-dark); border-bottom-color: var(--orange); }
 
 /* Image positioning editor modal */
 .image-editor-modal { max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; }
@@ -7336,30 +7198,6 @@ button.delete-danger svg { flex-shrink: 0; }
 
 .frame-label { font-size: 11px; color: var(--ink-soft); text-align: center; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* ---------- Tabs (Feed / Members) ---------- */
-.group-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 18px;
-}
-.group-tab {
-  background: none;
-  border: none;
-  padding: 10px 4px;
-  margin-right: 22px;
-  color: var(--ink-soft);
-  font-weight: 700;
-  font-size: 14px;
-  border-bottom: 2px solid transparent;
-}
-.group-tab:hover { color: var(--ink); }
-.group-tab.on { color: var(--orange-dark); border-bottom-color: var(--orange); }
-
-@media (max-width: 640px) {
-  .group-card-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-  .group-hero-body { flex-direction: column; }
-}
 
 /* ---------- Business Directory: card cover + tagline + excerpt ---------- */
 /* The list card's clickable surface stacks a full-width cover photo above
@@ -7917,23 +7755,6 @@ button.delete-danger svg { flex-shrink: 0; }
   .home-post-preview-thumb { width: 56px; height: 56px; }
 }
 
-.home-group-card-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-.home-group-card {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  background: var(--card);
-  border: 1px solid var(--line);
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-.home-group-card:hover { border-color: var(--orange); box-shadow: 0 2px 6px rgba(232, 97, 28, 0.08); }
-.home-group-card-cover { width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-strong, #f0ede8); }
-.home-group-card-cover img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.home-group-card-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.home-group-card-body strong { font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.3; }
-.home-group-card-body span { font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4; }
 
 .home-event-widget { display: flex; align-items: center; gap: 14px; cursor: pointer; padding: 16px 18px; }
 .home-event-widget:hover { border-color: var(--orange); }
@@ -8261,8 +8082,8 @@ button.delete-danger svg { flex-shrink: 0; }
   .home-tabsection { scroll-margin-top: 112px; }
 
   /* Mobile-only section order: posts, community, businesses, events,
-     groups, donate — deliberately different from the desktop two-column
-     order (.feed-main: posts/groups/businesses, .feed-sidebar:
+     donate — deliberately different from the desktop two-column
+     order (.feed-main: posts/businesses, .feed-sidebar:
      community/events/donate). display:contents on the two column
      wrappers drops their boxes so their children become direct flex
      items of .home-feed-layout, letting `order` reorder across what used
@@ -8285,8 +8106,7 @@ button.delete-danger svg { flex-shrink: 0; }
   .home-feed-layout #home-section-community { order: 2; }
   .home-feed-layout #home-section-businesses { order: 3; }
   .home-feed-layout #home-section-events { order: 4; }
-  .home-feed-layout #home-section-groups { order: 5; }
-  .home-feed-layout .home-donate-card { order: 6; }
+  .home-feed-layout .home-donate-card { order: 5; }
 
   /* Shared "one card at a time, swipe, dots below" carousel treatment for
      Recent feed posts / Businesses near me on mobile. Each strip is a

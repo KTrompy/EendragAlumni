@@ -17,7 +17,6 @@ const SUBTABS = [
   { id: 'events', label: 'Events' },
   { id: 'businesses', label: 'Businesses' },
   { id: 'merch', label: 'Merchandise' },
-  { id: 'groups', label: 'Groups' },
 ]
 
 function timeAgo(iso) {
@@ -54,7 +53,6 @@ const COUNT_TABLES = [
   ['events', 'events'],
   ['businesses', 'businesses'],
   ['merch', 'merchandise'],
-  ['groups', 'groups'],
 ]
 
 export default function Admin({ session }) {
@@ -125,7 +123,6 @@ export default function Admin({ session }) {
         <StatCard label="Events" value={counts.events} />
         <StatCard label="Businesses" value={counts.businesses} />
         <StatCard label="Merchandise" value={counts.merch} />
-        <StatCard label="Groups" value={counts.groups} />
       </div>
 
       <div className="admin-subtabs" role="tablist" aria-label="Admin sections">
@@ -181,7 +178,6 @@ export default function Admin({ session }) {
       {subtab === 'events' && <EventsModeration />}
       {subtab === 'businesses' && <BusinessesModeration />}
       {subtab === 'merch' && <MerchModeration />}
-      {subtab === 'groups' && <GroupsModeration />}
     </section>
   )
 }
@@ -230,13 +226,7 @@ function PendingList({ loading, pending, onApprove }) {
 }
 
 /* ---------- Reports (member-filed flags on posts/jobs/businesses/profiles) ---------- */
-const REPORT_ENTITY_LABELS = { post: 'Feed post', job: 'Job listing', business: 'Business listing', profile: 'Member profile', group_post: 'Group post' }
-// Group posts don't have their own standalone route (they only exist
-// nested inside a group's detail page, and the report doesn't carry which
-// group), so there's no "View" link for that one entity type — the
-// reason/detail text is still enough for an admin to know what to look
-// for. Every other type maps straight to the same route the rest of the
-// app already uses for it.
+const REPORT_ENTITY_LABELS = { post: 'Feed post', job: 'Job listing', business: 'Business listing', profile: 'Member profile' }
 const REPORT_ENTITY_PATH = {
   post: (id) => `/feed/${id}`,
   job: (id) => `/jobs/${id}`,
@@ -700,51 +690,4 @@ function MerchModeration() {
   )
 }
 
-/* ---------- Groups moderation ---------- */
-function GroupsModeration() {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const showToast = useToast()
-
-  async function load() {
-    const { data } = await supabase
-      .from('groups')
-      .select('id, name, description, created_at, profiles!groups_created_by_fkey ( full_name ), members:group_members(count)')
-      .order('created_at', { ascending: false })
-      .limit(200)
-    setItems(data || [])
-    setLoading(false)
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function remove(id) {
-    const { error } = await supabase.from('groups').delete().eq('id', id)
-    if (error) { showToast('Could not delete group.', { type: 'error' }); return }
-    setItems((prev) => prev.filter((g) => g.id !== id))
-  }
-
-  if (loading) return <LoadingState message="Loading groups…" />
-  if (items.length === 0) return <EmptyState icon="groups" message="No groups yet." />
-
-  return (
-    <ul className="admin-list">
-      {items.map((g) => {
-        const memberCount = g.members?.[0]?.count ?? 0
-        return (
-          <li className="admin-row" key={g.id}>
-            <div className="admin-row-info">
-              <span className="admin-row-name">{g.name}</span>
-              <span className="admin-row-meta">
-                {memberCount} {memberCount === 1 ? 'member' : 'members'} · Created by {g.profiles?.full_name || 'a member'} · {timeAgo(g.created_at)}
-              </span>
-              {g.description && <p className="admin-row-preview">{truncate(g.description)}</p>}
-            </div>
-            <DeleteButton onConfirm={() => remove(g.id)} label="Delete group" message="This removes the group, its posts and its member list. This can't be undone." />
-          </li>
-        )
-      })}
-    </ul>
-  )
-}
 

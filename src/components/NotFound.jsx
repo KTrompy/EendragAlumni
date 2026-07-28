@@ -3,7 +3,7 @@ import EmptyState from './EmptyState.jsx'
 
 // Shown for any URL that doesn't match a real route, instead of silently
 // bouncing straight to /home — a mistyped or stale link (an old shared
-// /people/:id, a bookmark to a deleted group, etc.) should tell the person
+// /people/:id, a stale bookmark, etc.) should tell the person
 // what happened rather than just quietly swapping the page on them.
 export default function NotFound() {
   const navigate = useNavigate()

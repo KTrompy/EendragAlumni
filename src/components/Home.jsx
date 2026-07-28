@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { GroupPlaceholderIcon } from './Groups.jsx'
 import { WhosOnline } from './Feed.jsx'
 import { BusinessLogo } from './BusinessDirectory.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
@@ -27,7 +26,6 @@ const MOBILE_TABS = [
   { id: 'community', label: 'My Community' },
   { id: 'businesses', label: 'Businesses near me' },
   { id: 'events', label: 'Upcoming events' },
-  { id: 'groups', label: 'My Groups' },
 ]
 
 function completionPercent(profile) {
@@ -78,7 +76,6 @@ function formatEventDate(iso) {
 
 export default function Home({ session, profile, onMessage }) {
   const [recentPosts, setRecentPosts] = useState([])
-  const [myGroups, setMyGroups] = useState([])
   const [upcomingEvent, setUpcomingEvent] = useState(null)
   const [badges, setBadges] = useState([])
   const [earnedKeys, setEarnedKeys] = useState(new Set())
@@ -257,7 +254,6 @@ export default function Home({ session, profile, onMessage }) {
 
       const [
         { data: posts },
-        { data: memberships },
         { data: events },
         { data: badgeDefs },
         { count: postsCount },
@@ -270,12 +266,6 @@ export default function Home({ session, profile, onMessage }) {
           .select('id, title, content, image_urls, pinned, created_at, profiles!posts_author_id_fkey ( full_name, avatar_url )')
           .order('created_at', { ascending: false })
           .limit(3),
-        supabase
-          .from('group_members')
-          .select('groups ( id, name, cover_image_url )')
-          .eq('user_id', uid)
-          .order('joined_at', { ascending: false })
-          .limit(6),
         supabase
           .from('events')
           .select('id, title, event_date, location')
@@ -305,29 +295,6 @@ export default function Home({ session, profile, onMessage }) {
           : Promise.resolve({ data: [] }),
       ])
       if (cancelled) return
-
-      const groups = (memberships || []).map((m) => m.groups).filter(Boolean)
-      // One query for every joined group's latest post, instead of a
-      // separate round trip per group (at most 6 here, since memberships
-      // is already capped above, but the old per-group query pattern still
-      // meant "Load Home" fired 1 + N requests where N only grows with how
-      // many groups someone's in). Ordered newest-first and capped well
-      // above what a person's joined-group count could realistically need,
-      // then reduced to one row per group_id client-side.
-      const groupIds = groups.map((g) => g.id)
-      let latestByGroup = {}
-      if (groupIds.length > 0) {
-        const { data: recentGroupPosts } = await supabase
-          .from('group_posts')
-          .select('group_id, title, content, created_at')
-          .in('group_id', groupIds)
-          .order('created_at', { ascending: false })
-          .limit(200)
-        for (const post of recentGroupPosts || []) {
-          if (!(post.group_id in latestByGroup)) latestByGroup[post.group_id] = post
-        }
-      }
-      const withLatestPost = groups.map((g) => ({ ...g, latestPost: latestByGroup[g.id] || null }))
 
       let communityList = matchedCommunity || []
       if (communityList.length === 0) {
@@ -371,14 +338,12 @@ export default function Home({ session, profile, onMessage }) {
       setRecentPosts(posts || [])
       setUpcomingEvent(events?.[0] || null)
       setBadges(badgeDefs || [])
-      setMyGroups(withLatestPost)
       setCommunity(communityList)
       setNearbyBusinesses(businessList)
 
       const earned = new Set()
       if (pct === 100) earned.add('profile_complete')
       if ((postsCount || 0) > 0) earned.add('first_post')
-      if (groups.length > 0) earned.add('joined_group')
       if ((rsvpCount || 0) > 0) earned.add('event_goer')
       setEarnedKeys(earned)
 
@@ -508,37 +473,6 @@ export default function Home({ session, profile, onMessage }) {
                       aria-label={`Post ${i + 1} of ${recentPosts.length}`}
                       onClick={() => scrollToPost(i)}
                     />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="home-tabsection" id="home-section-groups">
-            <div className="feed-widget home-feed-widget">
-              <div className="home-section-head">
-                <h3 className="feed-section-label">My Groups</h3>
-                <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/groups')}>See all groups</button>
-              </div>
-
-              {myGroups.length === 0 ? (
-                <p className="empty small">You haven't joined any groups yet. <button className="home-post-preview-more" onClick={() => navigate('/groups')}>Browse groups</button></p>
-              ) : (
-                <div className="home-group-card-grid">
-                  {myGroups.map((g) => (
-                    <div key={g.id} className="home-group-card" onClick={() => navigate(`/groups/${g.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/groups/${g.id}`) }}>
-                      <div className="home-group-card-cover">
-                        {g.cover_image_url ? <img src={g.cover_image_url} alt="" /> : <GroupPlaceholderIcon />}
-                      </div>
-                      <div className="home-group-card-body">
-                        <strong>{g.name}</strong>
-                        <span>
-                          {g.latestPost
-                            ? `${truncate(plainText(g.latestPost.content) || g.latestPost.title || '', 60)}`
-                            : 'No posts yet'}
-                        </span>
-                      </div>
-                    </div>
                   ))}
                 </div>
               )}
