@@ -9226,79 +9226,13 @@ button.delete-danger svg { flex-shrink: 0; }
   background: var(--card);
   color: var(--ink);
   font-size: 14px;
-  font-family: 'Menlo', 'Monaco', monospace;
+  font-family: inherit;
 }
 
 .rte-textarea:focus {
   outline: none;
   border-color: var(--orange);
   box-shadow: 0 0 0 3px rgba(232, 97, 28, 0.1);
-}
-
-/* Rich text preview */
-.rte-preview {
-  margin-top: 12px;
-  padding: 12px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-}
-
-.rte-preview > strong {
-  display: block;
-  font-size: 12px;
-  color: var(--ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 8px;
-}
-
-.rte-preview-content {
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.rte-preview-content p {
-  margin: 8px 0;
-}
-
-.rte-preview-content ul {
-  margin: 8px 0;
-  padding-left: 24px;
-}
-
-.rte-preview-content li {
-  margin: 4px 0;
-}
-
-.rte-preview-content h3 {
-  margin: 12px 0 8px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.rte-preview-content strong {
-  font-weight: 700;
-}
-
-.rte-preview-content em {
-  font-style: italic;
-}
-
-.rte-preview-content del {
-  text-decoration: line-through;
-  color: var(--ink-soft);
-}
-
-.rte-preview-content a {
-  color: var(--orange);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.rte-preview-content a:hover {
-  color: var(--orange-dark);
 }
 
 /* Registration limit group */

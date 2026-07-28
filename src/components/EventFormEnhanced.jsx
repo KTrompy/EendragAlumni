@@ -5,7 +5,6 @@ import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
 import DateTimePicker from './DateTimePicker.jsx'
 import RichTextToolbarExtended from './RichTextToolbarExtended.jsx'
-import { renderRichTextExtended } from '../richTextExtended.jsx'
 import { isSafeHttpUrl } from '../utils.js'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -313,14 +312,6 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
               style={{ resize: 'vertical' }}
               className="rte-textarea"
             />
-            {description && (
-              <div className="rte-preview">
-                <strong>Preview:</strong>
-                <div className="rte-preview-content">
-                  {renderRichTextExtended(description)}
-                </div>
-              </div>
-            )}
           </label>
 
           {/* Registration limit */}
