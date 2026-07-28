@@ -18,6 +18,7 @@ export default function Auth() {
   // (signUp / signInWithPassword / resetPasswordForEmail all check it when
   // CAPTCHA protection is enabled in the Supabase dashboard).
   const [captchaToken, setCaptchaToken] = useState(null)
+  const [captchaError, setCaptchaError] = useState(false)
   const turnstileRef = useRef(null)
   const widgetIdRef = useRef(null)
 
@@ -25,30 +26,58 @@ export default function Auth() {
     if (!TURNSTILE_SITE_KEY || !turnstileRef.current) return
 
     let cancelled = false
+    let pollAttempts = 0
+    const MAX_POLL_ATTEMPTS = 100 // 100 * 150ms = 15s before giving up
+
     function renderWidget() {
-      if (cancelled || !window.turnstile || widgetIdRef.current) return
+      if (cancelled || !window.turnstile || !turnstileRef.current) return
+      // Guard against a stale widget id surviving an effect replay (React
+      // StrictMode intentionally mounts -> cleans up -> mounts again on the
+      // *same* component instance in dev; a genuine remount elsewhere can
+      // hit this too). Without clearing widgetIdRef here, the second pass
+      // saw it still set from the first pass and bailed out silently —
+      // that's the "checkbox just doesn't show up" symptom.
+      if (widgetIdRef.current) {
+        try { window.turnstile.remove(widgetIdRef.current) } catch { /* already gone */ }
+        widgetIdRef.current = null
+      }
       widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
         sitekey: TURNSTILE_SITE_KEY,
-        callback: (token) => setCaptchaToken(token),
+        callback: (token) => { setCaptchaToken(token); setCaptchaError(false) },
         'expired-callback': () => setCaptchaToken(null),
-        'error-callback': () => setCaptchaToken(null),
+        'error-callback': () => { setCaptchaToken(null); setCaptchaError(true) },
       })
+      setCaptchaError(false)
     }
 
     if (window.turnstile) {
       renderWidget()
     } else {
-      // api.js loads async/defer in index.html — poll briefly until it's ready.
+      // api.js loads async/defer in index.html — poll briefly until it's
+      // ready. If it never shows up (blocked by an ad/privacy blocker, or a
+      // network hiccup on challenges.cloudflare.com) give up after ~15s and
+      // surface that, rather than leaving a permanently blank box that
+      // silently blocks form submission with no explanation.
       const interval = setInterval(() => {
+        pollAttempts += 1
         if (window.turnstile) {
           clearInterval(interval)
           renderWidget()
+        } else if (pollAttempts >= MAX_POLL_ATTEMPTS) {
+          clearInterval(interval)
+          setCaptchaError(true)
         }
-      }, 100)
+      }, 150)
       return () => { cancelled = true; clearInterval(interval) }
     }
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      if (widgetIdRef.current && window.turnstile) {
+        try { window.turnstile.remove(widgetIdRef.current) } catch { /* already gone */ }
+      }
+      widgetIdRef.current = null
+    }
   }, [])
 
   function resetCaptcha() {
@@ -162,6 +191,15 @@ export default function Auth() {
           )}
 
           {TURNSTILE_SITE_KEY && <div ref={turnstileRef} className="auth-captcha" />}
+          {TURNSTILE_SITE_KEY && captchaError && (
+            <p className="form-error">
+              Security check failed to load. Disable any ad/privacy blocker for this
+              site and{' '}
+              <button type="button" className="link-btn" onClick={() => window.location.reload()}>
+                refresh the page
+              </button>.
+            </p>
+          )}
 
           {error && <p className="form-error">{error}</p>}
           {notice && <p className="form-notice">{notice}</p>}
