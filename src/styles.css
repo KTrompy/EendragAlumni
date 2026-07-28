@@ -2677,7 +2677,7 @@ button.delete-danger svg { flex-shrink: 0; }
   border-bottom: 1px solid var(--line);
   margin-bottom: 20px;
 }
-.profile-fact { display: flex; flex-direction: column; gap: 3px; }
+.profile-fact { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .profile-fact-label {
   font-size: 11px;
   font-weight: 700;
@@ -2685,7 +2685,7 @@ button.delete-danger svg { flex-shrink: 0; }
   letter-spacing: 0.06em;
   color: var(--ink-soft);
 }
-.profile-fact-value { font-size: 14.5px; color: var(--ink); font-weight: 600; }
+.profile-fact-value { font-size: 14.5px; color: var(--ink); font-weight: 600; overflow-wrap: break-word; word-break: break-word; }
 .profile-fact-value.muted { color: var(--ink-soft); font-weight: 400; font-style: italic; }
 
 .profile-card-section + .profile-card-section { margin-top: 18px; }
@@ -2704,6 +2704,8 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--ink);
   white-space: pre-wrap;
   margin: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .profile-card-subsection { margin-top: 14px; }
 .profile-card-subsection .modal-chips { margin-top: 6px; }
@@ -2732,6 +2734,7 @@ button.delete-danger svg { flex-shrink: 0; }
   padding: 0 0 28px 28px;
 }
 .experience-timeline-entry:last-child { padding-bottom: 0; }
+.experience-timeline-content { min-width: 0; }
 .experience-timeline-marker {
   position: absolute;
   left: 0;
@@ -2746,8 +2749,8 @@ button.delete-danger svg { flex-shrink: 0; }
   border-color: var(--orange);
   background: var(--orange);
 }
-.experience-timeline-title { font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.35; }
-.experience-timeline-company { font-size: 14.5px; font-weight: 600; color: var(--maroon); margin-top: 2px; }
+.experience-timeline-title { font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.35; overflow-wrap: break-word; word-break: break-word; }
+.experience-timeline-company { font-size: 14.5px; font-weight: 600; color: var(--maroon); margin-top: 2px; overflow-wrap: break-word; word-break: break-word; }
 .experience-timeline-meta {
   display: flex;
   flex-wrap: wrap;
@@ -2770,7 +2773,7 @@ button.delete-danger svg { flex-shrink: 0; }
    breathing room throughout than the denser "edit my profile" page that
    shares most of these classes, since there's no form chrome competing
    for space here. ---------- */
-.person-profile-page .profile-section { padding: 26px 28px 22px; margin-bottom: 18px; }
+.person-profile-page .profile-section { padding: 26px 28px 22px; margin-bottom: 18px; overflow: hidden; }
 .person-profile-page .profile-fact-strip { gap: 22px; padding: 20px 0; }
 .person-profile-page .profile-card-section + .profile-card-section { margin-top: 28px; }
 /* Every card gets a small orange bullet ahead of its title — same visual
@@ -5331,7 +5334,7 @@ button.delete-danger svg { flex-shrink: 0; }
   gap: 12px;
 }
 .profile-hero-name { margin-bottom: 4px; }
-.profile-hero-role { margin-bottom: 0; }
+.profile-hero-role { margin-bottom: 0; overflow-wrap: break-word; word-break: break-word; }
 .profile-hero-location { margin: 0; }
 @media (max-width: 640px) {
   .profile-hero { flex-direction: column; align-items: center; text-align: center; gap: 18px; }
@@ -5341,6 +5344,9 @@ button.delete-danger svg { flex-shrink: 0; }
   .profile-hero-body { align-items: center; }
   .profile-hero-name::after { left: 50%; transform: translateX(-50%); }
   .profile-hero-location { justify-content: center; }
+  .person-profile-page .profile-section { padding: 18px 16px 16px; }
+  .person-profile-page .profile-fact-strip { gap: 14px; }
+  .profile-fact-strip { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
 }
 
 /* Photo section hero - featured at top */
