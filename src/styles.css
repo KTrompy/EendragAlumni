@@ -1162,6 +1162,7 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .auth-card .link-btn { display: block; margin: 12px auto 0; }
 .auth-forgot-link { display: block !important; margin: -6px 0 6px auto !important; font-size: 12.5px; }
+.auth-captcha { display: flex; justify-content: center; margin: 6px 0 16px; }
 .auth-note {
   font-size: 12.5px;
   color: var(--ink-soft);

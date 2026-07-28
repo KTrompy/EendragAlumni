@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import ClearableInput from './ClearableInput.jsx'
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
 
 export default function Auth() {
   const [mode, setMode] = useState('signin') // 'signin' | 'signup' | 'forgot'
@@ -9,6 +11,50 @@ export default function Auth() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null)
   const [error, setError] = useState(null)
+
+  // Cloudflare Turnstile (CAPTCHA). Rendered manually via the global
+  // `window.turnstile` API (loaded in index.html) rather than a React
+  // wrapper package, since one token is required per Supabase auth call
+  // (signUp / signInWithPassword / resetPasswordForEmail all check it when
+  // CAPTCHA protection is enabled in the Supabase dashboard).
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const turnstileRef = useRef(null)
+  const widgetIdRef = useRef(null)
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !turnstileRef.current) return
+
+    let cancelled = false
+    function renderWidget() {
+      if (cancelled || !window.turnstile || widgetIdRef.current) return
+      widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: (token) => setCaptchaToken(token),
+        'expired-callback': () => setCaptchaToken(null),
+        'error-callback': () => setCaptchaToken(null),
+      })
+    }
+
+    if (window.turnstile) {
+      renderWidget()
+    } else {
+      // api.js loads async/defer in index.html — poll briefly until it's ready.
+      const interval = setInterval(() => {
+        if (window.turnstile) {
+          clearInterval(interval)
+          renderWidget()
+        }
+      }, 100)
+      return () => { cancelled = true; clearInterval(interval) }
+    }
+
+    return () => { cancelled = true }
+  }, [])
+
+  function resetCaptcha() {
+    setCaptchaToken(null)
+    if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current)
+  }
 
   // Basic shape check — not trying to fully validate email syntax (the
   // server/Supabase does that), just catching the obvious "field left
@@ -27,6 +73,7 @@ export default function Auth() {
       // live in the Supabase dashboard, not this file.
       if (mode === 'signup' && password.length < 10) return 'Password must be at least 10 characters.'
     }
+    if (TURNSTILE_SITE_KEY && !captchaToken) return 'Please complete the security check.'
     return null
   }
 
@@ -49,21 +96,25 @@ export default function Auth() {
         // at this site.
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin,
+          captchaToken,
         })
         if (error) throw error
         setNotice("If that email's registered, a reset link is on its way — check your inbox.")
       } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password })
+        const { error } = await supabase.auth.signUp({ email, password, options: { captchaToken } })
         if (error) throw error
         setNotice('Check your email to confirm your account, then sign in.')
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
         if (error) throw error
       }
     } catch (e) {
       setError(e.message)
     } finally {
       setBusy(false)
+      // Turnstile tokens are single-use — reset the widget after every
+      // attempt (success or failure) so the next submit gets a fresh one.
+      resetCaptcha()
     }
   }
 
@@ -109,6 +160,8 @@ export default function Auth() {
               Forgot password?
             </button>
           )}
+
+          {TURNSTILE_SITE_KEY && <div ref={turnstileRef} className="auth-captcha" />}
 
           {error && <p className="form-error">{error}</p>}
           {notice && <p className="form-notice">{notice}</p>}
