@@ -330,7 +330,16 @@ export default function Onboarding({ session, profile, onDone }) {
     setStepIndex((i) => Math.min(i + 1, steps.length - 1))
   }
 
-  function skip() { setEmptyNotice(false); advance() }
+  // Skip stays visible on every question for a consistent UI, but on a
+  // required one (see REQUIRED_KEYS) it can't actually jump you past an
+  // empty answer — it just falls back to the same nudge Continue would give.
+  // If a required question already has something in it, tapping Skip is
+  // harmless and just advances, same as Continue would.
+  function skip() {
+    if (currentIsRequired && isCurrentEmpty()) { setEmptyNotice(true); return }
+    setEmptyNotice(false)
+    advance()
+  }
   function back() { setEmptyNotice(false); setStepIndex((i) => Math.max(i - 1, 0)) }
 
   function renderStep() {
@@ -709,7 +718,7 @@ export default function Onboarding({ session, profile, onDone }) {
         {error && <p className="form-error">{error}</p>}
 
         <div className="onboarding-actions">
-          {isQuestion && !currentIsRequired && (
+          {isQuestion && (
             <button className="onboarding-skip" onClick={skip} disabled={busy} type="button">
               Skip this question
             </button>
