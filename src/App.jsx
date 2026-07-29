@@ -429,7 +429,12 @@ export default function App() {
         onDone={(updatedProfile) => {
           setProfile(updatedProfile)
           setShowOnboarding(false)
-          navigate('/profile')
+          // Onboarding only forces the directory-critical questions — bio,
+          // LinkedIn, phone, CV and the mentoring block are all
+          // skippable there. Flagging this nav lets Profile.jsx highlight
+          // whichever of those got left blank, so there's still a nudge to
+          // fill them in without gatekeeping the wizard on them.
+          navigate('/profile', { state: { highlightMissing: true } })
         }}
       />
     )

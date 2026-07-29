@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase, deleteOwnAccount } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
@@ -53,8 +53,25 @@ function monthNow() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+// Fields onboarding lets someone skip past (bio, LinkedIn, phone, CV, and
+// the whole mentoring block) — used to point out what's still blank right
+// after finishing the wizard. Checked straight off the raw `profile` row
+// (not the editor's `form` state) so this doesn't race the effect below
+// against the separate one that populates `form` from `profile` on mount.
+const SKIPPABLE_FIELD_CHECKS = {
+  bio: (p) => !p.bio?.trim(),
+  linkedin_url: (p) => !p.linkedin_url?.trim(),
+  phone: (p) => !p.phone?.trim(),
+  business_website: (p) => !p.business_website?.trim(),
+  availability: (p) => !p.availability,
+  expertise: (p) => !Array.isArray(p.expertise) || p.expertise.length === 0,
+  services_offered: (p) => !Array.isArray(p.services_offered) || p.services_offered.length === 0,
+  geographic_focus: (p) => !Array.isArray(p.geographic_focus) || p.geographic_focus.length === 0,
+}
+
 export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [form, setForm] = useState(EMPTY)
   const [customIndustry, setCustomIndustry] = useState('')
   const [customCity, setCustomCity] = useState('')
@@ -81,6 +98,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   // are added, removed or reordered.
   const [expandedExperience, setExpandedExperience] = useState(() => new Set())
   const [cvUploading, setCvUploading] = useState(false)
+  // Fields to visually flag as "still blank" right after onboarding — see
+  // the effect below that populates this from location.state.highlightMissing.
+  // Empty otherwise, so this has no effect on a normal profile-page visit.
+  const [missingFields, setMissingFields] = useState(() => new Set())
   const fileRef = useRef(null)
   const cvRef = useRef(null)
   const aboutSectionRef = useRef(null)
@@ -120,6 +141,26 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     }
   }, [profile])
 
+  // Arriving fresh from onboarding (App.jsx sets this nav state) — work out
+  // which of the skippable fields actually got left blank and highlight
+  // just those, auto-opening the Mentoring section if any of its fields are
+  // among them so the highlight is actually visible. Runs once off the nav
+  // state, not on every profile load, and immediately clears that state
+  // (via replace) so refreshing this page or coming back later doesn't
+  // re-trigger it.
+  useEffect(() => {
+    if (!location.state?.highlightMissing || !profile) return
+    const missing = new Set(
+      Object.keys(SKIPPABLE_FIELD_CHECKS).filter((key) => SKIPPABLE_FIELD_CHECKS[key](profile))
+    )
+    if (!profile.cv_url) missing.add('cv')
+    setMissingFields(missing)
+    const mentoringFields = ['availability', 'expertise', 'services_offered', 'geographic_focus', 'business_website']
+    if (mentoringFields.some((f) => missing.has(f))) setShowMentoring(true)
+    navigate(location.pathname, { replace: true, state: {} })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, location.state])
+
   // Let the parent (App) know whenever there are unsaved edits, so it can
   // warn before letting someone navigate away and lose them.
   useEffect(() => { onDirtyChange?.(dirty) }, [dirty]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -129,7 +170,26 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   // this component needing to know anything about navigation.
   useEffect(() => { if (saveRef) saveRef.current = save }) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false); setDirty(true) }
+  // Clears a field's "still missing" highlight the moment someone starts
+  // addressing it — no reason to keep flagging it once they've engaged with
+  // it, even before Save is hit.
+  function clearMissing(k) {
+    setMissingFields((s) => {
+      if (!s.has(k)) return s
+      const next = new Set(s)
+      next.delete(k)
+      return next
+    })
+  }
+
+  function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false); setDirty(true); clearMissing(k) }
+
+  // className helper for the fields flagged by the post-onboarding
+  // highlight — appends 'field-missing' (styles.css) when this key is
+  // still in missingFields, otherwise just returns the base class.
+  function fieldCls(key, base = 'field') {
+    return missingFields.has(key) ? `${base} field-missing` : base
+  }
 
   // Changing industry also drops any picked expertise tags that came from
   // the old industry's list but don't belong to the new one, so switching
@@ -158,6 +218,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     })
     setSaved(false)
     setDirty(true)
+    clearMissing(field)
   }
 
   // Experience: a free-form, add/remove list of past roles rather than a
@@ -364,7 +425,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       .select()
       .single()
     if (dbErr) setError(dbErr.message)
-    else onSaved(data)
+    else { onSaved(data); clearMissing('cv') }
     setCvUploading(false)
   }
 
@@ -525,6 +586,11 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     }
   }
 
+  // Whether the collapsed Mentoring toggle should show a "something's
+  // missing in here" dot — it auto-expands on arrival from onboarding, but
+  // this keeps the cue visible even if someone collapses it again.
+  const mentoringHasMissing = ['availability', 'expertise', 'services_offered', 'geographic_focus', 'business_website']
+    .some((f) => missingFields.has(f))
 
   return (
     <section className="panel narrow profile-page">
@@ -540,6 +606,18 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           </p>
         </div>
       </div>
+
+      {missingFields.size > 0 && (
+        <div className="profile-missing-banner">
+          <span>
+            You skipped a few optional details during setup — they're highlighted below.
+            Fill in what's relevant, or leave them for later.
+          </span>
+          <button type="button" className="link-btn small" onClick={() => setMissingFields(new Set())}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Photo Section - Hero */}
       <div className="profile-photo-section">
@@ -583,7 +661,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           />
         </label>
 
-        <label className="field"><span>Bio</span>
+        <label className={fieldCls('bio')}><span>Bio</span>
           <ClearableInput
             as="textarea"
             rows={3}
@@ -821,7 +899,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       </div>
 
       {/* CV Section */}
-      <div className="profile-section">
+      <div className={missingFields.has('cv') ? 'profile-section field-missing' : 'profile-section'}>
         <h3 className="profile-section-title"><CvIcon /> CV / Resume</h3>
         <p className="experience-empty" style={{ marginBottom: 12 }}>
           Upload your CV so other Eendragters and potential employers can view it.
@@ -884,7 +962,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       <div className="profile-section profile-section-connect">
         <h3 className="profile-section-title">Connect</h3>
 
-        <label className="field"><span>LinkedIn URL</span>
+        <label className={fieldCls('linkedin_url')}><span>LinkedIn URL</span>
           <ClearableInput
             type="url"
             value={form.linkedin_url}
@@ -894,7 +972,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           />
         </label>
 
-        <label className="field"><span>Phone number</span>
+        <label className={fieldCls('phone')}><span>Phone number</span>
           <PhoneInput value={form.phone} onChange={(v) => set('phone', v)} />
           <span className="hint">Who can see this is controlled in Settings → Privacy.</span>
         </label>
@@ -906,7 +984,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           className="profile-mentoring-toggle"
           onClick={() => setShowMentoring(!showMentoring)}
         >
-          <span className="profile-mentoring-title">Mentoring</span>
+          <span className="profile-mentoring-title">
+            Mentoring
+            {mentoringHasMissing && <span className="field-missing-dot" aria-label="Has unfilled optional fields" />}
+          </span>
           <span className={`toggle-arrow ${showMentoring ? 'open' : ''}`}>▼</span>
         </button>
 
@@ -949,7 +1030,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             {form.is_open_to_opportunities && (
               <div className="profile-mentoring-details">
                 <div className="field-row">
-                  <label className="field"><span>Availability</span>
+                  <label className={fieldCls('availability')}><span>Availability</span>
                     <ListAutocomplete
                       value={form.availability}
                       onChange={(value) => set('availability', value)}
@@ -959,7 +1040,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                     />
                   </label>
 
-                  <div className="field">
+                  <div className={fieldCls('geographic_focus')}>
                     <span>Geographic focus</span>
                     <div className="tags-grid compact">
                       {GEOGRAPHIC_FOCUS.map((geo) => (
@@ -977,7 +1058,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                 </div>
 
                 {/* Main expertise — options are scoped to whichever industry is selected above */}
-                <label className="field"><span>Main areas you can mentor in</span>
+                <label className={fieldCls('expertise')}><span>Main areas you can mentor in</span>
                   <MultiSelectAutocomplete
                     values={form.expertise}
                     onChange={(value) => set('expertise', value)}
@@ -988,7 +1069,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                 </label>
 
                 {/* Services & opportunities offered */}
-                <div className="field">
+                <div className={fieldCls('services_offered')}>
                   <span>What can you offer to other Eendragters?</span>
                   <span className="hint">
                     These show up on your profile as things people can reach out to you about.
@@ -1008,7 +1089,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                 </div>
 
                 {/* Business website */}
-                <label className="field"><span>Business website or portfolio (optional)</span>
+                <label className={fieldCls('business_website')}><span>Business website or portfolio (optional)</span>
                   <ClearableInput
                     type="url"
                     value={form.business_website}

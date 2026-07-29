@@ -25,14 +25,27 @@ const QUESTION_KEYS = [
   'photo',
 ]
 
-// Current Eendragters (students still living in res) often don't have a job
-// yet — "occupation"/"company" don't apply, so those two questions are
-// skipped entirely for them rather than forcing a Skip tap. Their answers
-// still get sensible defaults (see chooseStatus below), just without the
-// extra screens. Alumni still see every question.
-function visibleQuestionKeys(isCurrentResident) {
-  if (!isCurrentResident) return QUESTION_KEYS
+// Anyone who answers the industry question with "Student" almost never has
+// a job yet — "occupation"/"company" don't apply, so those two questions
+// are skipped entirely rather than forcing a Skip tap. Gated on the
+// industry answer itself (not the earlier status question) so it also
+// covers an alumnus who's back studying, and so a current resident who
+// picks a real industry still gets asked. See chooseStatus below for the
+// matching default.
+function visibleQuestionKeys(industry) {
+  if (industry !== 'Student') return QUESTION_KEYS
   return QUESTION_KEYS.filter((k) => k !== 'occupation' && k !== 'company')
+}
+
+// The handful of questions the directory actually depends on for search/
+// filter/identification — everyone has to answer these before finishing.
+// Everything else (bio, LinkedIn, the mentoring block, etc.) stays
+// skip-friendly, same as before. Occupation/company are only required when
+// they're actually being asked (see visibleQuestionKeys) — i.e. for anyone
+// who didn't pick "Student" as their industry.
+const REQUIRED_KEYS = new Set(['name', 'status', 'year', 'degree', 'industry', 'occupation', 'company', 'country', 'city', 'photo'])
+function isRequiredQuestion(key) {
+  return REQUIRED_KEYS.has(key)
 }
 
 // Closing the tab (or the phone locking) partway through used to lose
@@ -93,11 +106,10 @@ export default function Onboarding({ session, profile, onDone }) {
   const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
   const fileRef = useRef(null)
 
-  // Recomputed on every render off form.is_current_resident, so answering
-  // "Still living in Eendrag" on the status question immediately shortens
-  // the remaining path (see visibleQuestionKeys) instead of requiring a
-  // restart.
-  const questionKeys = visibleQuestionKeys(form.is_current_resident)
+  // Recomputed on every render off form.industry, so answering the industry
+  // question with "Student" immediately shortens the remaining path (see
+  // visibleQuestionKeys) instead of requiring a restart.
+  const questionKeys = visibleQuestionKeys(form.industry)
   const steps = ['intro', ...questionKeys, 'done']
   const currentKey = steps[Math.min(stepIndex, steps.length - 1)]
   const questionIndex = questionKeys.indexOf(currentKey)
@@ -140,6 +152,11 @@ export default function Onboarding({ session, profile, onDone }) {
     }))
     setEmptyNotice(false)
   }
+
+  // Skip is only offered on the fields that aren't required to finish
+  // onboarding (see REQUIRED_KEYS/isRequiredQuestion) — everything else,
+  // Continue itself enforces via isCurrentEmpty below.
+  const currentIsRequired = isRequiredQuestion(currentKey)
 
   // Same toggle-a-tag-in-an-array behaviour as Profile's Mentoring
   // section (Services offered / Geographic focus tag grids).
@@ -683,12 +700,16 @@ export default function Onboarding({ session, profile, onDone }) {
         </div>
 
         {emptyNotice && (
-          <p className="onboarding-nudge">You'll need to fill this in to continue — or tap Skip if you'd rather leave it for later.</p>
+          <p className="onboarding-nudge">
+            {currentIsRequired
+              ? "You'll need to fill this in — it's one of the essentials."
+              : "You'll need to fill this in to continue — or tap Skip if you'd rather leave it for later."}
+          </p>
         )}
         {error && <p className="form-error">{error}</p>}
 
         <div className="onboarding-actions">
-          {isQuestion && (
+          {isQuestion && !currentIsRequired && (
             <button className="onboarding-skip" onClick={skip} disabled={busy} type="button">
               Skip this question
             </button>
