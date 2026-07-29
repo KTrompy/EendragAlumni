@@ -24,7 +24,16 @@ const QUESTION_KEYS = [
   'opportunities', 'availability', 'expertise', 'services', 'geography', 'website',
   'photo',
 ]
-const STEPS = ['intro', ...QUESTION_KEYS, 'done']
+
+// Current Eendragters (students still living in res) often don't have a job
+// yet — "occupation"/"company" don't apply, so those two questions are
+// skipped entirely for them rather than forcing a Skip tap. Their answers
+// still get sensible defaults (see chooseStatus below), just without the
+// extra screens. Alumni still see every question.
+function visibleQuestionKeys(isCurrentResident) {
+  if (!isCurrentResident) return QUESTION_KEYS
+  return QUESTION_KEYS.filter((k) => k !== 'occupation' && k !== 'company')
+}
 
 // Closing the tab (or the phone locking) partway through used to lose
 // every answer given so far, since the only write happened at the very end
@@ -84,8 +93,14 @@ export default function Onboarding({ session, profile, onDone }) {
   const [cityCoords, setCityCoords] = useState(null) // set when a dropdown suggestion is picked
   const fileRef = useRef(null)
 
-  const currentKey = STEPS[stepIndex]
-  const questionIndex = QUESTION_KEYS.indexOf(currentKey)
+  // Recomputed on every render off form.is_current_resident, so answering
+  // "Still living in Eendrag" on the status question immediately shortens
+  // the remaining path (see visibleQuestionKeys) instead of requiring a
+  // restart.
+  const questionKeys = visibleQuestionKeys(form.is_current_resident)
+  const steps = ['intro', ...questionKeys, 'done']
+  const currentKey = steps[Math.min(stepIndex, steps.length - 1)]
+  const questionIndex = questionKeys.indexOf(currentKey)
 
   // Mirror answers to localStorage as they're entered (debounced), so
   // closing the tab or the phone locking mid-way doesn't throw away
@@ -109,6 +124,22 @@ export default function Onboarding({ session, profile, onDone }) {
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setEmptyNotice(false) }
   function onEnter(e) { if (e.key === 'Enter') handleContinue() }
+
+  // Answering the status question drives more than just is_current_resident:
+  // a current student almost never has an occupation/employer yet, so those
+  // two questions are skipped outright (visibleQuestionKeys) and occupation/
+  // industry get a sensible default here instead of being left blank. Only
+  // defaults empty fields — going back and re-picking "Alumnus" after typing
+  // real answers won't clobber them.
+  function chooseStatus(isResident) {
+    setForm((f) => ({
+      ...f,
+      is_current_resident: isResident,
+      occupation: isResident && !f.occupation.trim() ? 'Student' : f.occupation,
+      industry: isResident && !f.industry ? 'Student' : f.industry,
+    }))
+    setEmptyNotice(false)
+  }
 
   // Same toggle-a-tag-in-an-array behaviour as Profile's Mentoring
   // section (Services offered / Geographic focus tag grids).
@@ -152,7 +183,7 @@ export default function Onboarding({ session, profile, onDone }) {
   // because something was typed. Returns a message, or null if fine.
   function currentFormatError() {
     if (currentKey === 'year' && form.grad_year && !isValidGradYear(form.grad_year)) {
-      return `Enter a year between 1961 and ${new Date().getFullYear() + 1}.`
+      return 'Enter a valid 4-digit year.'
     }
     if (currentKey === 'linkedin' && !isSafeHttpUrl(form.linkedin_url)) {
       return 'That should start with http:// or https://.'
@@ -279,7 +310,7 @@ export default function Onboarding({ session, profile, onDone }) {
       onDone(savedProfile || profile)
       return
     }
-    setStepIndex((i) => Math.min(i + 1, STEPS.length - 1))
+    setStepIndex((i) => Math.min(i + 1, steps.length - 1))
   }
 
   function skip() { setEmptyNotice(false); advance() }
@@ -317,13 +348,13 @@ export default function Onboarding({ session, profile, onDone }) {
             <div className="onboarding-choice-row">
               <button
                 className={!form.is_current_resident ? 'onboarding-choice on' : 'onboarding-choice'}
-                onClick={() => set('is_current_resident', false)}
+                onClick={() => chooseStatus(false)}
               >
                 Alumnus
               </button>
               <button
                 className={form.is_current_resident ? 'onboarding-choice on' : 'onboarding-choice'}
-                onClick={() => set('is_current_resident', true)}
+                onClick={() => chooseStatus(true)}
               >
                 Still living in Eendrag
               </button>
@@ -638,11 +669,11 @@ export default function Onboarding({ session, profile, onDone }) {
             <div className="onboarding-progress-bar">
               <div
                 className="onboarding-progress-fill"
-                style={{ width: `${((questionIndex + 1) / QUESTION_KEYS.length) * 100}%` }}
+                style={{ width: `${((questionIndex + 1) / questionKeys.length) * 100}%` }}
               />
             </div>
             <span className="onboarding-progress-label">
-              Question {questionIndex + 1} of {QUESTION_KEYS.length}
+              Question {questionIndex + 1} of {questionKeys.length}
             </span>
           </div>
         )}

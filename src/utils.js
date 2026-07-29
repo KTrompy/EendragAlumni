@@ -16,18 +16,16 @@ export function isRecentlyOnline(lastSeen) {
   return Date.now() - new Date(lastSeen).getTime() < ONLINE_WINDOW_MS
 }
 
-// Graduation/leaving year range check — Eendrag's been around since 1961
-// (see the brand motto in the header), and there's no legitimate reason for
-// a value beyond a year or two out from now (someone entering their intake
-// year in advance). Used to reject obvious junk like 0, -5 or 99999, which
-// nothing else in the form was stopping.
-const EENDRAG_FOUNDING_YEAR = 1961
+// Graduation/leaving year format check — any year is accepted (no tie to
+// Eendrag's founding year or a forward cutoff), but the value still has to
+// actually look like a year: a whole number, exactly 4 digits. Rejects
+// obvious junk like 0, -5, 18, 99999, or a decimal, which nothing else in
+// the form was stopping.
 export function isValidGradYear(value) {
   if (value === '' || value === null || value === undefined) return true // optional field
   const n = Number(value)
   if (!Number.isInteger(n)) return false
-  const maxYear = new Date().getFullYear() + 1
-  return n >= EENDRAG_FOUNDING_YEAR && n <= maxYear
+  return /^\d{4}$/.test(String(value).trim())
 }
 
 // Only http(s) links are allowed through profile/business "website" style

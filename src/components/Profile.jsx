@@ -399,7 +399,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     }
 
     if (!isValidGradYear(form.grad_year)) {
-      setError(`Graduation year should be between 1961 and ${new Date().getFullYear() + 1}.`)
+      setError('Enter a valid 4-digit graduation year.')
       return false
     }
 
