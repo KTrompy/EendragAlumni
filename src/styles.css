@@ -2201,20 +2201,28 @@ button.delete-danger svg { flex-shrink: 0; }
 .card-grid {
   list-style: none; margin: 0; padding: 0;
   display: grid; gap: 24px;
-  /* 3 columns on desktop, 2 on tablet, 1 on mobile */
-  grid-template-columns: 1fr;
+  /* 3 columns on desktop, 2 on tablet, 1 on mobile. minmax(0, 1fr) instead of
+     a bare 1fr — a bare 1fr track has an implicit `auto` minimum, so a card
+     whose content refuses to shrink (e.g. the nowrap name text on the mobile
+     row layout below) can force the track itself wider than the available
+     space instead of wrapping/ellipsizing. That pushes the card off the
+     right edge of the screen while the left edge still looks fine (it's
+     pinned to the real viewport edge by .content's padding) — the 0 minimum
+     lets the track shrink back to the container's actual width. */
+  grid-template-columns: minmax(0, 1fr);
 }
 @media (min-width: 640px) {
-  .card-grid { gap: 20px; grid-template-columns: repeat(2, 1fr); }
+  .card-grid { gap: 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 1024px) {
-  .card-grid { gap: 32px; grid-template-columns: repeat(3, 1fr); }
+  .card-grid { gap: 32px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* SACS-style card: dominant photo, info block below, icon row at foot */
-.card-grid > li { display: flex; }
+.card-grid > li { display: flex; min-width: 0; }
 .person-card {
   position: relative;
+  min-width: 0;
   width: 100%;
   /* Grid items stretch to the tallest card in their row by default; this
      makes the card itself fill that height so every card in a row (and,
@@ -2395,6 +2403,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .person-card-footer {
   padding: 12px 14px;
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -7000,8 +7009,9 @@ button.delete-danger svg { flex-shrink: 0; }
    same info. Note the real DOM here uses the person-card-* class names
    (Directory.jsx), not the unprefixed person-* ones used elsewhere. */
 @media (max-width: 639px) {
-  .eendragters-page .card-grid { grid-template-columns: 1fr; gap: 10px; }
-  .eendragters-page .person-card { flex-direction: row; height: auto; }
+  .eendragters-page .card-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .eendragters-page .person-card { flex-direction: row; height: auto; min-width: 0; }
+  .eendragters-page .person-card-info { min-width: 0; }
   .eendragters-page .person-card-photo {
     width: 80px;
     aspect-ratio: 1;
@@ -7044,7 +7054,7 @@ button.delete-danger svg { flex-shrink: 0; }
   .eendragters-page .person-action .icon-btn { width: 15px; height: 15px; }
 }
 @media (min-width: 1200px) {
-  .eendragters-page .card-grid { grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .eendragters-page .card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
 }
 
 .eendragters-page .person-card {
