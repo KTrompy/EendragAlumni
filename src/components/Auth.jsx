@@ -127,9 +127,37 @@ export default function Auth() {
         if (error) throw error
         setNotice("If that email's registered, a reset link is on its way — check your inbox.")
       } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password, options: { captchaToken } })
+        // Seamless signup: create the account, then drop them straight into
+        // the app. If the Supabase project has "Confirm email" disabled the
+        // signUp response already carries a session and App.jsx picks it up
+        // from the auth listener — nothing more to do. If confirmation is
+        // still enabled (or the response otherwise comes back session-less),
+        // fall through to an immediate signInWithPassword so the user isn't
+        // stranded on the auth screen waiting for an email. First-time
+        // users with no full_name are then routed into Onboarding by
+        // App.jsx (see the checkedFirstRun effect there).
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { captchaToken } })
         if (error) throw error
-        setNotice('Check your email to confirm your account, then sign in.')
+        if (!data?.session) {
+          // Turnstile tokens are single-use, so we can't reuse the one from
+          // the signUp call. Reset the widget and prompt for a fresh tick
+          // rather than silently failing the sign-in.
+          resetCaptcha()
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+          if (signInError) {
+            // Most likely cause here is "Email not confirmed" — the project
+            // still has confirmation on. Surface that clearly instead of
+            // dumping the raw Supabase message.
+            if (/confirm/i.test(signInError.message)) {
+              setNotice("Account created. Check your email to confirm, then sign in.")
+              return
+            }
+            throw signInError
+          }
+        }
+        // Success path: the onAuthStateChange listener in App.jsx will pick
+        // up the new session and swap Auth out for the app (which shows
+        // Onboarding automatically on first login).
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
         if (error) throw error
@@ -225,8 +253,8 @@ export default function Auth() {
         )}
 
         <p className="auth-note">
-          New accounts are verified against alumni records before posting and
-          messaging are enabled.
+          New accounts are approved against alumni records before posting and
+          messaging unlock — you can browse straight away.
         </p>
       </div>
     </div>
