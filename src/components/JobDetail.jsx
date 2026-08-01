@@ -15,7 +15,7 @@ import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
 import { safeUrl } from '../utils.js'
 import ApplyModal from './ApplyModal.jsx'
 import JobApplications from './JobApplications.jsx'
-import { JOB_FIELDS, POSTER_FIELDS, JobForm, JobLogo, PdfIcon } from './Jobs.jsx'
+import { JOB_FIELDS, POSTER_FIELDS, JobForm, JobLogo, PdfIcon, isJobClosed } from './Jobs.jsx'
 
 // Same plain-div marker Leaflet trick BusinessDetail's mini map uses —
 // avoids depending on Leaflet's default marker image assets for a single pin.
@@ -144,6 +144,10 @@ export default function JobDetail({ session, profile, onMessage }) {
   }
 
   const isMine = job.posted_by === session.user.id
+  // The board hides Apply on closed listings, but this page is reachable
+  // directly (saved link, share, bookmark) — so the gate has to live here too,
+  // not just in the filtered card list.
+  const closed = isJobClosed(job)
   const poster = job.profiles
   const reason = !isMine ? matchReason(profile, poster) : null
   const hasPin = typeof job.lat === 'number' && typeof job.lng === 'number'
@@ -272,10 +276,11 @@ export default function JobDetail({ session, profile, onMessage }) {
               {!isMine && (
                 <button
                   className="btn primary small"
-                  onClick={() => !hasApplied && setShowApply(true)}
-                  disabled={hasApplied}
+                  onClick={() => !hasApplied && !closed && setShowApply(true)}
+                  disabled={hasApplied || closed}
+                  title={closed ? 'Applications for this role have closed.' : undefined}
                 >
-                  {hasApplied ? 'Applied' : 'Apply'}
+                  {hasApplied ? 'Applied' : closed ? 'Applications closed' : 'Apply'}
                 </button>
               )}
               {!isMine && (
@@ -336,7 +341,7 @@ export default function JobDetail({ session, profile, onMessage }) {
         </div>
       )}
 
-      {showApply && (
+      {showApply && !closed && (
         <ApplyModal
           job={job}
           session={session}

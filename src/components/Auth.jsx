@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import ClearableInput from './ClearableInput.jsx'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
-import { PASSWORD_MIN, PASSWORD_TOO_SHORT, PasswordStrengthMeter } from '../passwordRules.jsx'
+import { PASSWORD_MIN, passwordProblem, PasswordStrengthMeter } from '../passwordRules.jsx'
 import { authRedirectTo } from '../authRedirect.js'
 import { MAX_RESIDENCE_YEARS } from '../constants.js'
 
@@ -66,7 +66,10 @@ function ProviderIcon() {
   )
 }
 
-export default function Auth() {
+// `initialError` carries a message App.jsx pulled off the OAuth redirect —
+// most often a cancelled Google consent screen, which otherwise dumped
+// people back here with no explanation at all.
+export default function Auth({ initialError = null }) {
   const [mode, setMode] = useState('signin') // 'signin' | 'signup' | 'forgot'
   const [signupStep, setSignupStep] = useState(1) // 1 details, 2 years, 3 consent
 
@@ -105,7 +108,11 @@ export default function Auth() {
 
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState(initialError)
+  // App.jsx reads the OAuth redirect error in an effect, which can resolve
+  // after this component has already mounted — so the useState initialiser
+  // above isn't enough on its own to catch it.
+  useEffect(() => { if (initialError) setError(initialError) }, [initialError])
 
   // Cloudflare Turnstile (CAPTCHA). Rendered manually via the global
   // `window.turnstile` API (loaded in index.html). One token is required per
@@ -216,20 +223,27 @@ export default function Auth() {
     e.preventDefault()
     const problem = validateSignin()
     if (problem) { setError(problem); setNotice(null); return }
+    // validateSignin() has always checked `email.trim()`, but the auth calls
+    // below used to send the raw value — so a pasted address with a trailing
+    // space passed validation and then failed with "invalid login
+    // credentials", which reads as a wrong password. Normalise once here and
+    // write it back so the field shows what was actually submitted.
+    const cleanEmail = email.trim()
+    if (cleanEmail !== email) setEmail(cleanEmail)
     setBusy(true); setError(null); setNotice(null)
     try {
       if (mode === 'forgot') {
         // Supabase emails a link that signs the browser into a recovery
         // session and fires PASSWORD_RECOVERY — App.jsx swaps in
         // ResetPassword.jsx on that event.
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
           redirectTo: authRedirectTo(),
           captchaToken,
         })
         if (error) throw error
         setNotice("If that email's registered, a reset link is on its way — check your inbox.")
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
+        const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password, options: { captchaToken } })
         if (error) throw error
       }
     } catch (e2) {
@@ -250,8 +264,8 @@ export default function Auth() {
     if (!cleanEmail) return 'Enter your email address.'
     if (!EMAIL_RE.test(cleanEmail)) return 'Enter a valid email address.'
     if (cleanEmail.toLowerCase() !== confirmEmail.trim().toLowerCase()) return "Email addresses don't match."
-    if (!signupPassword) return 'Choose a password.'
-    if (signupPassword.length < PASSWORD_MIN) return PASSWORD_TOO_SHORT
+    const pwProblem = passwordProblem(signupPassword)
+    if (pwProblem) return pwProblem
     if (signupPassword !== confirmPassword) return "Passwords don't match."
     return null
   }
@@ -354,9 +368,16 @@ export default function Auth() {
             return
           }
           setAccountExists(true)
+          // This retry deliberately sends no captchaToken (the signUp one is
+          // single-use and already spent). If CAPTCHA is enforced on sign-in
+          // too, it therefore *always* fails here — and the generic message
+          // below made that look like a broken signup rather than "your
+          // account is fine, just sign in and tick the box".
           setError(
-            "Your account was created, but we couldn't sign you in just now. " +
-            'Try signing in below with the email and password you just chose.'
+            /captcha/i.test(signInError.message)
+              ? 'Your account was created. Please sign in below — you’ll need to complete the security check once more.'
+              : "Your account was created, but we couldn't sign you in just now. " +
+                'Try signing in below with the email and password you just chose.'
           )
           return
         }

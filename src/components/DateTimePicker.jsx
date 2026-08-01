@@ -41,6 +41,21 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
 
+  // Click-outside was the only way to dismiss this. Escape is what everyone
+  // reaches for on an open popover, and every modal in the app already
+  // honours it. Bound only while open so it can't swallow Escape from a
+  // surrounding dialog the rest of the time.
+  useEffect(() => {
+    if (!open) return
+    function onKey(e) {
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
+
   const hour = value ? value.getHours() : 9
   const minute = value ? value.getMinutes() : 0
 

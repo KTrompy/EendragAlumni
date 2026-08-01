@@ -75,6 +75,12 @@ export default function GlobalSearch({ open, onClose }) {
       return
     }
     setLoading(true)
+    // Debouncing the *timer* isn't the same as debouncing the *request*: once
+    // a batch is in flight nothing cancels it, so a slow response for an
+    // earlier query could land after a faster later one and overwrite the
+    // results with stale rows. `stale` is flipped by this effect's cleanup,
+    // which React runs before re-running it for the next keystroke.
+    let stale = false
     const timer = setTimeout(async () => {
       const like = likePattern(needle)
       const [{ data: people, count: peopleCount }, { data: posts, count: postsCount }, { data: jobs, count: jobsCount }, { data: businesses, count: businessesCount }] = await Promise.all([
@@ -88,11 +94,12 @@ export default function GlobalSearch({ open, onClose }) {
         supabase.from('businesses').select('id, name, description', { count: 'exact' })
           .or(`name.ilike.${like},description.ilike.${like}`).limit(PREVIEW_LIMIT),
       ])
+      if (stale) return
       setResults({ people: people || [], posts: posts || [], jobs: jobs || [], businesses: businesses || [] })
       setCounts({ people: peopleCount || 0, posts: postsCount || 0, jobs: jobsCount || 0, businesses: businessesCount || 0 })
       setLoading(false)
     }, 300)
-    return () => clearTimeout(timer)
+    return () => { stale = true; clearTimeout(timer) }
   }, [q, open])
 
   // Re-runs just one category's query with a much higher limit, so "See

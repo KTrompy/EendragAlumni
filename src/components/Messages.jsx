@@ -101,6 +101,12 @@ export default function Messages({ session, profile, initialTarget, initialDraft
   // handler — the handler's closure captured `messages` at subscribe time
   // and would otherwise miss reactions on newly-received messages.
   const loadedMessageIdsRef = useRef(new Set())
+  // Reconnect gap-fill bookkeeping: the newest server-assigned created_at we
+  // hold (optimistic rows excluded — their timestamps are client clocks and
+  // would make us skip real messages), and whether this channel has
+  // subscribed before, since only a *re*-subscribe means a dropped socket.
+  const latestCreatedAtRef = useRef(null)
+  const subscribedOnceRef = useRef(false)
   // Whether the next `messages` update should auto-scroll to the bottom.
   // True on opening a thread or sending/receiving while already near the
   // bottom; explicitly false when prepending older history, so scrolling up
@@ -150,6 +156,31 @@ export default function Messages({ session, profile, initialTarget, initialDraft
 
   useEffect(() => { loadThreads() }, [])
 
+  // The thread list only ever refreshed off the *open* conversation's
+  // channel, so a message arriving in a thread you didn't have open never
+  // moved it up the list or updated its preview — the aggregate badge in
+  // FloatingMessages was the only hint anything had happened, and even that
+  // missed conversations created after its subscription was set up. This
+  // channel carries no conversation filter, so RLS decides what we see: every
+  // message in a thread we're a participant of, including brand-new ones.
+  useEffect(() => {
+    let timer = null
+    const channel = supabase
+      .channel(`messages-list-${me}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        () => {
+          // A burst of messages shouldn't mean a burst of list rebuilds.
+          clearTimeout(timer)
+          timer = setTimeout(loadThreads, 250)
+        }
+      )
+      .subscribe()
+    return () => { clearTimeout(timer); supabase.removeChannel(channel) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me])
+
   useEffect(() => {
     if (!initialTarget) return
     let cancelled = false
@@ -177,7 +208,12 @@ export default function Messages({ session, profile, initialTarget, initialDraft
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTarget])
 
-  async function loadReactionsFor(messageIds) {
+  // Merges rather than replaces: loadOlder() prepends a page of history and
+  // needs its reactions fetched too, and a wholesale replace would wipe the
+  // reactions already loaded for the newer messages still on screen. (Older
+  // messages simply never showed their reactions before, because loadOlder
+  // didn't fetch them at all.)
+  async function loadReactionsFor(messageIds, { replace = false } = {}) {
     if (!messageIds.length) return
     const { data } = await supabase
       .from('message_reactions')
@@ -187,7 +223,14 @@ export default function Messages({ session, profile, initialTarget, initialDraft
     for (const r of data || []) {
       (byMessage[r.message_id] ||= []).push(r)
     }
-    setReactionsByMessage(byMessage)
+    setReactionsByMessage((prev) => {
+      // `replace` is for the reconnect gap-fill: a merge can't represent a
+      // reaction that was *removed* while the socket was down.
+      if (!replace) return { ...prev, ...byMessage }
+      const next = { ...prev }
+      for (const id of messageIds) next[id] = byMessage[id] || []
+      return next
+    })
   }
 
   useEffect(() => {
@@ -199,6 +242,10 @@ export default function Messages({ session, profile, initialTarget, initialDraft
     setOtherLastReadAt(null)
     setEditingId(null)
     setReactionPickerFor(null)
+    // A fresh channel for a different thread — its first SUBSCRIBED is a
+    // first connection, not a reconnect.
+    subscribedOnceRef.current = false
+    latestCreatedAtRef.current = null
 
     // Only the most recent PAGE_SIZE messages load up front — see loadOlder
     // for how earlier history is fetched on demand. Previously this loaded
@@ -341,7 +388,55 @@ export default function Messages({ session, profile, initialTarget, initialDraft
         clearTimeout(typingTimeoutRef.current)
         typingTimeoutRef.current = setTimeout(() => setTypingOther(false), TYPING_TIMEOUT_MS)
       })
-      .subscribe()
+      // Only live events were ever handled, so anything that happened while
+      // the websocket was down — messages, reactions, read receipts — was
+      // simply never seen: the thread sat there looking current while it
+      // silently wasn't. Every SUBSCRIBED after the first is a reconnect, so
+      // use it to fill the gap. Deliberately additive (fetch what's newer
+      // than the newest row we hold) rather than a full reload, so history
+      // pulled in by "Load older messages" and the reader's scroll position
+      // both survive.
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return
+        if (!subscribedOnceRef.current) { subscribedOnceRef.current = true; return }
+        gapFill()
+      })
+
+    async function gapFill() {
+      const knownIds = [...loadedMessageIdsRef.current]
+      const newestAt = latestCreatedAtRef.current
+      if (newestAt) {
+        const { data } = await supabase
+          .from('messages')
+          .select('id, sender_id, content, created_at, edited_at, deleted_at')
+          .eq('conversation_id', activeId)
+          .gt('created_at', newestAt)
+          .order('created_at', { ascending: true })
+          .limit(PAGE_SIZE)
+        if (cancelled) return
+        const missed = (data || [])
+        if (missed.length) {
+          setMessages((m) => {
+            const have = new Set(m.map((x) => x.id))
+            return [...m, ...missed.filter((x) => !have.has(x.id))]
+          })
+          loadReactionsFor(missed.map((m) => m.id))
+          markRead(activeId)
+        }
+      }
+      // Reactions and read receipts can have changed on messages we already
+      // hold, and those arrive as UPDATE/INSERT events with nothing to
+      // re-request them — so re-read both outright.
+      if (knownIds.length) loadReactionsFor(knownIds, { replace: true })
+      const { data: participant } = await supabase
+        .from('conversation_participants')
+        .select('last_read_at')
+        .eq('conversation_id', activeId)
+        .neq('user_id', me)
+        .maybeSingle()
+      if (!cancelled && participant) setOtherLastReadAt(participant.last_read_at)
+      loadThreads()
+    }
 
     channelRef.current = channel
 
@@ -374,6 +469,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
     const older = (data || []).slice().reverse()
     shouldAutoScrollRef.current = false
     setMessages((m) => [...older, ...m])
+    loadReactionsFor(older.map((m) => m.id))
     setHasMoreOlder((data || []).length === PAGE_SIZE)
     setLoadingOlder(false)
     requestAnimationFrame(() => {
@@ -397,6 +493,8 @@ export default function Messages({ session, profile, initialTarget, initialDraft
 
   useEffect(() => {
     loadedMessageIdsRef.current = new Set(messages.map((m) => m.id))
+    const real = messages.filter((m) => !m.__optimistic)
+    latestCreatedAtRef.current = real.length ? real[real.length - 1].created_at : null
   }, [messages])
 
   // Grows the composer with the draft's content, up to a max height, then

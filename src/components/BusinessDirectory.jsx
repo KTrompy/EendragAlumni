@@ -22,6 +22,19 @@ import { sanitizeBusinessHtml } from '../sanitizeHtml.js'
 const MAX_LOGO_SIZE = 3 * 1024 * 1024
 const MAX_COVER_SIZE = 5 * 1024 * 1024
 
+// Businesses sharing a city/country collapse onto one pin — same rule
+// AlumniMap uses for people. The explicit `if (city || country)` matters:
+// this used to be `\`${city}|${country}\` || \`${lat},${lng}\``, and a
+// template literal is always truthy (an empty one is still "|"), so the
+// coordinate fallback never ran and every listing missing city/country data
+// piled into a single cluster at their averaged centroid.
+function clusterKey(b) {
+  const city = (b.city || '').trim().toLowerCase()
+  const country = (b.country || '').trim().toLowerCase()
+  if (city || country) return `place:${city}|${country}`
+  return `coord:${b.lat.toFixed(2)},${b.lng.toFixed(2)}`
+}
+
 // Does the HTML contain anything besides whitespace/empty tags? Used so an
 // empty WYSIWYG description doesn't pass validation as "filled in".
 // Parsed via DOMParser into a detached document rather than assigned to a
@@ -238,7 +251,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const clusters = useMemo(() => {
     const map = new Map()
     for (const b of pinned) {
-      const key = `${(b.city || '').toLowerCase()}|${(b.country || '').toLowerCase()}` || `${b.lat},${b.lng}`
+      const key = clusterKey(b)
       if (!map.has(key)) map.set(key, { key, latSum: 0, lngSum: 0, items: [] })
       const c = map.get(key)
       c.latSum += b.lat

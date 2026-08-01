@@ -119,6 +119,23 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
       return
     }
 
+    // Lowering the cap below the number of people who've already RSVP'd used
+    // to save silently, leaving the event over capacity with nothing flagging
+    // it anywhere. Checked here rather than clamped automatically, because
+    // which RSVPs would have to go is the organiser's call, not ours.
+    if (isEdit && registrationLimit === 'limited') {
+      const { count, error: countError } = await supabase
+        .from('event_rsvps')
+        .select('event_id', { count: 'exact', head: true })
+        .eq('event_id', initial.id)
+      if (!countError && typeof count === 'number' && parseInt(registrationCount) < count) {
+        setError(
+          `${count} ${count === 1 ? 'person has' : 'people have'} already RSVP'd, so the limit can't be lower than ${count}.`
+        )
+        return
+      }
+    }
+
     setBusy(true)
     setError(null)
 

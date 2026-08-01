@@ -1086,7 +1086,10 @@ button.delete-danger svg { flex-shrink: 0; }
   line-height: 1.35;
   color: var(--ink);
 }
-.city-suggestions button:hover { background: var(--paper); }
+.city-suggestions button:hover,
+/* Keyboard highlight (arrow keys) — see useListboxKeys.js. Same treatment as
+   hover so there's only one "this is the row you'll get" appearance. */
+.city-suggestions button.is-highlighted { background: var(--paper); }
 
 /* ---------- Phone input (PhoneInput.jsx) ----------
    A flag+dial-code picker fused visually into the free-text field beside
@@ -2281,6 +2284,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .decade-row { margin-bottom: 8px; }
 .filter-year-row { display: flex; gap: 6px; align-items: center; }
 .filter-year-row input { width: 100%; }
+.filter-year-error { margin: 8px 0 0; font-size: 12.5px; }
 .input-clear-wrap { position: relative; flex: 1; }
 .input-clear-wrap input { width: 100%; padding-right: 30px; }
 .input-clear-wrap.textarea textarea { width: 100%; padding-right: 30px; }
@@ -3198,9 +3202,7 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .modal-chips .person-tag { font-size: 12px; padding: 4px 10px; }
 
-/* ---------- Job modal (JobModal.jsx) ---------- */
-.job-modal-badges { display: flex; align-items: center; gap: 6px; margin: 4px 0 10px; }
-.job-modal-badges .job-badge { margin-left: 0; }
+/* ---------- Job save toggle (JobDetail.jsx) ---------- */
 .job-modal-save.on { border-color: var(--orange); color: var(--orange-dark); background: var(--orange-soft); }
 
 .modal-footer {

@@ -87,6 +87,21 @@ export default function Admin({ session }) {
   // Optimistic toggle, rolled back (via a full reload) if the write fails —
   // e.g. the schema-update-8.sql migration hasn't been run yet, so the
   // is_admin column or RLS policy doesn't exist.
+  // Every destructive/consequential member action runs through here: the
+  // buttons had no busy state at all, so a double-click fired the write twice
+  // and — worse — gave no feedback that anything was happening on a slow
+  // connection, which is what invites the second click.
+  const [busyIds, setBusyIds] = useState(() => new Set())
+  async function withBusy(id, fn) {
+    if (busyIds.has(id)) return
+    setBusyIds((prev) => new Set(prev).add(id))
+    try {
+      await fn()
+    } finally {
+      setBusyIds((prev) => { const next = new Set(prev); next.delete(id); return next })
+    }
+  }
+
   async function setApproved(id, approved) {
     // Guard against approving a signup that hasn't finished FinishSignup.jsx
     // (or the Auth.jsx wizard) yet — e.g. someone who used "Continue with
@@ -191,7 +206,12 @@ export default function Admin({ session }) {
       )}
 
       {subtab === 'pending' && (
-        <PendingList loading={loadingMembers} pending={pending} onApprove={(id) => setApproved(id, true)} />
+        <PendingList
+          loading={loadingMembers}
+          pending={pending}
+          busyIds={busyIds}
+          onApprove={(id) => withBusy(id, () => setApproved(id, true))}
+        />
       )}
       {subtab === 'reports' && <ReportsModeration onCountChange={setOpenReportsCount} />}
       {subtab === 'members' && (
@@ -199,9 +219,10 @@ export default function Admin({ session }) {
           loading={loadingMembers}
           members={members}
           myId={session.user.id}
-          onSetApproved={setApproved}
-          onSetAdmin={setAdmin}
-          onDeleteMember={deleteMember}
+          busyIds={busyIds}
+          onSetApproved={(id, approved) => withBusy(id, () => setApproved(id, approved))}
+          onSetAdmin={(id, isAdmin) => withBusy(id, () => setAdmin(id, isAdmin))}
+          onDeleteMember={(id) => withBusy(id, () => deleteMember(id))}
         />
       )}
       {subtab === 'posts' && <PostsModeration />}
@@ -223,7 +244,7 @@ function StatCard({ label, value, highlight }) {
 }
 
 /* ---------- Pending approvals ---------- */
-function PendingList({ loading, pending, onApprove }) {
+function PendingList({ loading, pending, onApprove, busyIds }) {
   if (loading) return <LoadingState message="Loading pending signups…" />
   if (pending.length === 0) {
     return (
@@ -254,7 +275,9 @@ function PendingList({ loading, pending, onApprove }) {
               No point offering Approve until they've actually filled the
               rest of their profile in. */}
           {m.consented_at ? (
-            <button className="btn primary small" onClick={() => onApprove(m.id)}>Approve</button>
+            <button className="btn primary small" onClick={() => onApprove(m.id)} disabled={busyIds?.has(m.id)}>
+              {busyIds?.has(m.id) ? 'Approving…' : 'Approve'}
+            </button>
           ) : (
             <span className="admin-row-meta admin-row-note">Hasn&rsquo;t finished signing up</span>
           )}
@@ -278,6 +301,7 @@ function ReportsModeration({ onCountChange }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const showToast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -293,7 +317,13 @@ function ReportsModeration({ onCountChange }) {
 
   async function setStatus(id, status) {
     const { error } = await supabase.from('reports').update({ status }).eq('id', id)
-    if (error) { load(); return }
+    if (error) {
+      // Reloading the list on failure made a failed action look like it had
+      // worked, right up until the report visibly reappeared. Say so instead.
+      showToast("Couldn't update that report — please try again.", { type: 'error' })
+      load()
+      return
+    }
     setItems((prev) => {
       const next = prev.map((r) => (r.id === id ? { ...r, status } : r))
       onCountChange?.(next.filter((r) => r.status === 'open').length)
@@ -372,7 +402,7 @@ function ReportList({ items, onSetStatus, navigate }) {
 }
 
 /* ---------- Members table ---------- */
-function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDeleteMember }) {
+function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDeleteMember, busyIds }) {
   const [confirmTarget, setConfirmTarget] = useState(null) // { member, action: 'delete' | 'promote' | 'demote' | 'unapprove' }
   const [q, setQ] = useState('')
 
@@ -413,6 +443,7 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
         <ul className="admin-list">
           {shown.map((m) => {
             const isMe = m.id === myId
+            const busy = !!busyIds?.has(m.id)
             return (
               <li className="admin-row" key={m.id}>
                 <Avatar url={null} name={m.full_name} size={40} />
@@ -436,7 +467,9 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                 <div className="admin-row-actions">
                   {!m.approved ? (
                     m.consented_at ? (
-                      <button className="btn primary small" onClick={() => onSetApproved(m.id, true)}>Approve</button>
+                      <button className="btn primary small" onClick={() => onSetApproved(m.id, true)} disabled={busy}>
+                        {busy ? 'Working…' : 'Approve'}
+                      </button>
                     ) : (
                       <button className="btn primary small" disabled title="Hasn't finished signing up yet">Approve</button>
                     )
@@ -450,18 +483,18 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                     <button
                       className="btn ghost small"
                       onClick={() => askUnapprove(m)}
-                      disabled={isMe}
+                      disabled={isMe || busy}
                       title={isMe ? "You can't un-approve yourself" : 'Move back to pending verification'}
                     >
                       Un-approve
                     </button>
                   )}
                   {m.is_admin ? (
-                    <button className="btn ghost small" onClick={() => askDemote(m)} disabled={isMe} title={isMe ? "Can't remove your own admin rights" : undefined}>
+                    <button className="btn ghost small" onClick={() => askDemote(m)} disabled={isMe || busy} title={isMe ? "Can't remove your own admin rights" : undefined}>
                       Remove admin
                     </button>
                   ) : (
-                    <button className="btn ghost small" onClick={() => askPromote(m)}>Make admin</button>
+                    <button className="btn ghost small" onClick={() => askPromote(m)} disabled={busy}>Make admin</button>
                   )}
                   {/* Permanent, and there's no undo — the confirm dialog
                       spells out what goes with it. Blocked on your own row;
@@ -469,10 +502,10 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                   <button
                     className="btn danger small"
                     onClick={() => askDelete(m)}
-                    disabled={isMe}
+                    disabled={isMe || busy}
                     title={isMe ? "Use Settings to delete your own account" : undefined}
                   >
-                    Delete account
+                    {busy ? 'Working…' : 'Delete account'}
                   </button>
                 </div>
               </li>

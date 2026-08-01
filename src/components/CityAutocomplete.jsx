@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getApproxLocation } from '../ipLocation'
 import DropdownPortal from './DropdownPortal.jsx'
+import { useListboxKeys } from '../useListboxKeys.js'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -34,6 +35,7 @@ export default function CityAutocomplete({
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [needsPick, setNeedsPick] = useState(false)
+  const [lookupFailed, setLookupFailed] = useState(false)
   const debounceRef = useRef(null)
   const blurTimeoutRef = useRef(null)
   // Anchor for the portalled suggestion list — see DropdownPortal.
@@ -103,6 +105,11 @@ export default function CityAutocomplete({
       return data?.features || []
     }
 
+    // The debounce delays the *request*, but once one is away nothing
+    // supersedes it — a slow reply for "cap" could land after a fast one for
+    // "cape town" and repopulate the list with suggestions for a query the
+    // person has already typed past.
+    let stale = false
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
@@ -116,16 +123,20 @@ export default function CityAutocomplete({
         if (rows.length === 0 && country) {
           rows = await search(q)
         }
+        if (stale) return
         setSuggestions(dedupe(rows))
+        setLookupFailed(false)
       } catch {
-        // offline or blocked — no suggestions to pick from; the field will
-        // revert on blur same as any other unconfirmed text.
+        // Offline, blocked, or Mapbox down. This used to fail completely
+        // silently — no suggestions and no explanation, which in strict mode
+        // reads as "this field just refuses to accept anything I type".
+        if (!stale) { setSuggestions([]); setLookupFailed(true) }
       } finally {
-        setLoading(false)
+        if (!stale) setLoading(false)
       }
     }, 400)
 
-    return () => clearTimeout(debounceRef.current)
+    return () => { stale = true; clearTimeout(debounceRef.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, country, approxLocation])
 
@@ -163,6 +174,8 @@ export default function CityAutocomplete({
 
   const showDropdown = open && text.trim().length >= 2 && (loading || suggestions.length > 0)
 
+  const keys = useListboxKeys({ items: suggestions, open: showDropdown, setOpen, onPick: pick })
+
   function clear() {
     setText('')
     setNeedsPick(false)
@@ -187,25 +200,41 @@ export default function CityAutocomplete({
         }}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        onKeyDown={keys.onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
+        role="combobox"
+        aria-expanded={showDropdown}
+        aria-autocomplete="list"
       />
       {text && (
         <button type="button" className="search-clear" onMouseDown={(e) => e.preventDefault()} onClick={clear} aria-label="Clear">×</button>
       )}
       <DropdownPortal anchorRef={anchorRef} open={showDropdown}>
-        <ul className="city-suggestions">
+        <ul className="city-suggestions" ref={keys.listRef} role="listbox">
           {loading && <li className="city-suggestion-loading">Searching…</li>}
-          {!loading && suggestions.map((s) => (
+          {!loading && suggestions.map((s, i) => (
             <li key={s.id}>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(s)}>
+              <button
+                type="button"
+                data-listbox-item
+                role="option"
+                aria-selected={i === keys.highlight}
+                className={i === keys.highlight ? 'is-highlighted' : undefined}
+                onMouseEnter={() => keys.setHighlight(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(s)}
+              >
                 {s.place_name}
               </button>
             </li>
           ))}
         </ul>
       </DropdownPortal>
-      {needsPick && !showDropdown && (
+      {lookupFailed && !loading && (
+        <p className="form-warning">Couldn&rsquo;t reach the place-lookup service just now — check your connection and try again.</p>
+      )}
+      {needsPick && !showDropdown && !lookupFailed && (
         <p className="form-warning">Please choose a suggestion from the list — that typed text wasn't saved.</p>
       )}
     </div>

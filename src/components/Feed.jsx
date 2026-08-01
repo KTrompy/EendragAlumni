@@ -339,6 +339,12 @@ export default function Feed({ session, profile, onMessage }) {
     setSearching(true)
     const safe = needle.replace(/[,()%]/g, ' ').replace(/_/g, '\\_').trim()
     const like = `%${safe}%`
+    // The timer is debounced, but the request that follows it isn't: nothing
+    // cancels a query already in flight, so a slow response for an earlier
+    // needle could resolve after a faster later one and overwrite the results
+    // with rows for a query the person has since typed past. `stale` is set
+    // by this effect's cleanup, which runs before the next keystroke's run.
+    let stale = false
     const timer = setTimeout(async () => {
       const { data } = await supabase
         .from('posts')
@@ -346,10 +352,11 @@ export default function Feed({ session, profile, onMessage }) {
         .or(`title.ilike.${like},content.ilike.${like}`)
         .order('created_at', { ascending: false })
         .limit(50)
+      if (stale) return
       setSearchResults(data || [])
       setSearching(false)
     }, 300)
-    return () => clearTimeout(timer)
+    return () => { stale = true; clearTimeout(timer) }
   }, [needle])
 
   const shown = needle ? (searchResults || []) : posts
@@ -830,6 +837,11 @@ function Composer({ session, profile, onPosted, openRef }) {
 function LazyPost(props) {
   const ref = useRef(null)
   const [visible, setVisible] = useState(true)
+  // Collapsing a post fully unmounts it, taking any open comment thread and
+  // half-typed comment with it — so scrolling ~1600px past a post you were
+  // busy with silently threw that work away. PostItem reports when it's in
+  // that state and we simply decline to collapse it.
+  const [keepMounted, setKeepMounted] = useState(false)
   const heightRef = useRef(320)
 
   useEffect(() => {
@@ -858,9 +870,9 @@ function LazyPost(props) {
     // Re-observe whenever the underlying DOM node is swapped out (real
     // post <-> placeholder), since IntersectionObserver stops reporting
     // once the element it was watching is removed from the DOM.
-  }, [visible, props.highlighted])
+  }, [visible, keepMounted, props.highlighted])
 
-  if (!visible && !props.highlighted) {
+  if (!visible && !props.highlighted && !keepMounted) {
     return (
       <li
         ref={ref}
@@ -871,10 +883,10 @@ function LazyPost(props) {
     )
   }
 
-  return <PostItem {...props} containerRef={ref} />
+  return <PostItem {...props} containerRef={ref} onKeepMounted={setKeepMounted} />
 }
 
-function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLike, onDelete, onEdit, onTogglePin, onImageClick, onMessage, onOpenProfile, containerRef }) {
+function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLike, onDelete, onEdit, onTogglePin, onImageClick, onMessage, onOpenProfile, containerRef, onKeepMounted }) {
   const [showComments, setShowComments] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -889,6 +901,13 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
   const canInteract = profile?.approved
   const images = p.image_urls || []
   const isMine = p.author_id === session.user.id
+
+  // Tell LazyPost to stop virtualising this post while there's state worth
+  // protecting — an open comment thread (which owns the comment draft) or an
+  // in-progress edit. Both would otherwise vanish on scrolling far enough away.
+  useEffect(() => {
+    onKeepMounted?.(showComments || editing)
+  }, [showComments, editing, onKeepMounted])
 
   function startEdit() {
     setEditTitle(p.title || '')

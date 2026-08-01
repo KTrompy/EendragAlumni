@@ -3,12 +3,12 @@ import { sanitizeBusinessHtml } from '../sanitizeHtml.js'
 
 // A fuller WYSIWYG editor for the Business Directory description only.
 // Same contentEditable + document.execCommand approach as the shared
-// RichTextEditor (three buttons, used by Feed/Jobs/Groups), just with the
+// RichTextEditor (three buttons, used by Feed/Jobs), just with the
 // complete set a business owner might reasonably want for a listing: bold,
 // italic, underline, undo/redo, paragraph alignment, indent/outdent,
 // bullet + numbered lists, links, and a small emoji picker. Kept as its own
 // component/sanitizer (sanitizeBusinessHtml) rather than expanding the
-// shared editor, so Feed/Jobs/Group posts keep their simpler toolbar.
+// shared editor, so Feed/Jobs posts keep their simpler toolbar.
 const EMOJI = ['😀', '😂', '😍', '👍', '🙌', '🎉', '☕', '🍺', '🍽️', '🛍️', '💼', '📍', '📞', '✉️', '🌍', '⭐']
 
 const ALIGN_COMMANDS = {

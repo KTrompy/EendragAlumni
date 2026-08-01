@@ -34,6 +34,17 @@ export function passwordStrength(pw) {
 // wording can't drift either.
 export const PASSWORD_TOO_SHORT = `Password must be at least ${PASSWORD_MIN} characters.`
 
+// A pure length check let eight spaces through as a "valid" password on
+// every screen. Callers should use this instead of testing `.length`
+// directly, so the whitespace rule can't drift back apart the way the
+// minimum length once did.
+export function passwordProblem(pw, { emptyMessage = 'Choose a password.' } = {}) {
+  if (!pw) return emptyMessage
+  if (pw.length < PASSWORD_MIN) return PASSWORD_TOO_SHORT
+  if (!pw.trim()) return 'Your password can’t be made up only of spaces.'
+  return null
+}
+
 // Shared strength-meter markup. Renders nothing for an empty field so
 // callers can drop it in unconditionally.
 export function PasswordStrengthMeter({ password }) {

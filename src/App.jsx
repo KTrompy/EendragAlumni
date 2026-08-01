@@ -332,8 +332,41 @@ export default function App() {
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s)
       if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true)
+      // Without this, signing out from the recovery screen (or having the
+      // recovery session expire out from under it) left `recoveryMode` stuck
+      // true — and since the check below runs *before* the "no session" one,
+      // ResetPassword.jsx kept rendering against a dead session with no way
+      // back to sign-in short of a manual page refresh.
+      if (event === 'SIGNED_OUT') setRecoveryMode(false)
     })
     return () => sub.subscription.unsubscribe()
+  }, [])
+
+  // Supabase reports a cancelled/denied social consent screen by bouncing
+  // back to the redirect URL with an error — in the query string on the PKCE
+  // flow, in the hash fragment on the implicit one. Nothing read either, so
+  // cancelling a Google sign-in dropped you back at a blank sign-in form with
+  // no explanation. Read it once, show it, and scrub it from the URL so a
+  // refresh doesn't resurrect the message.
+  const [authRedirectError, setAuthRedirectError] = useState(null)
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search)
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const code = query.get('error') || hash.get('error')
+    if (!code) return
+    const description = query.get('error_description') || hash.get('error_description')
+    setAuthRedirectError(
+      code === 'access_denied'
+        ? 'That sign-in was cancelled before it finished. You can try again, or use your email and password.'
+        : (description ? description.replace(/\+/g, ' ') : "That sign-in didn't complete. Please try again.")
+    )
+    for (const key of ['error', 'error_code', 'error_description']) query.delete(key)
+    const search = query.toString()
+    window.history.replaceState(
+      {},
+      '',
+      window.location.pathname + (search ? `?${search}` : '')
+    )
   }, [])
 
   // Scoped to the user id rather than the whole `session` object: supabase-js
@@ -473,8 +506,15 @@ export default function App() {
   }
 
   if (loading) return <div className="center-page">Loading…</div>
-  if (recoveryMode) return <ResetPassword onDone={() => setRecoveryMode(false)} />
-  if (!session) return <Auth />
+  if (recoveryMode) {
+    return (
+      <ResetPassword
+        onDone={() => setRecoveryMode(false)}
+        onCancel={async () => { setRecoveryMode(false); await supabase.auth.signOut() }}
+      />
+    )
+  }
+  if (!session) return <Auth initialError={authRedirectError} />
 
   // Everything below this point assumes a loaded profile. These three
   // checks used to read `if (profile && …)`, which meant a null profile —

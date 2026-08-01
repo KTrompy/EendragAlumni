@@ -10,7 +10,7 @@ export default function PendingVerification({ session, profile, onProfileChange 
   const email = session.user.email
   const name = (profile?.full_name || '').split(' ')[0]
   const [checking, setChecking] = useState(false)
-  const [result, setResult] = useState(null) // { type: 'pending' | 'error', text }
+  const [result, setResult] = useState(null) // { type: 'pending' | 'error' | 'removed', text }
 
   // "Check my status" used to be a bare window.location.reload(), which
   // looked broken: the page flashed and landed on this same screen with no
@@ -37,8 +37,12 @@ export default function PendingVerification({ session, profile, onProfileChange 
     }
     if (!data) {
       // Profile row is gone: an admin removed the account while they were
-      // sitting on this screen. Nothing to come back to, so sign them out.
-      await supabase.auth.signOut()
+      // sitting on this screen. Nothing to come back to, so sign them out —
+      // but say why first, and give them a beat to read it. Silently
+      // bouncing to the sign-in page read as a random bug rather than "your
+      // account was removed".
+      setResult({ type: 'removed', text: 'This account is no longer registered — it looks like it was removed by an administrator. Signing you out. If you think that’s a mistake, get in touch using the link below.' })
+      setTimeout(() => { supabase.auth.signOut() }, 6000)
       return
     }
     if (data.approved) {
@@ -61,11 +65,11 @@ export default function PendingVerification({ session, profile, onProfileChange 
           can sign in and meet everyone.
         </p>
         {result && (
-          <p className={result.type === 'error' ? 'form-error' : 'auth-verify-status'} role="status">
+          <p className={result.type === 'pending' ? 'auth-verify-status' : 'form-error'} role="status">
             {result.text}
           </p>
         )}
-        <button className="btn primary wide" onClick={checkStatus} disabled={checking}>
+        <button className="btn primary wide" onClick={checkStatus} disabled={checking || result?.type === 'removed'}>
           {checking ? 'Checking…' : 'Check my status'}
         </button>
         {/* The profile editor sits behind the approval gate, so until the

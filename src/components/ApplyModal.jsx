@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../supabaseClient'
 import { useToast } from './Toast.jsx'
-import { PdfIcon } from './Jobs.jsx'
+import { PdfIcon, isJobClosed } from './Jobs.jsx'
 
 const MAX_COVER_LETTER = 300
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
@@ -74,6 +74,13 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
   }
 
   async function submit() {
+    // Belt-and-braces: callers already hide/disable Apply on a closed listing,
+    // but this modal used to trust them completely. The matching RLS policy
+    // (schema-update-51) is what actually enforces it.
+    if (isJobClosed(job)) {
+      setError('Applications for this role have closed.')
+      return
+    }
     if (!coverLetter.trim()) {
       setError('Please add a short cover message.')
       return

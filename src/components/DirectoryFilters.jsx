@@ -264,6 +264,14 @@ export function DirectoryFilterPanel({ f }) {
             {f.draftFilters.yearTo && <button type="button" className="search-clear" onClick={() => f.setDraft('yearTo', '')} aria-label="Clear to year">×</button>}
           </div>
         </div>
+        {/* An inverted range can never match anything, and used to just
+            return a silent zero results with no clue why. */}
+        {f.draftFilters.yearFrom && f.draftFilters.yearTo
+          && Number(f.draftFilters.yearFrom) > Number(f.draftFilters.yearTo) && (
+          <p className="form-error filter-year-error" role="alert">
+            The &ldquo;from&rdquo; year is after the &ldquo;to&rdquo; year, so nothing can match.
+          </p>
+        )}
       </FilterSection>
 
       <FilterSection title="Skills & services" defaultOpen={false}>

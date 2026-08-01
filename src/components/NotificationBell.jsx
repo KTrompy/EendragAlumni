@@ -20,18 +20,43 @@ const ENTITY_TAB = { post: 'feed', event: 'events', job: 'jobs', member: 'admin'
 // this is the app's only cross-feature "something happened" signal, so it
 // intentionally covers likes/comments/RSVPs/messages in one place instead
 // of each feature inventing its own alert.
+const PAGE_SIZE = 30
+
 export default function NotificationBell({ session, onNavigate }) {
   const [items, setItems] = useState([])
+  // The badge used to count unread rows inside the 30 fetched above, so
+  // anyone sitting on 30+ unread notifications saw an undercount that never
+  // moved. Counted server-side instead, with no row limit.
+  const [unreadTotal, setUnreadTotal] = useState(0)
+  const [loadError, setLoadError] = useState(false)
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
 
+  // persistRead() below deliberately awaits getSession() first to dodge the
+  // auth-header-not-settled race (see its comment). This load had exactly the
+  // same exposure and no such guard — the very first fetch could come back
+  // empty because RLS matched nothing yet, and nothing retried.
   async function load() {
-    const { data } = await supabase
+    await supabase.auth.getSession()
+    const fetchPage = () => supabase
       .from('notifications')
       .select('id, type, entity_type, entity_id, message, read, created_at')
       .order('created_at', { ascending: false })
-      .limit(30)
+      .limit(PAGE_SIZE)
+    let { data, error } = await fetchPage()
+    if (error) {
+      await new Promise((r) => setTimeout(r, 600));
+      ({ data, error } = await fetchPage())
+    }
+    if (error) { setLoadError(true); return }
+    setLoadError(false)
     setItems(data || [])
+    const { count } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', session.user.id)
+      .eq('read', false)
+    if (typeof count === 'number') setUnreadTotal(count)
   }
 
   useEffect(() => {
@@ -41,9 +66,13 @@ export default function NotificationBell({ session, onNavigate }) {
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'notifications',
         filter: `user_id=eq.${session.user.id}`,
-      }, (payload) => setItems((prev) => [payload.new, ...prev]))
+      }, (payload) => {
+        setItems((prev) => [payload.new, ...prev].slice(0, PAGE_SIZE))
+        if (!payload.new.read) setUnreadTotal((n) => n + 1)
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.user.id])
 
   useEffect(() => {
@@ -58,7 +87,7 @@ export default function NotificationBell({ session, onNavigate }) {
     }
   }, [open])
 
-  const unreadCount = items.filter((n) => !n.read).length
+  const unreadCount = unreadTotal
 
   // Persist read=true with a settle + retry. The naive fire-and-forget
   // update this replaces could silently fail (same auth-header-not-settled
@@ -78,16 +107,26 @@ export default function NotificationBell({ session, onNavigate }) {
     }
   }
 
+  // Marks *everything* unread, not just the page of 30 currently loaded —
+  // otherwise "Mark all read" left an older backlog unread and the badge
+  // popped straight back to a non-zero count on the next load.
   async function markAllRead() {
-    const unreadIds = items.filter((n) => !n.read).map((n) => n.id)
-    if (unreadIds.length === 0) return
+    if (unreadTotal === 0) return
     setItems((prev) => prev.map((n) => ({ ...n, read: true })))
-    await persistRead(unreadIds)
+    setUnreadTotal(0)
+    await supabase.auth.getSession()
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', session.user.id)
+      .eq('read', false)
+    if (error) load()
   }
 
   async function openNotification(n) {
     if (!n.read) {
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
+      setUnreadTotal((c) => Math.max(0, c - 1))
       persistRead([n.id])
     }
     setOpen(false)
@@ -120,7 +159,13 @@ export default function NotificationBell({ session, onNavigate }) {
             )}
           </div>
           <div className="notif-list">
-            {items.length === 0 && <p className="empty small">Nothing yet — likes, comments, RSVPs and messages will show up here.</p>}
+            {loadError && (
+              <p className="form-error">
+                Couldn&rsquo;t load your notifications.{' '}
+                <button className="link-btn" onClick={load}>Try again</button>
+              </p>
+            )}
+            {!loadError && items.length === 0 && <p className="empty small">Nothing yet — likes, comments, RSVPs and messages will show up here.</p>}
             {items.map((n) => (
               <button
                 key={n.id}

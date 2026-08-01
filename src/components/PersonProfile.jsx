@@ -38,7 +38,7 @@ function Chips({ items }) {
 
 // Standalone page shown at /people/:personId — replaces the old floating
 // ProfileModal that used to pop up over whatever list you clicked a name
-// from (Directory, Feed, Groups, Mentoring, Jobs, the Alumni Map, Business
+// from (Directory, Feed, Mentoring, Jobs, the Alumni Map, Business
 // Directory). A real page reads more like a normal profile and means the
 // URL can be shared/bookmarked/opened directly, at the cost of always doing
 // a fresh fetch by id rather than reusing whatever row the calling list

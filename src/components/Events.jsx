@@ -16,6 +16,7 @@ import { eventIcebreaker } from '../icebreaker.js'
 import EventFormEnhanced from './EventFormEnhanced'
 import { safeUrl } from '../utils.js'
 import { renderRichTextExtended } from '../richTextExtended.jsx'
+import { buildIcs, downloadIcs, icsFilenameFor } from '../ics.js'
 
 const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
 const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -643,6 +644,20 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
     wasGoingRef.current = iAmGoing
   }, [iAmGoing])
 
+  // Descriptions are stored as markup for renderRichTextExtended; a calendar
+  // client shows DESCRIPTION as literal text, so strip tags before exporting
+  // rather than dumping "<p>" into someone's Google Calendar entry.
+  function addToCalendar() {
+    const plainDescription = e.description
+      ? new DOMParser().parseFromString(e.description, 'text/html').body.textContent.trim()
+      : ''
+    downloadIcs(
+      icsFilenameFor(e.title),
+      buildIcs({ ...e, description: plainDescription }, { calendarName: 'Eendrag Alumni' })
+    )
+    showToast('Calendar file downloaded')
+  }
+
   async function copyLink() {
     const url = `${window.location.origin}/events/${e.id}`
     try {
@@ -736,6 +751,9 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
           </button>
           <button className="post-action" onClick={copyLink} title="Copy a link to this event">
             <LinkIcon /> {copied ? 'Copied!' : 'Share'}
+          </button>
+          <button className="post-action" onClick={addToCalendar} title="Download an .ics file for Google/Apple/Outlook calendar">
+            <CalendarIcon /> Add to calendar
           </button>
           {isMine && (
             <button className="post-action" onClick={() => setEditing(true)} title="Edit event">
@@ -1142,6 +1160,16 @@ function EnvelopeIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7l9 6 9-6" />
+    </svg>
+  )
+}
+function CalendarIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
   )
 }

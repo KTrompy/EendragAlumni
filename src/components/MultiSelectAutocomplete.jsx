@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import DropdownPortal from './DropdownPortal.jsx'
+import { useListboxKeys } from '../useListboxKeys.js'
 
 // Same "type to filter, pick from suggestions" behaviour as ListAutocomplete,
 // but lets you pick more than one value — each pick adds a removable chip
@@ -54,8 +55,32 @@ export default function MultiSelectAutocomplete({
     setOpen(false) // close dropdown after selection
   }
 
+  function remove(option) {
+    onChange(values.filter((v) => v !== option))
+  }
+
+  const showDropdown = open && (suggestions.length > 0 || showAddCustom)
+
+  // The "Add …" row is navigable too, so it goes in the same list the arrow
+  // keys walk — hence the wrapper objects rather than a bare string array.
+  const navItems = [
+    ...suggestions.map((o) => ({ value: o })),
+    ...(showAddCustom ? [{ value: query.trim() }] : []),
+  ]
+  const keys = useListboxKeys({
+    items: navItems,
+    open: showDropdown,
+    setOpen,
+    onPick: (item) => pick(item.value),
+  })
+
   function handleKeyDown(e) {
-    if (e.key !== 'Enter') return
+    // Arrow keys, Escape, and Enter-on-a-highlighted-row are handled by the
+    // shared hook; it only claims Enter when something is actually
+    // highlighted, so the existing "Enter commits what I typed" behaviour
+    // below still runs for a plain Enter.
+    keys.onKeyDown(e)
+    if (e.defaultPrevented || e.key !== 'Enter') return
     e.preventDefault()
     const trimmed = query.trim()
     if (!trimmed) return
@@ -64,12 +89,6 @@ export default function MultiSelectAutocomplete({
     if (canonical) { pick(canonical); return }
     if (allowCustom) pick(trimmed)
   }
-
-  function remove(option) {
-    onChange(values.filter((v) => v !== option))
-  }
-
-  const showDropdown = open && (suggestions.length > 0 || showAddCustom)
 
   return (
     <div className="multi-select-autocomplete">
@@ -94,12 +113,24 @@ export default function MultiSelectAutocomplete({
           onKeyDown={handleKeyDown}
           placeholder={values.length ? 'Add another…' : placeholder}
           autoComplete="off"
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-autocomplete="list"
         />
         <DropdownPortal anchorRef={anchorRef} open={showDropdown}>
-          <ul className="city-suggestions">
-            {suggestions.map((option) => (
+          <ul className="city-suggestions" ref={keys.listRef} role="listbox">
+            {suggestions.map((option, i) => (
               <li key={option}>
-                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(option)}>
+                <button
+                  type="button"
+                  data-listbox-item
+                  role="option"
+                  aria-selected={i === keys.highlight}
+                  className={i === keys.highlight ? 'is-highlighted' : undefined}
+                  onMouseEnter={() => keys.setHighlight(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(option)}
+                >
                   {option}
                 </button>
               </li>
@@ -108,7 +139,11 @@ export default function MultiSelectAutocomplete({
               <li>
                 <button
                   type="button"
-                  className="city-suggestion-add"
+                  data-listbox-item
+                  role="option"
+                  aria-selected={keys.highlight === suggestions.length}
+                  className={keys.highlight === suggestions.length ? 'city-suggestion-add is-highlighted' : 'city-suggestion-add'}
+                  onMouseEnter={() => keys.setHighlight(suggestions.length)}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(query.trim())}
                 >

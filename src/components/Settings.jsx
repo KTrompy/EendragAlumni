@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { supabase, deleteOwnAccount } from '../supabaseClient'
+import { supabase, deleteOwnAccount, isNetworkError } from '../supabaseClient'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import LoadingState from './LoadingState.jsx'
 import { useToast } from './Toast.jsx'
-import { PASSWORD_MIN, PASSWORD_TOO_SHORT, PasswordStrengthMeter } from '../passwordRules.jsx'
+import { PASSWORD_MIN, passwordProblem, PasswordStrengthMeter } from '../passwordRules.jsx'
 
 const SETTINGS_TABS = [
   { id: 'account', label: 'Account' },
@@ -69,8 +69,6 @@ export default function Settings({ session, profile, onSaved }) {
 function AccountTab({ session, profile, onSaved }) {
   const showToast = useToast()
   const [language, setLanguage] = useState(profile?.language || 'en')
-  const [email, setEmail] = useState(session.user.email || '')
-  const [emailMsg, setEmailMsg] = useState(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
@@ -86,18 +84,31 @@ function AccountTab({ session, profile, onSaved }) {
   // Show a plain set-password form instead: no current-password check
   // needed since they're already authenticated via their Google session.
   //
-  // Checked against identities *and* app_metadata.providers, plus a local
-  // flag set the moment setNewPassword() succeeds. Identities alone was
-  // wrong: updateUser({ password }) on a Google account adds a usable
-  // password but does NOT add an 'email' identity to the session object, so
-  // hasPassword stayed false permanently. Those accounts kept getting the
-  // no-re-auth "set a password" form for the rest of time — meaning anyone
-  // on a borrowed session could change the password without knowing the
-  // current one, which is exactly what the re-auth below exists to prevent.
-  const [passwordJustSet, setPasswordJustSet] = useState(false)
+  // Checked against identities *and* app_metadata.providers, plus a
+  // has_password flag we set ourselves. Identities alone was wrong:
+  // updateUser({ password }) on a Google account adds a usable password but
+  // does NOT add an 'email' identity to the session object, so hasPassword
+  // stayed false permanently. Those accounts kept getting the no-re-auth
+  // "set a password" form for the rest of time — meaning anyone on a
+  // borrowed session could change the password without knowing the current
+  // one, which is exactly what the re-auth below exists to prevent.
+  //
+  // The flag lives in user_metadata rather than component state. It used to
+  // be a local `passwordJustSet` boolean, which fixed the bug only until the
+  // next page load: reload and identities/providers still say Google-only,
+  // the flag is back to false, and the unguarded form returns. user_metadata
+  // rides along in the session, so it survives reloads and new devices.
+  //
+  // Worth being honest about what this is: a UI-level guard. user_metadata
+  // is writable by the user, so someone determined could flip it back — but
+  // anyone with a session can already call updateUser({ password }) directly
+  // against the API, so the re-auth was never the real security boundary.
+  // The server-side equivalent is Supabase's "require reauthentication for
+  // password update" setting (Dashboard → Authentication → Sign In / Up),
+  // which makes GoTrue itself demand a nonce. See AUTH_FLOW_AUDIT.
   const providers = session.user.app_metadata?.providers || []
   const hasPassword =
-    passwordJustSet ||
+    session.user.user_metadata?.has_password === true ||
     (session.user.identities || []).some((i) => i.provider === 'email') ||
     providers.includes('email')
 
@@ -113,61 +124,97 @@ function AccountTab({ session, profile, onSaved }) {
     onSaved?.(data)
   }
 
-  async function saveEmail() {
-    setEmailMsg(null)
-    const next = email.trim()
-    if (next === session.user.email) return
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) {
-      setEmailMsg('Enter a valid email address.')
-      return
-    }
-    setBusy(true)
-    const { data, error } = await supabase.auth.updateUser({ email: next })
-    setBusy(false)
-    if (error) { setEmailMsg(error.message); return }
-
-    // The message used to be an unconditional "check your inbox to confirm"
-    // — but whether a confirmation is actually sent depends on the
-    // project's email settings. With confirmations off, the change applies
-    // immediately and no email ever arrives, so someone could be left
-    // waiting for a confirmation that isn't coming while their sign-in
-    // address had already changed underneath them. Read the result instead
-    // of assuming: Supabase leaves new_email pending when a confirmation is
-    // required, and swaps email over when it isn't.
-    const pending = data?.user?.new_email
-    setEmailMsg(
-      pending
-        ? `Check your inbox at ${pending} — the change takes effect once you confirm it.`
-        : 'Email address updated. Use it next time you sign in.'
-    )
-  }
+  // The sign-in email is deliberately not editable here.
+  //
+  // It used to be: a plain input plus a Save button calling
+  // updateUser({ email }), with no proof the person typing knew the
+  // password. That's the cleanest account-takeover path in the whole app —
+  // borrow an unlocked, already-signed-in device, change the address to one
+  // you control, sign out, run "forgot password", and the account is yours
+  // while the real owner is locked out of an address they no longer own.
+  //
+  // Requiring the current password would have closed that, but Eendrag Hub
+  // has a second reason to hold the address still: members are vetted and
+  // approved by an admin against the address they registered with (see
+  // schema-update-45/46 and the approval gate in Admin.jsx). Letting the
+  // sign-in address drift afterwards decouples the approved identity from
+  // the one an admin actually checked. So the address is now shown
+  // read-only, and changing it is an admin/support action.
 
   async function savePassword() {
     setPasswordMsg(null)
     if (!currentPassword) { setPasswordMsg('Enter your current password.'); return }
-    if (password.length < PASSWORD_MIN) { setPasswordMsg(PASSWORD_TOO_SHORT); return }
+    const pwProblem = passwordProblem(password, { emptyMessage: 'Choose a new password.' })
+    if (pwProblem) { setPasswordMsg(pwProblem); return }
     if (password !== passwordConfirm) { setPasswordMsg('Passwords don’t match.'); return }
+    // Supabase rejects this server-side only when "prevent password reuse"
+    // is switched on in the dashboard, which it isn't here — so without this
+    // check "Change password" can report a cheerful "Password updated." for
+    // an operation that changed nothing at all.
+    if (password === currentPassword) {
+      setPasswordMsg('That’s already your current password — pick a different one.')
+      return
+    }
     setBusy(true)
 
-    // Re-authenticate with the current password first — updateUser() alone
-    // will happily change the password for whoever is holding the current
-    // (still-valid) session, with no proof they know the existing one.
-    // Anyone with a few minutes on an unlocked, already-signed-in device
-    // could lock the real owner out. signInWithPassword re-checks the
-    // current password against Supabase before anything changes.
+    // Two independent checks of the current password, deliberately.
+    //
+    // updateUser() on its own will happily change the password for whoever
+    // is holding the current (still-valid) session, with no proof they know
+    // the existing one — anyone with a few minutes on an unlocked,
+    // already-signed-in device could lock the real owner out.
+    //
+    // 1. signInWithPassword re-checks the password against Supabase before
+    //    anything changes. This is a *client-side* guard: it stops the
+    //    borrowed-device case, but someone with the session token could skip
+    //    this screen entirely and call the API directly.
+    // 2. current_password below is the same check enforced by GoTrue itself,
+    //    controlled by "Require current password when changing password"
+    //    (Dashboard → Authentication → Sign In / Providers → Email). That one
+    //    can't be bypassed.
+    //
+    // Both, rather than only (2), because (2) is a dashboard toggle rather
+    // than anything in this repo — if it's ever switched off, GoTrue silently
+    // *ignores* current_password and the update succeeds unverified, with no
+    // error for this code to notice. (1) means the guard degrades to
+    // "client-side only" instead of to nothing at all.
     const { error: reauthError } = await supabase.auth.signInWithPassword({
       email: session.user.email,
       password: currentPassword,
     })
     if (reauthError) {
       setBusy(false)
-      setPasswordMsg('Current password is incorrect.')
+      // "Current password is incorrect" was reported for *every* failure
+      // here, including the offline/DNS/CORS case where the request never
+      // reached Supabase at all — telling someone their correct password is
+      // wrong, which is how people end up resetting a password that was
+      // fine. isNetworkError separates "no response" from "server said no".
+      setPasswordMsg(
+        isNetworkError(reauthError)
+          ? "Couldn't reach the server — check your connection and try again."
+          : 'Current password is incorrect.'
+      )
       return
     }
 
-    const { error } = await supabase.auth.updateUser({ password })
+    const { error } = await supabase.auth.updateUser({
+      current_password: currentPassword,
+      password,
+    })
     setBusy(false)
-    if (error) { setPasswordMsg(error.message); return }
+    if (error) {
+      // Reaching here after (1) already passed means GoTrue rejected the
+      // current password that Supabase had just accepted a moment earlier —
+      // which isn't a "you typed it wrong", it's the two disagreeing. Raw
+      // error.message would tell the member to check a password that is
+      // demonstrably correct, so say something they can act on instead.
+      if (/current password/i.test(error.message || '')) {
+        setPasswordMsg("Couldn't verify your current password just now — try again in a moment.")
+        return
+      }
+      setPasswordMsg(error.message)
+      return
+    }
     setCurrentPassword('')
     setPassword('')
     setPasswordConfirm('')
@@ -181,17 +228,39 @@ function AccountTab({ session, profile, onSaved }) {
   // fallback if Google access is ever lost.
   async function setNewPassword() {
     setPasswordMsg(null)
-    if (password.length < PASSWORD_MIN) { setPasswordMsg(PASSWORD_TOO_SHORT); return }
+    const pwProblem = passwordProblem(password)
+    if (pwProblem) { setPasswordMsg(pwProblem); return }
     if (password !== passwordConfirm) { setPasswordMsg('Passwords don’t match.'); return }
     setBusy(true)
-    const { error } = await supabase.auth.updateUser({ password })
+    // The has_password flag is written in the *same* call as the password
+    // itself, so the two can't get out of step — a separate follow-up
+    // updateUser() could fail on its own and leave an account that has a
+    // password but still shows the unguarded set-password form.
+    const { error } = await supabase.auth.updateUser({
+      password,
+      data: { has_password: true },
+    })
     setBusy(false)
-    if (error) { setPasswordMsg(error.message); return }
+    if (error) {
+      // No current_password is sent here because there isn't one — this
+      // account has never had a password. GoTrue's "require current password"
+      // setting is expected to skip accounts with no existing password for
+      // exactly that reason, but it's a dashboard toggle we don't control, so
+      // don't let a Google member hit a bare "current password is required"
+      // with no way to act on it.
+      if (/current password/i.test(error.message || '')) {
+        setPasswordMsg("Your account doesn't have a password to verify against, and the server asked for one. Let an admin know — this needs a settings change, not something you can fix here.")
+        return
+      }
+      setPasswordMsg(error.message)
+      return
+    }
     setPassword('')
     setPasswordConfirm('')
-    // Flip to the re-authenticating form from here on — see hasPassword.
-    // Without this the account keeps the no-current-password form forever.
-    setPasswordJustSet(true)
+    // No local flag to flip: updateUser fires USER_UPDATED, App.jsx's
+    // onAuthStateChange puts the new session (carrying has_password) into
+    // state, and this component re-renders with hasPassword true. That's
+    // what makes it survive a reload — see the hasPassword comment above.
     setPasswordMsg('Password set. You can now sign in with your email and this password, as well as Google.')
   }
 
@@ -233,26 +302,33 @@ function AccountTab({ session, profile, onSaved }) {
         <h3>Login options</h3>
 
         <label className="field settings-field"><span>Email</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="email" value={session.user.email || ''} readOnly disabled />
         </label>
-        <button className="btn ghost" disabled={busy || email.trim() === session.user.email} onClick={saveEmail}>Save</button>
-        {emailMsg && <p className="hint">{emailMsg}</p>}
+        <p className="hint">
+          This is the address you registered with and the one your membership
+          was approved against, so it can&rsquo;t be changed here. Email an
+          admin if you need it moved to a different address.
+        </p>
 
         <div className="settings-divider" />
 
         {hasPassword ? (
           <>
             <label className="field settings-field"><span>Current password</span>
-              <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+              <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
             </label>
             <label className="field settings-field"><span>New password</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} autoComplete="new-password" />
             </label>
             <PasswordStrengthMeter password={password} />
             <label className="field settings-field"><span>Confirm new password</span>
-              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
+              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} autoComplete="new-password" />
             </label>
-            <button className="btn ghost" disabled={busy || !password || !currentPassword} onClick={savePassword}>Change password</button>
+            {/* passwordConfirm belongs in this check too — leaving it out let
+                the button look ready while the form still failed validation. */}
+            <button className="btn ghost" disabled={busy || !password || !passwordConfirm || !currentPassword} onClick={savePassword}>
+              {busy ? 'Saving…' : 'Change password'}
+            </button>
           </>
         ) : (
           <>
@@ -261,13 +337,15 @@ function AccountTab({ session, profile, onSaved }) {
               Set one to also be able to sign in with your email address.
             </p>
             <label className="field settings-field"><span>New password</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} autoComplete="new-password" />
             </label>
             <PasswordStrengthMeter password={password} />
             <label className="field settings-field"><span>Confirm new password</span>
-              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
+              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} autoComplete="new-password" />
             </label>
-            <button className="btn ghost" disabled={busy || !password} onClick={setNewPassword}>Set password</button>
+            <button className="btn ghost" disabled={busy || !password || !passwordConfirm} onClick={setNewPassword}>
+              {busy ? 'Saving…' : 'Set password'}
+            </button>
           </>
         )}
         {passwordMsg && <p className="hint">{passwordMsg}</p>}

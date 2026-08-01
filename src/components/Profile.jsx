@@ -17,6 +17,18 @@ import { normalizeExpertise, formatExperienceRange, formatExperienceDuration, is
 
 const MAX_CV_SIZE = 10 * 1024 * 1024 // 10 MB
 const CV_ACCEPT = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+// The `accept` attribute on <input type="file"> is a picker hint, not a
+// constraint — every browser lets you get past it (drag-drop, "All files",
+// a renamed extension). Both pickers below checked size only, so a
+// non-image under 8 MB sailed through to PhotoCropper, whose <img onLoad>
+// then never fired: a modal with Save permanently disabled, no error, no
+// way to tell what went wrong. Same list ApplyModal enforces for its uploads.
+const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const CV_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]
 
 const EMPTY = {
   full_name: '', grad_year: '', degree: '',
@@ -315,6 +327,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file later (e.g. after cancel)
     if (!file) return
+    if (!AVATAR_TYPES.includes(file.type)) {
+      setError('Please choose a JPEG, PNG or WebP image.')
+      return
+    }
     if (file.size > 8 * 1024 * 1024) {
       setError('Photo must be under 8MB.')
       return
@@ -444,6 +460,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    if (!CV_TYPES.includes(file.type)) { setError('Please upload your CV as a PDF or Word document.'); return }
     if (file.size > MAX_CV_SIZE) { setError('CV must be under 10 MB.'); return }
     setCvUploading(true); setError(null)
     const ext = file.name.split('.').pop().toLowerCase()

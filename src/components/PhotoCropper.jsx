@@ -23,6 +23,7 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uplo
   const imgRef = useRef(null)
   const [imgUrl, setImgUrl] = useState(null)
   const [natural, setNatural] = useState(null) // { w, h }
+  const [decodeFailed, setDecodeFailed] = useState(false)
   const [viewSize, setViewSize] = useState(400) // square viewport side
   const [minScale, setMinScale] = useState(1)
   const [zoomMult, setZoomMult] = useState(1) // 1..3
@@ -238,6 +239,10 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uplo
                   alt=""
                   draggable={false}
                   onLoad={handleImgLoad}
+                  // Last line of defence for a file the browser can't decode.
+                  // Without it, onLoad never fires, `natural` stays null, Save
+                  // stays disabled forever and the modal says nothing at all.
+                  onError={() => setDecodeFailed(true)}
                   style={natural ? {
                     position: 'absolute',
                     left: offset.x,
@@ -373,10 +378,19 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uplo
 
         {/* Footer */}
         <div className="cropper-editor-footer">
+          {decodeFailed && (
+            <p className="form-error cropper-editor-error">
+              That file couldn&rsquo;t be opened as an image. Please choose a JPEG, PNG or WebP photo.
+            </p>
+          )}
           {error && <p className="form-error cropper-editor-error">{error}</p>}
-          <button className="btn primary" onClick={handleSave} disabled={!natural || uploading}>
-            {uploading ? 'Saving…' : 'Save changes'}
-          </button>
+          {decodeFailed ? (
+            <button className="btn ghost" onClick={onCancel}>Close</button>
+          ) : (
+            <button className="btn primary" onClick={handleSave} disabled={!natural || uploading}>
+              {uploading ? 'Saving…' : 'Save changes'}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
@@ -18,34 +18,71 @@ for (let y = THIS_YEAR; y >= FOUNDING_YEAR; y--) START_YEARS.push(y)
 const END_YEARS = []
 for (let y = THIS_YEAR + 7; y >= FOUNDING_YEAR; y--) END_YEARS.push(y)
 
+// Eleven fields and the only way off this screen was "Sign out" — a refresh
+// or a stray back-gesture mid-fill threw away everything typed. Same
+// localStorage draft approach JobForm uses. `dataConsent` is deliberately
+// left out: a consent tick is an affirmation someone has to make
+// deliberately, not something to silently restore on their behalf.
+const DRAFT_FIELDS = [
+  'firstName', 'preferredName', 'lastName', 'startYear', 'endYear', 'newsOptIn',
+  'address1', 'address2', 'address3', 'province', 'city', 'postCode', 'country',
+]
+
+function readDraft(key) {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export default function FinishSignup({ session, profile, onDone }) {
   const meta = session.user.user_metadata || {}
+  const draftKey = `eendrag-finish-signup-${session.user.id}`
+  const [draft] = useState(() => readDraft(draftKey) || {})
   // Social providers hand back given_name/family_name (Google/LinkedIn) or
   // just a full name (Facebook) — prefill whatever's available.
   const [firstName, setFirstName] = useState(
-    meta.first_name || meta.given_name || (meta.full_name || meta.name || '').split(' ')[0] || ''
+    draft.firstName ?? (meta.first_name || meta.given_name || (meta.full_name || meta.name || '').split(' ')[0] || '')
   )
-  const [preferredName, setPreferredName] = useState(meta.preferred_name || '')
+  const [preferredName, setPreferredName] = useState(draft.preferredName ?? (meta.preferred_name || ''))
   const [lastName, setLastName] = useState(
-    meta.last_name || meta.family_name || (meta.full_name || meta.name || '').split(' ').slice(1).join(' ') || ''
+    draft.lastName ?? (meta.last_name || meta.family_name || (meta.full_name || meta.name || '').split(' ').slice(1).join(' ') || '')
   )
-  const [startYear, setStartYear] = useState(meta.start_year || '')
-  const [endYear, setEndYear] = useState(meta.grad_year || '')
+  const [startYear, setStartYear] = useState(draft.startYear ?? (meta.start_year || ''))
+  const [endYear, setEndYear] = useState(draft.endYear ?? (meta.grad_year || ''))
   const [newsOptIn, setNewsOptIn] = useState(
-    typeof meta.email_news_opt_in === 'boolean' ? meta.email_news_opt_in : null
+    draft.newsOptIn ?? (typeof meta.email_news_opt_in === 'boolean' ? meta.email_news_opt_in : null)
   )
-  const [address1, setAddress1] = useState('')
-  const [address2, setAddress2] = useState('')
-  const [address3, setAddress3] = useState('')
-  const [province, setProvince] = useState('')
-  const [city, setCity] = useState(profile?.city || '')
+  const [address1, setAddress1] = useState(draft.address1 ?? '')
+  const [address2, setAddress2] = useState(draft.address2 ?? '')
+  const [address3, setAddress3] = useState(draft.address3 ?? '')
+  const [province, setProvince] = useState(draft.province ?? '')
+  const [city, setCity] = useState(draft.city ?? (profile?.city || ''))
   // Set when a City suggestion is picked — see Auth.jsx for the rationale.
+  // Not part of the draft: coordinates are only trustworthy alongside the
+  // exact city label they came from, so a restored draft re-picks or
+  // re-geocodes rather than reusing a stale pin.
   const [cityCoords, setCityCoords] = useState(null)
-  const [postCode, setPostCode] = useState('')
-  const [country, setCountry] = useState(profile?.country || 'South Africa')
+  const [postCode, setPostCode] = useState(draft.postCode ?? '')
+  const [country, setCountry] = useState(draft.country ?? (profile?.country || 'South Africa'))
   const [dataConsent, setDataConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+
+  const values = {
+    firstName, preferredName, lastName, startYear, endYear, newsOptIn,
+    address1, address2, address3, province, city, postCode, country,
+  }
+  useEffect(() => {
+    try {
+      localStorage.setItem(draftKey, JSON.stringify(
+        Object.fromEntries(DRAFT_FIELDS.map((k) => [k, values[k]]))
+      ))
+    } catch { /* private mode / quota — the form still works, just not resumable */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, DRAFT_FIELDS.map((k) => values[k]))
 
   function validate() {
     if (!firstName.trim()) return 'Enter your first name.'
@@ -92,6 +129,7 @@ export default function FinishSignup({ session, profile, onDone }) {
       .single()
     setBusy(false)
     if (err) { setError(err.message); return }
+    try { localStorage.removeItem(draftKey) } catch { /* ignore */ }
     onDone(data)
   }
 
@@ -218,7 +256,10 @@ export default function FinishSignup({ session, profile, onDone }) {
           </button>
         </form>
 
-        <button className="link-btn" onClick={() => supabase.auth.signOut()}>
+        <button
+          className="link-btn"
+          onClick={() => { try { localStorage.removeItem(draftKey) } catch { /* ignore */ } supabase.auth.signOut() }}
+        >
           Sign out
         </button>
       </div>

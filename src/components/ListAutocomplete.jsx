@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import DropdownPortal from './DropdownPortal.jsx'
+import { useListboxKeys } from '../useListboxKeys.js'
 
 // Generic type-to-filter text box backed by a static list of options —
 // used anywhere we want "start typing, pick from suggestions" instead of a
@@ -44,6 +45,8 @@ export default function ListAutocomplete({
 
   const showDropdown = open && suggestions.length > 0
 
+  const keys = useListboxKeys({ items: suggestions, open: showDropdown, setOpen, onPick: pick })
+
   return (
     <div className={clearable ? 'city-autocomplete has-clear' : 'city-autocomplete'} ref={anchorRef}>
       <input
@@ -52,8 +55,12 @@ export default function ListAutocomplete({
         onChange={(e) => { onChange(e.target.value); setOpen(true) }}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        onKeyDown={keys.onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
+        role="combobox"
+        aria-expanded={showDropdown}
+        aria-autocomplete="list"
       />
       {clearable && value && (
         <button
@@ -65,10 +72,19 @@ export default function ListAutocomplete({
         >×</button>
       )}
       <DropdownPortal anchorRef={anchorRef} open={showDropdown}>
-        <ul className="city-suggestions">
-          {suggestions.map((option) => (
+        <ul className="city-suggestions" ref={keys.listRef} role="listbox">
+          {suggestions.map((option, i) => (
             <li key={option}>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(option)}>
+              <button
+                type="button"
+                data-listbox-item
+                role="option"
+                aria-selected={i === keys.highlight}
+                className={i === keys.highlight ? 'is-highlighted' : undefined}
+                onMouseEnter={() => keys.setHighlight(i)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(option)}
+              >
                 {option}
               </button>
             </li>

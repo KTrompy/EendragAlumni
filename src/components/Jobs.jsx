@@ -54,7 +54,7 @@ const EMPTY_FILTERS = {
 // which would treat every closing date as "expired at 00:00 UTC" and drop
 // today's listings from the moment the SA workday starts. A blank closing
 // date is treated as ongoing (never closed).
-function isJobClosed(job) {
+export function isJobClosed(job) {
   if (!job?.closing_date) return false
   const d = new Date(job.closing_date + 'T23:59:59')
   return Number.isFinite(d.getTime()) && d.getTime() < Date.now()
@@ -753,7 +753,7 @@ export function PdfIcon() {
 // a localStorage round-trip, so it's left out on purpose.
 const JOB_DRAFT_FIELDS = [
   'title', 'company', 'location', 'employment_type', 'industry', 'description',
-  'apply_method', 'apply_url', 'contact_email', 'additional_email', 'company_website', 'closing_date',
+  'company_website', 'closing_date',
 ]
 
 // Default "closing date" offered on a brand new listing — three months out,
@@ -777,13 +777,10 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
     employment_type: initial?.employment_type || 'Full-time',
     industry: initial?.industry || '',
     description: initial?.description || '',
-    // Which way candidates should apply — mirrors the radio choice on the
-    // Maties Connect posting form instead of just offering both fields with
-    // "at least one is required".
-    apply_method: initial ? (initial.apply_url ? 'site' : 'email') : 'email',
-    apply_url: initial?.apply_url || '',
-    contact_email: initial?.contact_email || '',
-    additional_email: initial?.additional_email || '',
+    // Applications go through the platform now (see ApplyModal) — the old
+    // apply_url/contact_email/additional_email fields are no longer editable
+    // here, and edits deliberately leave whatever legacy values a listing
+    // still carries untouched rather than blanking them.
     company_website: initial?.company_website || '',
     closing_date: initial?.closing_date || (isEdit ? '' : defaultClosingDate()),
   })
@@ -991,9 +988,6 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
         employment_type: form.employment_type,
         industry: form.industry.trim(),
         description: trimTrailingHtml(sanitizeHtml(form.description)),
-        apply_url: '',
-        contact_email: '',
-        additional_email: '',
         company_website: form.company_website.trim(),
         closing_date: form.closing_date || null,
         logo_url: finalLogoUrl,

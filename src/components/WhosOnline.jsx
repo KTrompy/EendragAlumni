@@ -34,6 +34,7 @@ export function WhosOnline({ session, onOpenProfile }) {
       })
       channel
         .on('presence', { event: 'sync' }, () => {
+          if (cancelled) return
           const state = channel.presenceState()
           const list = Object.values(state)
             .map((entries) => entries[0])
@@ -41,7 +42,11 @@ export function WhosOnline({ session, onOpenProfile }) {
           setMembers(list)
         })
         .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
+          // Home and Feed both render this component, so navigating quickly
+          // between them can unmount before SUBSCRIBED lands — and tracking
+          // into a channel that removeChannel() has already torn down throws
+          // from inside a callback nothing is awaiting.
+          if (status === 'SUBSCRIBED' && !cancelled) {
             await channel.track({
               id: session.user.id,
               full_name: me?.full_name || 'Alumnus',
@@ -54,7 +59,10 @@ export function WhosOnline({ session, onOpenProfile }) {
       return () => supabase.removeChannel(channel)
     }
     const cleanupPromise = join()
-    return () => { cancelled = true; cleanupPromise.then((fn) => fn?.()) }
+    return () => {
+      cancelled = true
+      cleanupPromise.then((fn) => fn?.()).catch(() => { /* join bailed early — nothing to tear down */ })
+    }
   }, [session.user.id])
 
   if (members.length === 0) return null

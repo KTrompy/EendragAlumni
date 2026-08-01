@@ -11,6 +11,7 @@ import { WhosOnline } from './WhosOnline.jsx'
 import { BusinessLogo } from './BusinessLogo.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
+import EmptyState from './EmptyState.jsx'
 
 // Fields checked for the profile-completion bar — the ones that actually
 // make a profile useful to other Eendragters (who you are, what you do,
@@ -88,6 +89,14 @@ export default function Home({ session, profile, onMessage }) {
   const [nearbyBusinesses, setNearbyBusinesses] = useState([])
   const [showBadges, setShowBadges] = useState(false)
   const [loading, setLoading] = useState(true)
+  // The widget batch below never looked at `error` on any of its results, so
+  // a failed query (RLS hiccup, dropped connection) was indistinguishable
+  // from "there's genuinely nothing here" — every widget just rendered its
+  // empty state, permanently, with no way to retry. Same failure class as the
+  // auth-not-settled race further down, but triggered by real errors rather
+  // than timing, and the one-shot retry for that race gives up for good.
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const navigate = useNavigate()
   const pct = completionPercent(profile)
   const firstName = (profile?.full_name || '').trim().split(' ')[0] || 'there'
@@ -257,15 +266,7 @@ export default function Home({ session, profile, onMessage }) {
       if (profile?.city) businessFilters.push(`city.eq.${forOr(profile.city)}`)
       if (profile?.country) businessFilters.push(`country.eq.${forOr(profile.country)}`)
 
-      const [
-        { data: posts },
-        { data: events },
-        { data: badgeDefs },
-        { count: postsCount },
-        { count: rsvpCount },
-        { data: matchedCommunity },
-        { data: matchedBusinesses },
-      ] = await Promise.all([
+      const results = await Promise.all([
         supabase
           .from('posts')
           // `occupation` is rendered under the author's name in the preview
@@ -303,6 +304,29 @@ export default function Home({ session, profile, onMessage }) {
           : Promise.resolve({ data: [] }),
       ])
       if (cancelled) return
+
+      const [
+        { data: posts },
+        { data: events },
+        { data: badgeDefs },
+        { count: postsCount },
+        { count: rsvpCount },
+        { data: matchedCommunity },
+        { data: matchedBusinesses },
+      ] = results
+
+      // One retry for a transient blip, then say so rather than rendering a
+      // page of convincingly empty widgets.
+      if (results.some((r) => r.error)) {
+        if (!isRetry) {
+          await new Promise((r) => setTimeout(r, 600))
+          if (!cancelled) await load(true)
+          return
+        }
+        setLoadError(true)
+        setLoading(false)
+        return
+      }
 
       let communityList = matchedCommunity || []
       if (communityList.length === 0) {
@@ -349,6 +373,7 @@ export default function Home({ session, profile, onMessage }) {
         return
       }
 
+      setLoadError(false)
       setRecentPosts(posts || [])
       setUpcomingEvent(events?.[0] || null)
       setBadges(badgeDefs || [])
@@ -366,9 +391,23 @@ export default function Home({ session, profile, onMessage }) {
     load()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.user.id])
+  }, [session.user.id, reloadKey])
 
   if (loading) return <section className="panel"><LoadingState message="Loading your home…" /></section>
+
+  if (loadError) {
+    return (
+      <section className="panel">
+        <EmptyState
+          icon="feed"
+          message="We couldn't load your home page."
+          subMessage="Something went wrong fetching your dashboard. Your data is safe — this is just a hiccup loading it."
+          actionLabel="Try again"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
+      </section>
+    )
+  }
 
   const earnedCount = badges.filter((b) => earnedKeys.has(b.key)).length
 
