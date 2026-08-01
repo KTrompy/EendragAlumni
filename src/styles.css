@@ -7877,10 +7877,12 @@ button.delete-danger svg { flex-shrink: 0; }
   font-size: 14px;
 }
 .home-banner-textlink:hover { text-decoration: underline; }
-/* Icons in RefreshIcon/ShareIcon are inline-styled to var(--orange-dark)
+/* Icons in RefreshIcon/ShareIcon are inline-styled to var(--cta-icon-color)
    for use on the light banner background; redefine that variable inside
-   the CTA button's own orange background so the icon reads white instead. */
-.home-banner-cta { flex-shrink: 0; --orange-dark: #ffffff; }
+   the CTA button's own orange background so the icon reads white instead.
+   Note: this must NOT reuse --orange-dark, since .btn.primary:hover uses
+   --orange-dark for its background, which caused white-on-white on hover. */
+.home-banner-cta { flex-shrink: 0; --cta-icon-color: #ffffff; }
 .home-banner-cta .btn {
   display: inline-flex;
   align-items: center;
