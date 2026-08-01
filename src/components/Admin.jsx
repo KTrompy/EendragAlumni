@@ -88,6 +88,19 @@ export default function Admin({ session }) {
   // e.g. the schema-update-8.sql migration hasn't been run yet, so the
   // is_admin column or RLS policy doesn't exist.
   async function setApproved(id, approved) {
+    // Guard against approving a signup that hasn't finished FinishSignup.jsx
+    // (or the Auth.jsx wizard) yet — e.g. someone who used "Continue with
+    // Google" but closed the tab before submitting years/address/consent.
+    // The RLS policy (schema-update-45) enforces this server-side too, but
+    // checking here avoids the optimistic-update-then-rollback flicker and
+    // gives a clearer message than the raw Postgres error.
+    if (approved) {
+      const target = members.find((m) => m.id === id)
+      if (target && !target.consented_at) {
+        setMemberError("This member hasn't finished signing up yet — they still need to complete their profile before you can approve them.")
+        return
+      }
+    }
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, approved } : m)))
     const { error } = await supabase.from('profiles').update({ approved }).eq('id', id)
     if (error) { setMemberError(error.message); loadMembers() }
@@ -226,7 +239,16 @@ function PendingList({ loading, pending, onApprove }) {
             </span>
             <span className="admin-row-meta">Signed up {timeAgo(m.created_at)}</span>
           </div>
-          <button className="btn primary small" onClick={() => onApprove(m.id)}>Approve</button>
+          {/* consented_at is only set once someone finishes FinishSignup.jsx
+              (Google) or the last step of the signup wizard (email) — a
+              Google signup can land here with nothing but an email address.
+              No point offering Approve until they've actually filled the
+              rest of their profile in. */}
+          {m.consented_at ? (
+            <button className="btn primary small" onClick={() => onApprove(m.id)}>Approve</button>
+          ) : (
+            <span className="admin-row-meta admin-row-note">Hasn&rsquo;t finished signing up</span>
+          )}
         </li>
       ))}
     </ul>
@@ -402,7 +424,11 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                 </div>
                 <div className="admin-row-actions">
                   {!m.approved && (
-                    <button className="btn primary small" onClick={() => onSetApproved(m.id, true)}>Approve</button>
+                    m.consented_at ? (
+                      <button className="btn primary small" onClick={() => onSetApproved(m.id, true)}>Approve</button>
+                    ) : (
+                      <button className="btn primary small" disabled title="Hasn't finished signing up yet">Approve</button>
+                    )
                   )}
                   {m.is_admin ? (
                     <button className="btn ghost small" onClick={() => askDemote(m)} disabled={isMe} title={isMe ? "Can't remove your own admin rights" : undefined}>

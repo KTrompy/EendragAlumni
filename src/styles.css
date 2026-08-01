@@ -7004,6 +7004,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .admin-row-preview { font-size: 13px; color: var(--ink-soft); margin: 4px 0 0; }
 .admin-row-badges { display: flex; gap: 6px; margin-top: 3px; }
 .admin-row-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.admin-row-note { font-style: italic; }
 
 .admin-badge {
   display: inline-block;
