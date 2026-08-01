@@ -264,13 +264,6 @@ export function DirectoryFilterPanel({ f }) {
         />
       </FilterSection>
 
-      <FilterSection title="Open to opportunities" defaultOpen={false}>
-        <label className="filter-checkbox-row">
-          <input type="checkbox" checked={f.draftFilters.mentoringOnly} onChange={(e) => f.setDraft('mentoringOnly', e.target.checked)} />
-          Only show Eendragters open to opportunities
-        </label>
-      </FilterSection>
-
       <FilterSection title="Affiliation" defaultOpen={false}>
         <div className="filter-radio-row">
           <button className={f.draftFilters.status === STATUS.ALL ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALL)}>All</button>
