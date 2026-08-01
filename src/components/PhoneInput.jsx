@@ -101,7 +101,10 @@ export default function PhoneInput({ value, onChange, id }) {
   }
 
   function handleNationalChange(e) {
-    const next = e.target.value
+    // Digits plus the separators real numbers get written with (spaces,
+    // dashes, brackets) — letters and other stray characters are dropped
+    // as they're typed rather than failing later.
+    const next = e.target.value.replace(/[^\d\s()-]/g, '')
     setNational(next)
     prevValueRef.current = composeValue(country, next)
     onChange(prevValueRef.current)

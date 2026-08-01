@@ -22,6 +22,8 @@ const EMPTY = {
   full_name: '', grad_year: '', degree: '',
   industry: '', occupation: '',
   company: '', city: '', country: 'South Africa',
+  address_line1: '', address_line2: '', address_line3: '',
+  province: '', postal_code: '',
   bio: '',
   linkedin_url: '', phone: '',
   is_current_resident: false,
@@ -67,6 +69,21 @@ const SKIPPABLE_FIELD_CHECKS = {
   expertise: (p) => !Array.isArray(p.expertise) || p.expertise.length === 0,
   services_offered: (p) => !Array.isArray(p.services_offered) || p.services_offered.length === 0,
   geographic_focus: (p) => !Array.isArray(p.geographic_focus) || p.geographic_focus.length === 0,
+}
+
+// The directory-critical fields the old onboarding wizard used to force.
+// Since the wizard was replaced with "land on this page with everything
+// missing highlighted" (first login after approval, and the Home
+// "Complete your profile" button), these are checked alongside the
+// skippable ones so nothing essential slips through unprompted.
+const REQUIRED_FIELD_CHECKS = {
+  degree: (p) => !p.degree?.trim(),
+  industry: (p) => !p.industry?.trim(),
+  occupation: (p) => !p.occupation?.trim(),
+  company: (p) => !p.company?.trim(),
+  city: (p) => !p.city?.trim(),
+  postal_code: (p) => !p.postal_code?.trim(),
+  photo: (p) => !p.avatar_url,
 }
 
 export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
@@ -118,6 +135,11 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         company: profile.company || '',
         city: profile.city || '',
         country: profile.country || 'South Africa',
+        address_line1: profile.address_line1 || '',
+        address_line2: profile.address_line2 || '',
+        address_line3: profile.address_line3 || '',
+        province: profile.province || '',
+        postal_code: profile.postal_code || '',
         bio: profile.bio || '',
         linkedin_url: profile.linkedin_url || '',
         phone: profile.phone || '',
@@ -150,13 +172,29 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   // re-trigger it.
   useEffect(() => {
     if (!location.state?.highlightMissing || !profile) return
-    const missing = new Set(
-      Object.keys(SKIPPABLE_FIELD_CHECKS).filter((key) => SKIPPABLE_FIELD_CHECKS[key](profile))
-    )
+    const missing = new Set([
+      ...Object.keys(REQUIRED_FIELD_CHECKS).filter((key) => REQUIRED_FIELD_CHECKS[key](profile)),
+      ...Object.keys(SKIPPABLE_FIELD_CHECKS).filter((key) => SKIPPABLE_FIELD_CHECKS[key](profile)),
+    ])
     if (!profile.cv_url) missing.add('cv')
     setMissingFields(missing)
     const mentoringFields = ['availability', 'expertise', 'services_offered', 'geographic_focus', 'business_website']
     if (mentoringFields.some((f) => missing.has(f))) setShowMentoring(true)
+    // First login after approval (and the Home CTA) also ask us to put the
+    // cursor straight into the first empty field, so there's zero "now
+    // what?" moment. Deferred a tick so the highlighted classes are
+    // actually in the DOM before we go looking for them.
+    if (location.state?.focusFirst && missing.size > 0) {
+      setTimeout(() => {
+        const el = document.querySelector(
+          '.field-missing input, .field-missing textarea, .field-missing select'
+        )
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.focus({ preventScroll: true })
+        }
+      }, 150)
+    }
     navigate(location.pathname, { replace: true, state: {} })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, location.state])
@@ -469,7 +507,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       return false
     }
 
-    if (!isSafeHttpUrl(form.business_website)) {
+    // Same "people don't type the scheme" problem as LinkedIn (which now
+    // has a fixed prefix in the UI) — quietly add https:// to a bare
+    // "mysite.com" instead of failing the save over it.
+    const websiteTrimmed = form.business_website.trim()
+    const website = websiteTrimmed && !/^https?:\/\//i.test(websiteTrimmed)
+      ? `https://${websiteTrimmed}`
+      : websiteTrimmed
+    if (!isSafeHttpUrl(website)) {
       setError('Business website should start with http:// or https://.')
       return false
     }
@@ -521,7 +566,12 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       bio: form.bio.trim(),
       linkedin_url: form.linkedin_url.trim(),
       phone: form.phone.trim(),
-      business_website: form.business_website.trim(),
+      business_website: website,
+      address_line1: form.address_line1.trim(),
+      address_line2: form.address_line2.trim(),
+      address_line3: form.address_line3.trim(),
+      province: form.province.trim(),
+      postal_code: form.postal_code.trim(),
     }
 
     // Re-geocode when the city/country changed, or when this profile simply
@@ -610,8 +660,8 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       {missingFields.size > 0 && (
         <div className="profile-missing-banner">
           <span>
-            You skipped a few optional details during setup — they're highlighted below.
-            Fill in what's relevant, or leave them for later.
+            Let&rsquo;s finish your profile — everything still blank is highlighted
+            below. Fill in what you can, then hit Save.
           </span>
           <button type="button" className="link-btn small" onClick={() => setMissingFields(new Set())}>
             Dismiss
@@ -621,7 +671,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
       {/* Photo Section - Hero */}
       <div className="profile-photo-section">
-        <div className="profile-photo-card">
+        <div className={missingFields.has('photo') ? 'profile-photo-card field-missing' : 'profile-photo-card'}>
           <button
             type="button"
             className="profile-photo-avatar-btn"
@@ -675,14 +725,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <div className="field-row">
           <label className="field"><span>Graduation year</span>
             <ClearableInput
-              type="number"
+              inputMode="numeric"
               value={form.grad_year}
-              onChange={(e) => set('grad_year', e.target.value)}
+              onChange={(e) => set('grad_year', e.target.value.replace(/\D/g, '').slice(0, 4))}
               onClear={() => set('grad_year', '')}
               placeholder="2024"
             />
           </label>
-          <label className="field"><span>Degree</span>
+          <label className={fieldCls('degree')}><span>Degree</span>
             <ClearableInput
               value={form.degree}
               onChange={(e) => set('degree', e.target.value)}
@@ -717,7 +767,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       <div className="profile-section profile-section-career">
         <h3 className="profile-section-title">Career</h3>
 
-        <label className="field"><span>Industry</span>
+        <label className={fieldCls('industry')}><span>Industry</span>
           <ListAutocomplete
             value={form.industry}
             onChange={setIndustry}
@@ -728,7 +778,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </label>
 
         <div className="field-row">
-          <label className="field"><span>Job title</span>
+          <label className={fieldCls('occupation')}><span>Job title</span>
             <ClearableInput
               value={form.occupation}
               onChange={(e) => set('occupation', e.target.value)}
@@ -736,7 +786,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
               placeholder="e.g. Software Engineer"
             />
           </label>
-          <label className="field"><span>Company</span>
+          <label className={fieldCls('company')}><span>Company</span>
             <ClearableInput
               value={form.company}
               onChange={(e) => set('company', e.target.value)}
@@ -946,7 +996,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           />
         </label>
 
-        <label className="field"><span>City / Town</span>
+        <label className={fieldCls('city')}><span>City / Town</span>
           <CityAutocomplete
             value={form.city}
             country={form.country}
@@ -956,6 +1006,45 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           />
           <span className="hint">Start typing and choose from suggestions</span>
         </label>
+
+        <label className="field"><span>Address line 1</span>
+          <ClearableInput
+            value={form.address_line1}
+            onChange={(e) => set('address_line1', e.target.value)}
+            onClear={() => set('address_line1', '')}
+          />
+        </label>
+        <label className="field"><span>Address line 2</span>
+          <ClearableInput
+            value={form.address_line2}
+            onChange={(e) => set('address_line2', e.target.value)}
+            onClear={() => set('address_line2', '')}
+          />
+        </label>
+        <label className="field"><span>Address line 3</span>
+          <ClearableInput
+            value={form.address_line3}
+            onChange={(e) => set('address_line3', e.target.value)}
+            onClear={() => set('address_line3', '')}
+          />
+        </label>
+        <div className="field-row">
+          <label className="field"><span>Province</span>
+            <ClearableInput
+              value={form.province}
+              onChange={(e) => set('province', e.target.value)}
+              onClear={() => set('province', '')}
+            />
+          </label>
+          <label className={fieldCls('postal_code')}><span>Post code</span>
+            <ClearableInput
+              value={form.postal_code}
+              inputMode="numeric"
+              onChange={(e) => set('postal_code', e.target.value)}
+              onClear={() => set('postal_code', '')}
+            />
+          </label>
+        </div>
       </div>
 
       {/* Connect Section */}
@@ -963,13 +1052,25 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <h3 className="profile-section-title">Connect</h3>
 
         <label className={fieldCls('linkedin_url')}><span>LinkedIn URL</span>
-          <ClearableInput
-            type="url"
-            value={form.linkedin_url}
-            onChange={(e) => set('linkedin_url', e.target.value)}
-            onClear={() => set('linkedin_url', '')}
-            placeholder="https://linkedin.com/in/yourname"
-          />
+          {/* Fixed, visible https:// prefix — people kept pasting bare
+              "linkedin.com/in/…" links, hitting the "must start with
+              http://" save error, and not understanding why. The scheme is
+              now shown as a locked prefix and added to the stored value
+              automatically, so there's nothing to get wrong. Pasting a full
+              https:// link still works — the scheme is just de-duplicated. */}
+          <div className="url-input-wrap">
+            <span className="url-prefix" aria-hidden="true">https://</span>
+            <input
+              type="text"
+              value={form.linkedin_url.replace(/^https?:\/\//i, '')}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/^https?:\/\//i, '')
+                set('linkedin_url', raw.trim() ? `https://${raw}` : '')
+              }}
+              placeholder="linkedin.com/in/yourname"
+            />
+          </div>
+          <span className="hint">Just paste your profile link — the https:// is added for you.</span>
         </label>
 
         <label className={fieldCls('phone')}><span>Phone number</span>

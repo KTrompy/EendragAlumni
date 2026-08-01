@@ -382,7 +382,10 @@ export default function Home({ session, profile, onMessage }) {
         </div>
         <div className="home-banner-cta">
           {pct < 100 ? (
-            <button className="btn primary" onClick={() => navigate('/profile')}>
+            <button
+              className="btn primary"
+              onClick={() => navigate('/profile', { state: { highlightMissing: true, focusFirst: true } })}
+            >
               <RefreshIcon /> Complete your profile
             </button>
           ) : (

@@ -58,17 +58,35 @@ export default function NotificationBell({ session, onNavigate }) {
 
   const unreadCount = items.filter((n) => !n.read).length
 
+  // Persist read=true with a settle + retry. The naive fire-and-forget
+  // update this replaces could silently fail (same auth-header-not-settled
+  // race documented in App.jsx's profile load — the RLS policy then matches
+  // zero rows without erroring), which is exactly the reported "clicked it,
+  // reloaded, and the notification came back" bug. Awaiting getSession()
+  // first closes that window; one retry covers transient blips.
+  async function persistRead(ids) {
+    await supabase.auth.getSession()
+    const attempt = () =>
+      supabase.from('notifications').update({ read: true }).in('id', ids)
+        .eq('user_id', session.user.id)
+    const { error } = await attempt()
+    if (error) {
+      await new Promise((r) => setTimeout(r, 600))
+      await attempt()
+    }
+  }
+
   async function markAllRead() {
     const unreadIds = items.filter((n) => !n.read).map((n) => n.id)
     if (unreadIds.length === 0) return
     setItems((prev) => prev.map((n) => ({ ...n, read: true })))
-    await supabase.from('notifications').update({ read: true }).in('id', unreadIds)
+    await persistRead(unreadIds)
   }
 
   async function openNotification(n) {
     if (!n.read) {
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
-      supabase.from('notifications').update({ read: true }).eq('id', n.id)
+      persistRead([n.id])
     }
     setOpen(false)
     const tab = ENTITY_TAB[n.entity_type]

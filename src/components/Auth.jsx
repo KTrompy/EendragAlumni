@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import ClearableInput from './ClearableInput.jsx'
+import CountryAutocomplete from './CountryAutocomplete.jsx'
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
 
@@ -14,13 +15,11 @@ for (let y = THIS_YEAR; y >= FOUNDING_YEAR; y--) START_YEARS.push(y)
 const END_YEARS = []
 for (let y = THIS_YEAR + 7; y >= FOUNDING_YEAR; y--) END_YEARS.push(y)
 
-// Social providers configured in the Supabase dashboard (Authentication →
-// Providers). LinkedIn's modern provider id is linkedin_oidc — the plain
-// "linkedin" id is the deprecated legacy OAuth flow.
+// Google only — Facebook/LinkedIn were dropped (each needs its own dev-app
+// + review process for little extra coverage). Configured in the Supabase
+// dashboard: Authentication → Providers → Google.
 const SOCIAL_PROVIDERS = [
   { id: 'google', label: 'Google' },
-  { id: 'facebook', label: 'Facebook' },
-  { id: 'linkedin_oidc', label: 'LinkedIn' },
 ]
 
 // Rough client-side strength score, 0..4 — mirrors the usual zxcvbn-style
@@ -64,27 +63,13 @@ function SocialButtons({ prefix, onError }) {
   )
 }
 
-function ProviderIcon({ id }) {
-  if (id === 'google') {
-    return (
-      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.1h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.6 2.8c2.2-2 3.8-5 3.8-8.5z" />
-        <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1 .7-2.4 1.2-4.1 1.2-3.1 0-5.8-2.1-6.8-5l-4 3.1C3.3 21.4 7.3 24 12 24z" />
-        <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3l-4-3.1C.4 8.3 0 10.1 0 12s.4 3.7 1.2 5.4l4-3.1z" />
-        <path fill="#EA4335" d="M12 4.8c2.2 0 3.7.9 4.5 1.7l3.4-3.3C17.9 1.2 15.2 0 12 0 7.3 0 3.3 2.6 1.2 6.6l4 3.1c1-2.9 3.7-4.9 6.8-4.9z" />
-      </svg>
-    )
-  }
-  if (id === 'facebook') {
-    return (
-      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="#1877F2" d="M24 12a12 12 0 1 0-13.9 11.9v-8.4h-3V12h3V9.4c0-3 1.8-4.7 4.6-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9V12h3.3l-.5 3.5h-2.8v8.4A12 12 0 0 0 24 12z" />
-      </svg>
-    )
-  }
+function ProviderIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="#0A66C2" d="M20.4 20.4h-3.5v-5.6c0-1.3 0-3-1.9-3-1.9 0-2.1 1.4-2.1 2.9v5.7H9.4V9h3.4v1.6c.5-.9 1.6-1.9 3.4-1.9 3.6 0 4.2 2.4 4.2 5.4v6.3zM5.3 7.4a2 2 0 1 1 0-4.1 2 2 0 0 1 0 4.1zM7.1 20.4H3.6V9h3.5v11.4z" />
+      <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.3-2.2H12v4.1h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.6 2.8c2.2-2 3.8-5 3.8-8.5z" />
+      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1 .7-2.4 1.2-4.1 1.2-3.1 0-5.8-2.1-6.8-5l-4 3.1C3.3 21.4 7.3 24 12 24z" />
+      <path fill="#FBBC05" d="M5.2 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3l-4-3.1C.4 8.3 0 10.1 0 12s.4 3.7 1.2 5.4l4-3.1z" />
+      <path fill="#EA4335" d="M12 4.8c2.2 0 3.7.9 4.5 1.7l3.4-3.3C17.9 1.2 15.2 0 12 0 7.3 0 3.3 2.6 1.2 6.6l4 3.1c1-2.9 3.7-4.9 6.8-4.9z" />
     </svg>
   )
 }
@@ -107,6 +92,13 @@ export default function Auth() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [startYear, setStartYear] = useState('')
   const [endYear, setEndYear] = useState('')
+  const [address1, setAddress1] = useState('')
+  const [address2, setAddress2] = useState('')
+  const [address3, setAddress3] = useState('')
+  const [province, setProvince] = useState('')
+  const [city, setCity] = useState('')
+  const [postCode, setPostCode] = useState('')
+  const [country, setCountry] = useState('South Africa')
   const [newsOptIn, setNewsOptIn] = useState(null) // null until they choose
   const [dataConsent, setDataConsent] = useState(false)
   const [signupDone, setSignupDone] = useState(false)
@@ -259,6 +251,9 @@ export default function Auth() {
     if (!startYear) return 'Select the year you arrived at Eendrag.'
     if (!endYear) return 'Select your final year (or expected final year).'
     if (Number(endYear) < Number(startYear)) return 'Your final year can’t be before your first year.'
+    if (!city.trim()) return 'Enter your city or town.'
+    if (!postCode.trim()) return 'Enter your post code.'
+    if (!country.trim()) return 'Enter your country.'
     return null
   }
 
@@ -296,6 +291,13 @@ export default function Auth() {
       start_year: Number(startYear),
       grad_year: Number(endYear),
       email_news_opt_in: newsOptIn === true,
+      address_line1: address1.trim(),
+      address_line2: address2.trim(),
+      address_line3: address3.trim(),
+      province: province.trim(),
+      city: city.trim(),
+      postal_code: postCode.trim(),
+      country: country.trim(),
     }
 
     try {
@@ -338,6 +340,13 @@ export default function Auth() {
             start_year: details.start_year,
             grad_year: details.grad_year,
             email_news_opt_in: details.email_news_opt_in,
+            address_line1: details.address_line1,
+            address_line2: details.address_line2,
+            address_line3: details.address_line3,
+            province: details.province,
+            city: details.city,
+            postal_code: details.postal_code,
+            country: details.country,
             consented_at: new Date().toISOString(),
           })
           .eq('id', session.user.id)
@@ -569,6 +578,45 @@ export default function Auth() {
                         {END_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </div>
+                  </label>
+                </div>
+
+                <h2 className="auth-step-heading" style={{ marginTop: 10 }}>Where you live now</h2>
+                <label className="field">
+                  <span>Address line 1</span>
+                  <input value={address1} onChange={(e) => setAddress1(e.target.value)} autoComplete="address-line1" />
+                </label>
+                <label className="field">
+                  <span>Address line 2</span>
+                  <input value={address2} onChange={(e) => setAddress2(e.target.value)} autoComplete="address-line2" />
+                </label>
+                <label className="field">
+                  <span>Address line 3</span>
+                  <input value={address3} onChange={(e) => setAddress3(e.target.value)} autoComplete="address-line3" />
+                </label>
+                <div className="auth-field-row">
+                  <label className="field">
+                    <span>Province</span>
+                    <input value={province} onChange={(e) => setProvince(e.target.value)} autoComplete="address-level1" />
+                  </label>
+                  <label className="field">
+                    <span>City *</span>
+                    <input value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" />
+                  </label>
+                </div>
+                <div className="auth-field-row">
+                  <label className="field">
+                    <span>Post code *</span>
+                    <input
+                      value={postCode}
+                      inputMode="numeric"
+                      onChange={(e) => setPostCode(e.target.value)}
+                      autoComplete="postal-code"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Country *</span>
+                    <CountryAutocomplete value={country} onChange={setCountry} placeholder="Start typing…" />
                   </label>
                 </div>
               </>

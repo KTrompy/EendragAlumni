@@ -25,7 +25,9 @@
   /* System Helvetica stack — real Helvetica Neue on Mac/iOS, Arial (a
      close visual match) on Windows, Roboto on Android. No webfont license
      needed and nothing to download, unlike Proxima Nova/Helvetica proper. */
-  --display: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, Roboto, sans-serif;
+  /* Eendrag's main typeface is Georgia — used for headings/display text
+     app-wide via this variable (body text stays in the sans stack). */
+  --display: Georgia, 'Times New Roman', serif;
   --body: 'Inter', sans-serif;
   /* Shared easing for hover/entrance motion — a bit of overshoot-free
      "settle" so interactions feel smooth and connected rather than linear
@@ -1364,6 +1366,34 @@ button.delete-danger svg { flex-shrink: 0; }
   margin: 14px 0 18px;
 }
 .pending-verify-icon { font-size: 34px; text-align: center; margin-top: 10px; }
+
+/* ---------- URL input with a fixed, visible https:// prefix ---------- */
+.url-input-wrap {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper);
+}
+.url-input-wrap:focus-within { border-color: var(--orange); }
+.url-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  user-select: none;
+}
+.url-input-wrap input {
+  flex: 1;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none;
+  box-shadow: none !important;
+}
 
 /* ---------- Onboarding wizard (one question at a time) ---------- */
 .onboarding-page {

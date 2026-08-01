@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { supabase, isAuthError } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import ResetPassword from './components/ResetPassword.jsx'
-import Onboarding from './components/Onboarding.jsx'
 import FinishSignup from './components/FinishSignup.jsx'
 import PendingVerification from './components/PendingVerification.jsx'
 import Home from './components/Home.jsx'
@@ -90,7 +89,6 @@ export default function App() {
   const [moreNavOverride, setMoreNavOverride] = useState(null)
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(false)
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -391,19 +389,22 @@ export default function App() {
     }
   }, [session])
 
-  // First time an approved member's profile loads without the wizard done,
-  // walk them through onboarding question-by-question. Signup now collects
-  // name/years/consent up front (see Auth.jsx), so the trigger is the
-  // explicit onboarding_complete flag rather than the old "no name yet"
-  // heuristic. Deliberately not marked checked while still unconsented or
-  // unapproved — those states show their own full-screen gates below, and
-  // the wizard should still fire on the first load *after* approval.
+  // First load after approval: instead of the old question-by-question
+  // wizard, drop them straight onto their Profile page with every
+  // still-empty field highlighted and the first one focused (Profile.jsx
+  // reads the nav state). onboarding_complete is flipped immediately so
+  // this only ever happens once — after that, the Home "Complete your
+  // profile" button re-triggers the same highlighting on demand.
   useEffect(() => {
     if (!profile || checkedFirstRun) return
     if (!profile.consented_at || !profile.approved) return
-    if (!profile.onboarding_complete) setShowOnboarding(true)
+    if (!profile.onboarding_complete) {
+      supabase.from('profiles').update({ onboarding_complete: true }).eq('id', profile.id).then(() => {})
+      setProfile((p) => (p ? { ...p, onboarding_complete: true } : p))
+      navigate('/profile', { state: { highlightMissing: true, focusFirst: true } })
+    }
     setCheckedFirstRun(true)
-  }, [profile, checkedFirstRun])
+  }, [profile, checkedFirstRun]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openMessage(targetProfile, draftText = '') {
     setDmTarget(targetProfile)
@@ -444,25 +445,6 @@ export default function App() {
   // records — no browsing while pending.
   if (profile && !profile.approved) {
     return <PendingVerification session={session} profile={profile} />
-  }
-
-  if (showOnboarding) {
-    return (
-      <Onboarding
-        session={session}
-        profile={profile}
-        onDone={(updatedProfile) => {
-          setProfile(updatedProfile)
-          setShowOnboarding(false)
-          // Onboarding only forces the directory-critical questions — bio,
-          // LinkedIn, phone, CV and the mentoring block are all
-          // skippable there. Flagging this nav lets Profile.jsx highlight
-          // whichever of those got left blank, so there's still a nudge to
-          // fill them in without gatekeeping the wizard on them.
-          navigate('/profile', { state: { highlightMissing: true } })
-        }}
-      />
-    )
   }
 
   const navTabs = profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS

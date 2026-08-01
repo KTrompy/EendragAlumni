@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import CountryAutocomplete from './CountryAutocomplete.jsx'
 
 // Shown (full-screen, before anything else) to anyone signed in whose
 // profile has no consented_at yet — in practice that's people who joined
@@ -31,6 +32,13 @@ export default function FinishSignup({ session, profile, onDone }) {
   const [newsOptIn, setNewsOptIn] = useState(
     typeof meta.email_news_opt_in === 'boolean' ? meta.email_news_opt_in : null
   )
+  const [address1, setAddress1] = useState('')
+  const [address2, setAddress2] = useState('')
+  const [address3, setAddress3] = useState('')
+  const [province, setProvince] = useState('')
+  const [city, setCity] = useState(profile?.city || '')
+  const [postCode, setPostCode] = useState('')
+  const [country, setCountry] = useState(profile?.country || 'South Africa')
   const [dataConsent, setDataConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -41,6 +49,9 @@ export default function FinishSignup({ session, profile, onDone }) {
     if (!startYear) return 'Select the year you arrived at Eendrag.'
     if (!endYear) return 'Select your final year (or expected final year).'
     if (Number(endYear) < Number(startYear)) return 'Your final year can’t be before your first year.'
+    if (!city.trim()) return 'Enter your city or town.'
+    if (!postCode.trim()) return 'Enter your post code.'
+    if (!country.trim()) return 'Enter your country.'
     if (newsOptIn === null) return 'Choose whether you’d like news and events by email.'
     if (!dataConsent) return 'You’ll need to consent to your data being held to join.'
     return null
@@ -59,6 +70,13 @@ export default function FinishSignup({ session, profile, onDone }) {
         start_year: Number(startYear),
         grad_year: Number(endYear),
         email_news_opt_in: newsOptIn === true,
+        address_line1: address1.trim(),
+        address_line2: address2.trim(),
+        address_line3: address3.trim(),
+        province: province.trim(),
+        city: city.trim(),
+        postal_code: postCode.trim(),
+        country: country.trim(),
         consented_at: new Date().toISOString(),
       })
       .eq('id', session.user.id)
@@ -114,6 +132,39 @@ export default function FinishSignup({ session, profile, onDone }) {
                   {END_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
+            </label>
+          </div>
+
+          <label className="field">
+            <span>Address line 1</span>
+            <input value={address1} onChange={(e) => setAddress1(e.target.value)} autoComplete="address-line1" />
+          </label>
+          <label className="field">
+            <span>Address line 2</span>
+            <input value={address2} onChange={(e) => setAddress2(e.target.value)} autoComplete="address-line2" />
+          </label>
+          <label className="field">
+            <span>Address line 3</span>
+            <input value={address3} onChange={(e) => setAddress3(e.target.value)} autoComplete="address-line3" />
+          </label>
+          <div className="auth-field-row">
+            <label className="field">
+              <span>Province</span>
+              <input value={province} onChange={(e) => setProvince(e.target.value)} autoComplete="address-level1" />
+            </label>
+            <label className="field">
+              <span>City *</span>
+              <input value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" />
+            </label>
+          </div>
+          <div className="auth-field-row">
+            <label className="field">
+              <span>Post code *</span>
+              <input value={postCode} inputMode="numeric" onChange={(e) => setPostCode(e.target.value)} autoComplete="postal-code" />
+            </label>
+            <label className="field">
+              <span>Country *</span>
+              <CountryAutocomplete value={country} onChange={setCountry} placeholder="Start typing…" />
             </label>
           </div>
 
