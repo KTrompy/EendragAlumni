@@ -79,6 +79,13 @@ function AccountTab({ session, profile, onSaved }) {
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Accounts created via Google (or any social provider) never get an
+  // 'email' identity — there's no password to re-authenticate against, so
+  // the "current password" flow below would just fail for them forever.
+  // Show a plain set-password form instead: no current-password check
+  // needed since they're already authenticated via their Google session.
+  const hasPassword = (session.user.identities || []).some((i) => i.provider === 'email')
+
   async function saveLanguage(next) {
     const prev = language
     setLanguage(next)
@@ -132,6 +139,24 @@ function AccountTab({ session, profile, onSaved }) {
     setPasswordMsg('Password updated.')
   }
 
+  // For accounts with no password identity yet (Google-only). No
+  // current-password re-auth is possible or needed here — there is no old
+  // password, and they're already proven to be the account owner by
+  // holding a valid session. This also gives them an email/password
+  // fallback if Google access is ever lost.
+  async function setNewPassword() {
+    setPasswordMsg(null)
+    if (password.length < 6) { setPasswordMsg('Password must be at least 6 characters.'); return }
+    if (password !== passwordConfirm) { setPasswordMsg('Passwords don’t match.'); return }
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ password })
+    setBusy(false)
+    if (error) { setPasswordMsg(error.message); return }
+    setPassword('')
+    setPasswordConfirm('')
+    setPasswordMsg('Password set. You can now sign in with your email and this password, as well as Google.')
+  }
+
   async function deleteAccount() {
     setDeleting(true)
     setDeleteError(null)
@@ -177,16 +202,34 @@ function AccountTab({ session, profile, onSaved }) {
 
         <div className="settings-divider" />
 
-        <label className="field settings-field"><span>Current password</span>
-          <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-        </label>
-        <label className="field settings-field"><span>New password</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
-        </label>
-        <label className="field settings-field"><span>Confirm new password</span>
-          <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
-        </label>
-        <button className="btn ghost" disabled={busy || !password || !currentPassword} onClick={savePassword}>Change password</button>
+        {hasPassword ? (
+          <>
+            <label className="field settings-field"><span>Current password</span>
+              <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            </label>
+            <label className="field settings-field"><span>New password</span>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
+            </label>
+            <label className="field settings-field"><span>Confirm new password</span>
+              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
+            </label>
+            <button className="btn ghost" disabled={busy || !password || !currentPassword} onClick={savePassword}>Change password</button>
+          </>
+        ) : (
+          <>
+            <p className="hint">
+              You signed up with Google and don&rsquo;t have a password yet.
+              Set one to also be able to sign in with your email address.
+            </p>
+            <label className="field settings-field"><span>New password</span>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
+            </label>
+            <label className="field settings-field"><span>Confirm new password</span>
+              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
+            </label>
+            <button className="btn ghost" disabled={busy || !password} onClick={setNewPassword}>Set password</button>
+          </>
+        )}
         {passwordMsg && <p className="hint">{passwordMsg}</p>}
       </div>
 
