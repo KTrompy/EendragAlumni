@@ -1365,6 +1365,20 @@ button.delete-danger svg { flex-shrink: 0; }
   text-align: center;
   margin: 14px 0 18px;
 }
+/* Result of "Check my status" when they're still pending — informational
+   rather than an error, so it gets the soft ink treatment instead of the
+   red .form-error. See PendingVerification.jsx. */
+.auth-verify-status {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-align: center;
+  background: var(--orange-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 0 0 14px;
+}
 .pending-verify-icon { font-size: 34px; text-align: center; margin-top: 10px; }
 
 /* ---------- URL input with a fixed, visible https:// prefix ---------- */
@@ -3295,15 +3309,17 @@ button.delete-danger svg { flex-shrink: 0; }
   min-width: 0;
 }
 /* Home dashboard only: even 50/50 split between the feed column and the
-   sidebar, and more breathing room between stacked sections, so "Recent
-   posts / My Groups / Businesses" and the sidebar widgets each read as
-   distinct blocks instead of running together. */
+   sidebar, and a little more breathing room between stacked sections than
+   the feed uses, so "Recent posts / Businesses" and the sidebar widgets
+   each read as distinct blocks instead of running together. Kept modest —
+   at laptop widths (~1280–1440px) the earlier 26–28px gaps left the cards
+   floating apart with the dashboard scrolling further than it needed to. */
 .home-feed-layout {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 28px;
+  gap: 20px;
 }
-.home-feed-layout .feed-main { display: flex; flex-direction: column; gap: 26px; }
-.home-feed-layout .feed-sidebar { gap: 20px; }
+.home-feed-layout .feed-main { display: flex; flex-direction: column; gap: 16px; }
+.home-feed-layout .feed-sidebar { gap: 14px; }
 @media (max-width: 960px) {
   /* See .directory-layout mobile override — reset the desktop min-height
      added to give the sticky sidebar room, otherwise short single-column
@@ -7744,7 +7760,7 @@ button.delete-danger svg { flex-shrink: 0; }
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 26px 30px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 /* Circular completion ring around the avatar (replaces the old linear bar) —
    see ProgressRing in Home.jsx. Ring color stays Eendrag orange/maroon

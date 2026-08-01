@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import ClearableInput from './ClearableInput.jsx'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
+import CityAutocomplete from './CityAutocomplete.jsx'
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
 
@@ -97,6 +98,10 @@ export default function Auth() {
   const [address3, setAddress3] = useState('')
   const [province, setProvince] = useState('')
   const [city, setCity] = useState('')
+  // Coordinates captured when a City suggestion is picked (see
+  // CityAutocomplete) — saved alongside the profile so the new member shows
+  // up on the alumni map immediately.
+  const [cityCoords, setCityCoords] = useState(null)
   const [postCode, setPostCode] = useState('')
   const [country, setCountry] = useState('South Africa')
   const [newsOptIn, setNewsOptIn] = useState(null) // null until they choose
@@ -298,6 +303,9 @@ export default function Auth() {
       city: city.trim(),
       postal_code: postCode.trim(),
       country: country.trim(),
+      // Only present when a City suggestion was picked — a null pair would
+      // wipe coordinates the profile might already have.
+      ...(cityCoords ? { lat: cityCoords.lat, lng: cityCoords.lng } : {}),
     }
 
     try {
@@ -347,6 +355,7 @@ export default function Auth() {
             city: details.city,
             postal_code: details.postal_code,
             country: details.country,
+            ...(cityCoords ? { lat: cityCoords.lat, lng: cityCoords.lng } : {}),
             consented_at: new Date().toISOString(),
           })
           .eq('id', session.user.id)
@@ -581,8 +590,7 @@ export default function Auth() {
                   </label>
                 </div>
 
-                <h2 className="auth-step-heading" style={{ marginTop: 10 }}>Where you live now</h2>
-                <label className="field">
+                <label className="field" style={{ marginTop: 10 }}>
                   <span>Address line 1</span>
                   <input value={address1} onChange={(e) => setAddress1(e.target.value)} autoComplete="address-line1" />
                 </label>
@@ -601,7 +609,17 @@ export default function Auth() {
                   </label>
                   <label className="field">
                     <span>City *</span>
-                    <input value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" />
+                    {/* Same live Mapbox suggestions as the profile editor — a
+                        picked suggestion also gives us coordinates, so new
+                        members land on the alumni map straight away instead
+                        of waiting for a later geocode of free-typed text. */}
+                    <CityAutocomplete
+                      value={city}
+                      country={country}
+                      onChange={setCity}
+                      onSelectCoords={setCityCoords}
+                      placeholder="Start typing…"
+                    />
                   </label>
                 </div>
                 <div className="auth-field-row">

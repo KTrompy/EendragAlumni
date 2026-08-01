@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
+import CityAutocomplete from './CityAutocomplete.jsx'
 
 // Shown (full-screen, before anything else) to anyone signed in whose
 // profile has no consented_at yet — in practice that's people who joined
@@ -37,6 +38,8 @@ export default function FinishSignup({ session, profile, onDone }) {
   const [address3, setAddress3] = useState('')
   const [province, setProvince] = useState('')
   const [city, setCity] = useState(profile?.city || '')
+  // Set when a City suggestion is picked — see Auth.jsx for the rationale.
+  const [cityCoords, setCityCoords] = useState(null)
   const [postCode, setPostCode] = useState('')
   const [country, setCountry] = useState(profile?.country || 'South Africa')
   const [dataConsent, setDataConsent] = useState(false)
@@ -77,6 +80,7 @@ export default function FinishSignup({ session, profile, onDone }) {
         city: city.trim(),
         postal_code: postCode.trim(),
         country: country.trim(),
+        ...(cityCoords ? { lat: cityCoords.lat, lng: cityCoords.lng } : {}),
         consented_at: new Date().toISOString(),
       })
       .eq('id', session.user.id)
@@ -154,7 +158,13 @@ export default function FinishSignup({ session, profile, onDone }) {
             </label>
             <label className="field">
               <span>City *</span>
-              <input value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2" />
+              <CityAutocomplete
+                value={city}
+                country={country}
+                onChange={setCity}
+                onSelectCoords={setCityCoords}
+                placeholder="Start typing…"
+              />
             </label>
           </div>
           <div className="auth-field-row">

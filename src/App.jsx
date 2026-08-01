@@ -444,7 +444,7 @@ export default function App() {
   // Locked out until the committee verifies them against residence
   // records — no browsing while pending.
   if (profile && !profile.approved) {
-    return <PendingVerification session={session} profile={profile} />
+    return <PendingVerification session={session} profile={profile} onProfileChange={setProfile} />
   }
 
   const navTabs = profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS

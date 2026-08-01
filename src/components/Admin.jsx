@@ -98,6 +98,17 @@ export default function Admin({ session }) {
     // e.g. if (approved && !error) supabase.functions.invoke('send-approval-email', { body: { user_id: id } })
   }
 
+  // Permanent removal — replaces the old "Revoke" (which only flipped
+  // `approved` back to false and left the account and everything they'd
+  // posted in place). admin_delete_member deletes the auth user, and every
+  // person-owned table cascades off that; see schema-update-44.sql.
+  async function deleteMember(id) {
+    const { error } = await supabase.rpc('admin_delete_member', { target_id: id })
+    if (error) { setMemberError(error.message); return }
+    setMembers((prev) => prev.filter((m) => m.id !== id))
+    loadCounts()
+  }
+
   async function setAdmin(id, is_admin) {
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, is_admin } : m)))
     const { error } = await supabase.from('profiles').update({ is_admin }).eq('id', id)
@@ -168,6 +179,7 @@ export default function Admin({ session }) {
           myId={session.user.id}
           onSetApproved={setApproved}
           onSetAdmin={setAdmin}
+          onDeleteMember={deleteMember}
         />
       )}
       {subtab === 'posts' && <PostsModeration />}
@@ -329,8 +341,8 @@ function ReportList({ items, onSetStatus, navigate }) {
 }
 
 /* ---------- Members table ---------- */
-function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin }) {
-  const [confirmTarget, setConfirmTarget] = useState(null) // { member, action: 'revoke' | 'promote' | 'demote' }
+function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDeleteMember }) {
+  const [confirmTarget, setConfirmTarget] = useState(null) // { member, action: 'delete' | 'promote' | 'demote' }
   const [q, setQ] = useState('')
 
   if (loading) return <LoadingState message="Loading members…" />
@@ -341,13 +353,13 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin }) {
     return [m.full_name, m.email, m.city].filter(Boolean).join(' ').toLowerCase().includes(needle)
   })
 
-  function askRevoke(m) { setConfirmTarget({ member: m, action: 'revoke' }) }
+  function askDelete(m) { setConfirmTarget({ member: m, action: 'delete' }) }
   function askPromote(m) { setConfirmTarget({ member: m, action: 'promote' }) }
   function askDemote(m) { setConfirmTarget({ member: m, action: 'demote' }) }
 
   function runConfirmed() {
     const { member, action } = confirmTarget
-    if (action === 'revoke') onSetApproved(member.id, false)
+    if (action === 'delete') onDeleteMember(member.id)
     if (action === 'promote') onSetAdmin(member.id, true)
     if (action === 'demote') onSetAdmin(member.id, false)
     setConfirmTarget(null)
@@ -389,9 +401,7 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin }) {
                   </span>
                 </div>
                 <div className="admin-row-actions">
-                  {m.approved ? (
-                    <button className="btn ghost small" onClick={() => askRevoke(m)}>Revoke</button>
-                  ) : (
+                  {!m.approved && (
                     <button className="btn primary small" onClick={() => onSetApproved(m.id, true)}>Approve</button>
                   )}
                   {m.is_admin ? (
@@ -401,6 +411,17 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin }) {
                   ) : (
                     <button className="btn ghost small" onClick={() => askPromote(m)}>Make admin</button>
                   )}
+                  {/* Permanent, and there's no undo — the confirm dialog
+                      spells out what goes with it. Blocked on your own row;
+                      admin_delete_member refuses it server-side too. */}
+                  <button
+                    className="btn danger small"
+                    onClick={() => askDelete(m)}
+                    disabled={isMe}
+                    title={isMe ? "Use Settings to delete your own account" : undefined}
+                  >
+                    Delete account
+                  </button>
                 </div>
               </li>
             )
@@ -411,18 +432,18 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin }) {
       {confirmTarget && (
         <ConfirmDialog
           title={
-            confirmTarget.action === 'revoke' ? 'Revoke approval?'
+            confirmTarget.action === 'delete' ? 'Delete this account?'
               : confirmTarget.action === 'promote' ? 'Grant admin access?'
               : 'Remove admin access?'
           }
           message={
-            confirmTarget.action === 'revoke'
-              ? `${confirmTarget.member.full_name || 'This member'} will lose the ability to post and message until re-approved.`
+            confirmTarget.action === 'delete'
+              ? `${confirmTarget.member.full_name || 'This member'} will be removed from the site entirely — their login, profile, posts, comments, job listings, events, RSVPs, business listings and messages all go with it. This can't be undone, and they'd have to sign up and be approved again from scratch.`
               : confirmTarget.action === 'promote'
               ? `${confirmTarget.member.full_name || 'This member'} will be able to approve members and moderate posts, jobs and events — the same access you have.`
               : `${confirmTarget.member.full_name || 'This member'} will lose admin access.`
           }
-          confirmLabel={confirmTarget.action === 'revoke' ? 'Revoke' : confirmTarget.action === 'promote' ? 'Make admin' : 'Remove admin'}
+          confirmLabel={confirmTarget.action === 'delete' ? 'Delete account' : confirmTarget.action === 'promote' ? 'Make admin' : 'Remove admin'}
           onConfirm={runConfirmed}
           onCancel={() => setConfirmTarget(null)}
         />
