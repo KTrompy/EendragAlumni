@@ -16,6 +16,52 @@ export function isRecentlyOnline(lastSeen) {
   return Date.now() - new Date(lastSeen).getTime() < ONLINE_WINDOW_MS
 }
 
+// Lowercases and strips diacritics so "Côte d'Ivoire" is reachable by typing
+// "cote", and "elektrisien" matches "elektrisiën". Without this the picker
+// quietly punishes anyone who doesn't have the accented key handy.
+function foldText(s) {
+  return (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+}
+
+// Ranked matcher behind the type-to-filter pickers (industry, country).
+//
+// The old behaviour was a flat `option.includes(needle)`, which had two
+// problems on a long list: results came back in list order regardless of how
+// well they matched (typing "eng" led with "Accounting & Finance", because
+// "Finance" is nowhere near where you're looking), and nothing matched unless
+// you already knew the exact wording we chose.
+//
+// `keywords` is an optional { option: 'space separated hidden terms' } map —
+// those terms are searched but never displayed, which is what lets "dokter"
+// or "plumber" find a row whose label contains neither word.
+//
+// Tiers, best first:
+//   0  the label starts with what you typed
+//   1  a word inside the label starts with it
+//   2  the label contains it anywhere
+//   3  only a hidden keyword matched
+// Ties keep the original list order, so the curated ordering still shows
+// through and the result is stable as you type.
+export function rankOptions(options, query, keywords) {
+  const needle = foldText(query).trim()
+  if (!needle) return options
+
+  const scored = []
+  options.forEach((option, index) => {
+    const label = foldText(option)
+    let score
+    if (label.startsWith(needle)) score = 0
+    else if (label.split(/[^a-z0-9]+/).some((w) => w.startsWith(needle))) score = 1
+    else if (label.includes(needle)) score = 2
+    else if (keywords && foldText(keywords[option]).includes(needle)) score = 3
+    else return
+    scored.push({ option, score, index })
+  })
+
+  scored.sort((a, b) => a.score - b.score || a.index - b.index)
+  return scored.map((s) => s.option)
+}
+
 // Graduation/leaving year format check — any year is accepted (no tie to
 // Eendrag's founding year or a forward cutoff), but the value still has to
 // actually look like a year: a whole number, exactly 4 digits. Rejects

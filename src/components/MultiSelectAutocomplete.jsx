@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import DropdownPortal from './DropdownPortal.jsx'
 import { useListboxKeys } from '../useListboxKeys.js'
+import { rankOptions } from '../utils.js'
 
 // Same "type to filter, pick from suggestions" behaviour as ListAutocomplete,
 // but lets you pick more than one value — each pick adds a removable chip
@@ -11,6 +12,9 @@ export default function MultiSelectAutocomplete({
   values,
   onChange,
   options,
+  // Optional { option: 'hidden search terms' } map — see INDUSTRY_KEYWORDS.
+  // Lets an option be found by words that aren't in its visible label.
+  keywords,
   placeholder,
   // When true, typing something that isn't in `options` shows an "Add"
   // entry (and Enter adds it directly) so people can note something not
@@ -40,10 +44,13 @@ export default function MultiSelectAutocomplete({
   }
 
   const needle = query.trim().toLowerCase()
-  const available = options.filter((o) => !values.includes(o))
-  const suggestions = needle
-    ? available.filter((o) => o.toLowerCase().includes(needle))
-    : available
+  // Ranked rather than plain-substring filtered, so best matches lead and
+  // hidden keywords count — see rankOptions. Memoised because the industry
+  // list is long and this would otherwise recompute on every parent render.
+  const suggestions = useMemo(() => {
+    const available = options.filter((o) => !values.includes(o))
+    return rankOptions(available, query, keywords)
+  }, [options, values, query, keywords])
   const hasExactMatch = options.some((o) => o.toLowerCase() === needle)
   const alreadyAdded = values.some((v) => v.toLowerCase() === needle)
   const showAddCustom = allowCustom && needle.length > 0 && !hasExactMatch && !alreadyAdded

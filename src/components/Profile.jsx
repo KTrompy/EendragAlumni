@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase, deleteOwnAccount, openStorageFile } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
+import { INDUSTRIES, INDUSTRY_KEYWORDS, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
@@ -796,6 +796,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             value={form.industry}
             onChange={setIndustry}
             options={INDUSTRIES}
+            keywords={INDUSTRY_KEYWORDS}
             placeholder="Search or type your industry"
             clearable
           />
@@ -909,6 +910,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                   value={entry.industry}
                   onChange={(v) => setExperienceField(entry._key, 'industry', v)}
                   options={INDUSTRIES}
+                  keywords={INDUSTRY_KEYWORDS}
                   placeholder="Search or type an industry"
                   clearable
                 />

@@ -9,6 +9,15 @@ export const MAX_RESIDENCE_YEARS = 12
 
 // Grouped from the Eendrag/SACS alumni occupation data.
 // "Other" is handled separately in the UI (shows a text input).
+//
+// Every label here is also a stored value on profiles.industry and jobs.industry,
+// so labels are append-only — renaming one silently demotes every profile using
+// it to "Other" (see the INDUSTRIES.includes check in Profile.jsx). Add new
+// entries at the end of the relevant block instead.
+//
+// The list is deliberately long: nobody scrolls it, they type. INDUSTRY_KEYWORDS
+// below is what makes the long tail findable, so a new entry should almost
+// always come with keywords.
 export const INDUSTRIES = [
   'Accounting & Finance',
   'Agriculture & Wine',
@@ -49,9 +58,137 @@ export const INDUSTRIES = [
   'Sport & Recreation',
   'Arts & Entertainment',
   'Military & Defence',
+  // --- Tech split out from "Software Engineering & Development", which alumni
+  // in IT support, networks, data or security kept skipping over. ---
+  'Information Technology & IT Services',
+  'Data, Analytics & AI',
+  'Cybersecurity & Information Security',
+  'Gaming & Esports',
+  // --- Commercial roles that previously had nowhere to sit. ---
+  'Sales & Business Development',
+  'Procurement & Supply Chain',
+  'Customer Service & Call Centres',
+  'Administration & Office Support',
+  'Entrepreneurship & Startups',
+  'Events & Conference Management',
+  // --- Creative, split from the broad "Media & Creative". ---
+  'Design (Graphic, UX & Product)',
+  'Photography & Videography',
+  'Fashion, Apparel & Textiles',
+  'Printing & Packaging',
+  // --- Transport & heavy industry. ---
+  'Aviation & Aerospace',
+  'Automotive',
+  'Maritime & Shipping',
+  // --- Trades and services: a large slice of the alumni base was being
+  // pushed into "Other" here. ---
+  'Skilled Trades (plumbing, electrical, carpentry)',
+  'Facilities Management & Cleaning',
+  'Security Services & Risk',
+  'Emergency Services (police, fire, paramedic)',
+  'Waste Management & Recycling',
+  'Beauty, Wellness & Personal Care',
+  'Funeral Services',
+  // --- Land & animals. ---
+  'Veterinary & Animal Care',
+  'Forestry & Fishing',
+  // --- People-facing / community. ---
+  'Religion & Ministry',
+  'Social Work & Community Development',
+  'Childcare & Early Childhood Development',
+  'Translation, Language & Localisation',
+  // --- Not currently in an industry. Kept last so they never crowd out real
+  // matches when the box is empty. ---
+  'Between roles',
+  'Homemaker & Caregiver',
   'Retired',
   'Student',
 ]
+
+// Hidden search terms per industry, so the box matches how people actually
+// describe themselves rather than the label we happened to pick. Typing
+// "dokter", "coder", "prokureur" or "plumber" all land on the right row —
+// none of those words appear in any label.
+//
+// Afrikaans terms are in on purpose: this is a Stellenbosch residence, and a
+// good number of alumni will reach for "boer" or "onderwyser" first.
+// Matching is substring-based, so short stems ("boer") also cover the longer
+// forms ("boerdery"). Keep entries lowercase.
+export const INDUSTRY_KEYWORDS = {
+  'Accounting & Finance': 'accountant rekenmeester bookkeeper boekhouer ca(sa) tax belasting audit ouditeur payroll cfo financial controller',
+  'Agriculture & Wine': 'farmer boer boerdery farming plaas wine wyn wynmaker winemaker viticulture vineyard wingerd crop livestock vee agri agriculture landbou horticulture irrigation',
+  'Architecture & Design': 'architect argitek town planner urban planning interior designer landscape draughtsman tekenaar bim revit',
+  'Civil Engineering': 'civil engineer ingenieur structural geotechnical roads water sanitation surveyor landmeter quantity surveyor bouingenieur infrastructure',
+  'Software Engineering & Development': 'software developer dev coder coding programmer programmeur engineer frontend backend full stack fullstack web app mobile devops cloud api java python javascript react .net php ruby golang',
+  'Mechanical/Manufacturing Engineering': 'mechanical engineer meganiese ingenieur manufacturing production plant cad automation robotics maintenance millwright hvac tooling machining lean six sigma',
+  'Other Engineering (electrical, chemical, marine, etc.)': 'electrical engineer elektriese chemical chemiese industrial metallurgical marine mining engineer petroleum process engineer nuclear biomedical engineering ingenieur',
+  'Banking & Financial Services': 'bank banker banking credit lending mortgage bond originator fintech payments retail banking relationship manager treasury',
+  'Insurance & Actuarial Science': 'insurance versekering actuary aktuaris broker makelaar underwriter claims risk short term life insurance reinsurance',
+  'Investment & Asset Management': 'investment invest asset management fund manager portfolio wealth private equity venture capital vc hedge fund analyst stockbroker trader equities financial advisor finansiele adviseur',
+  'Construction & Project Management': 'construction bou builder bouer contractor kontrakteur site manager project manager quantity surveyor bouprojek civils foreman',
+  'Property & Real Estate': 'property eiendom real estate estate agent eiendomsagent letting rental landlord valuer waardeerder facilities developer body corporate managing agent',
+  'Legal': 'lawyer prokureur attorney advocate advokaat legal law regsgeleerde conveyancer aktebesorger notary paralegal compliance litigation candidate attorney judge magistrate regter',
+  'Consulting': 'consultant konsultant consulting advisory strategy management consultant business analyst',
+  'Management & Operations': 'manager bestuurder operations ops general manager gm coo executive director owner md managing director business owner supervisor',
+  'Human Resources & Recruitment': 'hr human resources menslike hulpbronne recruiter recruitment talent acquisition headhunter people culture ir industrial relations training development remuneration',
+  'Marketing & Advertising': 'marketing bemarking advertising advertensie brand digital marketing seo social media content marketing campaign copywriter media buyer',
+  'Media & Creative (publishing, film, design)': 'media journalist joernalis editor redakteur publishing publisher film tv television producer director writer author skrywer creative broadcast radio podcast animation',
+  'Public Relations & Communications': 'pr public relations communications kommunikasie corporate comms spokesperson media relations internal communications reputation',
+  'Education & Academia': 'teacher onderwyser onderwys education educator lecturer dosent professor academic university school principal skoolhoof tutor researcher academia phd postgrad librarian',
+  'Research & Development': 'research researcher navorsing r&d scientist wetenskaplike laboratory lab innovation product research clinical research',
+  'Healthcare & Medical': 'doctor dokter medical medies gp physician surgeon chirurg specialist nurse verpleegster verpleegkundige dentist tandarts dental physio physiotherapist fisioterapeut occupational therapist radiographer paramedic optometrist chiropractor dietitian dieetkundige speech therapist healthcare hospital clinic',
+  'Pharmaceuticals & Biotech': 'pharmacist apteker pharmacy apteek pharmaceutical pharma biotech biotechnology medical rep clinical trials regulatory affairs drug',
+  'Mental Health & Psychology': 'psychologist sielkundige psychology sielkunde therapist terapeut counsellor berader psychiatrist psigiater mental health social counselling coach',
+  'Energy & Environment': 'energy energie environment omgewing environmental renewable solar sonkrag wind power eskom sustainability climate conservation bewaring carbon esg green',
+  'Mining & Resources': 'mining myn mine mynbou geologist geoloog minerals resources exploration drilling coal gold platinum quarry metallurgy',
+  'Manufacturing & Industrial': 'manufacturing vervaardiging factory fabriek industrial production plant assembly fmcg packaging line supervisor operations',
+  'Hospitality & Tourism': 'hospitality gasvryheid hotel guesthouse gastehuis lodge tourism toerisme travel agent tour guide safari restaurant manager casino resort b&b airbnb host',
+  'Food & Beverage': 'food kos beverage drank chef kok restaurant catering spys bakery bakker butcher slagter brewing brewery brouery barista coffee food science nutrition',
+  'Retail & Wholesale': 'retail kleinhandel shop winkel store manager wholesale groothandel merchandiser buyer fmcg supermarket franchise till cashier',
+  'E-commerce': 'ecommerce e-commerce online store online shop takealot shopify marketplace dropshipping online retail',
+  'Transport & Logistics': 'transport logistics logistiek freight vragte shipping courier trucking truck driver vervoer warehouse pakhuis distribution fleet delivery customs clearing forwarding',
+  'Telecommunications': 'telecoms telecommunications telekommunikasie network networks fibre fiber isp mobile operator vodacom mtn telkom rf satellite',
+  'Utilities & Water': 'utilities water munisipaliteit municipal electricity elektrisiteit power grid sanitation waste water reticulation eskom substation',
+  'Government & Public Sector': 'government regering public sector staatsdiens municipality munisipaliteit civil servant policy beleid politics politiek politician diplomat foreign affairs department state parliament dha sars',
+  'Non-profit & NGO': 'nonprofit non-profit ngo npo charity liefdadigheid foundation stigting fundraising donor volunteer development aid humanitarian outreach',
+  'Sport & Recreation': 'sport sports coach afrigter rugby cricket krieket athlete fitness gym personal trainer biokineticist biokinetikus recreation sport science physio sport management',
+  'Arts & Entertainment': 'art kuns artist kunstenaar musician musikant music musiek band singer actor akteur theatre teater dance performing arts gallery museum curator entertainment dj',
+  'Military & Defence': 'military weermag defence sandf army navy vloot air force lugmag soldier soldaat officer veteran armaments denel',
+  'Information Technology & IT Services': 'it information technology tegnologie support helpdesk desktop support sysadmin system administrator network administrator infrastructure server hardware msp technician rekenaar computers erp sap salesforce crm implementation',
+  'Data, Analytics & AI': 'data analyst data scientist analytics ontleding business intelligence bi power bi tableau sql machine learning ml ai artificial intelligence data engineer statistics statistiek reporting big data',
+  'Cybersecurity & Information Security': 'cyber cybersecurity infosec information security security analyst penetration testing pen test soc grc iso27001 popia compliance security ethical hacking',
+  'Gaming & Esports': 'gaming games game development game dev esports unity unreal game designer streamer twitch',
+  'Sales & Business Development': 'sales verkope sales rep representative account manager account executive business development bd key accounts new business territory manager telesales field sales commission quota',
+  'Procurement & Supply Chain': 'procurement verkryging purchasing inkope buyer supply chain sourcing vendor supplier contracts tenders tender inventory stock control demand planning',
+  'Customer Service & Call Centres': 'customer service client service kliëntediens klientediens call centre call center contact centre bpo support agent customer success account support helpdesk',
+  'Administration & Office Support': 'admin administration administrasie administrator office manager kantoor secretary sekretaresse pa personal assistant executive assistant receptionist ontvangsdame data capturer clerk klerk',
+  'Entrepreneurship & Startups': 'entrepreneur entrepreneurship ondernemer startup start-up founder stigter co-founder self employed selfemployed freelance freelancer own business eie besigheid small business smme side hustle',
+  'Events & Conference Management': 'events event management conference konferensie wedding troue planner exhibitions expo venue functions coordinator catering events production av',
+  'Design (Graphic, UX & Product)': 'design designer ontwerper graphic design grafiese ux ui user experience product design web design branding identity illustrator illustrator photoshop figma typography motion graphics',
+  'Photography & Videography': 'photographer fotograaf photography fotografie videographer video film maker wedding photographer editing drone cinematography studio',
+  'Fashion, Apparel & Textiles': 'fashion mode clothing klere apparel textile tekstiel garment seamstress naaldwerk tailor kleremaker boutique retail fashion stylist design merchandising',
+  'Printing & Packaging': 'printing drukkery printer print signage packaging verpakking labels litho digital printing screen printing bindery',
+  'Aviation & Aerospace': 'aviation lugvaart pilot vlieënier vlieenier aircraft aeroplane airline lugredery cabin crew air traffic control atc aerospace avionics aircraft maintenance ame airport flight',
+  'Automotive': 'automotive motor cars motorvoertuie vehicle dealership dealer mechanic werktuigkundige panel beater workshop parts motor industry fleet auto electrician car sales',
+  'Maritime & Shipping': 'maritime maritiem shipping ships skip vessel harbour hawe port seafarer sailor merchant navy fishing vessel marine ship yacht stevedore transnet',
+  'Skilled Trades (plumbing, electrical, carpentry)': 'trades tradesman artisan ambagsman plumber loodgieter electrician elektrisiën elektrisien carpenter skrynwerker joiner welder sweiser boilermaker fitter turner mechanic painter tiler plasterer bricklayer messelaar handyman roofer hvac technician apprentice',
+  'Facilities Management & Cleaning': 'facilities facility management cleaning skoonmaak janitorial hygiene pest control landscaping tuindienste gardening maintenance building management caretaker',
+  'Security Services & Risk': 'security sekuriteit guard wagte armed response alarm cctv access control risk management loss prevention investigations investigator private security fidelity adt',
+  'Emergency Services (police, fire, paramedic)': 'police polisie saps officer detective speurder fire brandweer firefighter brandbestryder paramedic ambulance ems emergency rescue disaster management traffic verkeer metro',
+  'Waste Management & Recycling': 'waste afval recycling herwinning refuse rubbish landfill scrap skips hazardous waste circular economy',
+  'Beauty, Wellness & Personal Care': 'beauty skoonheid salon hairdresser haarkapper barber hair stylist nails nagels beautician skincare spa massage therapist masseur aesthetics cosmetics wellness',
+  'Funeral Services': 'funeral begrafnis undertaker begrafnisondernemer mortuary crematorium burial memorial funeral parlour',
+  'Veterinary & Animal Care': 'vet veterinarian veearts veterinary animal diere animal care pet troeteldier kennels grooming groomer animal welfare spca wildlife wild game ranger boskap zoo equine horses perde',
+  'Forestry & Fishing': 'forestry bosbou timber hout plantation sawmill saagmeul logging fishing visserye fisheries aquaculture akwakultuur abalone hake trawler',
+  'Religion & Ministry': 'church kerk ministry bediening pastor predikant dominee minister priest reverend missionary sendeling chaplain kapelaan theology teologie youth pastor worship religious',
+  'Social Work & Community Development': 'social work maatskaplike werk social worker maatskaplike werker community development gemeenskap outreach welfare welsyn youth work case worker probation ngo field work',
+  'Childcare & Early Childhood Development': 'childcare kinderversorging creche crèche daycare preschool kleuterskool nursery school ecd early childhood au pair aupair nanny kindergarten playgroup',
+  'Translation, Language & Localisation': 'translation vertaling translator vertaler interpreter tolk language taal localisation localization proofreading proefleser editing subtitling transcription copy editing linguist',
+  'Between roles': 'unemployed werkloos between jobs job seeking looking for work not working career break gap year sabbatical',
+  'Homemaker & Caregiver': 'homemaker housewife huisvrou stay at home parent caregiver versorger carer full time parent home executive',
+  'Retired': 'retired afgetree pensioner pensioenaris pension emeritus',
+  'Student': 'student studeer studying scholar leerling learner intern internship candidate articles postgraduate undergraduate university studie',
+}
 
 // Curated list of major South African cities/towns, so the directory filter
 // stays clean instead of accumulating "Cape Town" / "CPT" / "Kaapstad" as
@@ -553,6 +690,188 @@ export const EXPERTISE_BY_INDUSTRY = {
     'Combat/Operations', 'Military Logistics', 'Defence Intelligence', 'Cybersecurity/Defence Tech',
     'Military Engineering', 'Naval/Maritime Operations', 'Aviation/Air Force Operations',
     'Defence Procurement', 'Strategic Planning', 'Veteran Affairs',
+  ],
+  'Information Technology & IT Services': [
+    'IT Support & Helpdesk', 'Systems Administration', 'Network Administration',
+    'Server & Infrastructure', 'Cloud Administration', 'ERP Systems (SAP, Sage, etc.)',
+    'CRM Systems (Salesforce, HubSpot)', 'IT Project Management', 'Business Systems Analysis',
+    'Hardware & Endpoint Management', 'Database Administration', 'IT Procurement & Vendor Management',
+    'Managed Services (MSP)',
+  ],
+  'Data, Analytics & AI': [
+    'Data Analysis', 'Business Intelligence & Reporting', 'Data Science',
+    'Machine Learning & AI', 'Data Engineering & Pipelines', 'Data Warehousing',
+    'SQL & Database Querying', 'Statistical Modelling', 'Dashboarding (Power BI, Tableau)',
+    'Data Governance & Quality', 'Forecasting & Demand Planning', 'Experimentation & A/B Testing',
+  ],
+  'Cybersecurity & Information Security': [
+    'Security Operations (SOC)', 'Penetration Testing & Red Team', 'Incident Response & Forensics',
+    'Governance, Risk & Compliance (GRC)', 'Identity & Access Management', 'Network Security',
+    'Cloud Security', 'Application Security', 'Security Awareness & Training',
+    'POPIA/GDPR Compliance', 'ISO 27001 & Audits', 'Threat Intelligence',
+  ],
+  'Gaming & Esports': [
+    'Game Development', 'Game Design', 'Game Art & Animation', 'Unity/Unreal Engineering',
+    'Level Design', 'QA & Playtesting', 'Community Management', 'Esports Team Management',
+    'Streaming & Content Creation', 'Game Publishing & Monetisation', 'Audio & Sound Design',
+  ],
+  'Sales & Business Development': [
+    'New Business Development', 'Account Management', 'Key Account Management',
+    'B2B Sales', 'B2C/Retail Sales', 'Technical/Solution Sales', 'Inside Sales & Telesales',
+    'Sales Management & Team Leadership', 'Channel & Partner Sales', 'Sales Strategy & Planning',
+    'CRM & Pipeline Management', 'Tender & Proposal Writing', 'Negotiation & Closing',
+  ],
+  'Procurement & Supply Chain': [
+    'Strategic Sourcing', 'Purchasing & Buying', 'Supplier Relationship Management',
+    'Contract Negotiation', 'Tender & Bid Management', 'Inventory & Stock Control',
+    'Demand & Supply Planning', 'Warehouse Management', 'Import/Export & Customs',
+    'Category Management', 'Cost Reduction & Spend Analysis', 'BBBEE & Supplier Development',
+  ],
+  'Customer Service & Call Centres': [
+    'Inbound Customer Support', 'Outbound & Telesales', 'Technical Support',
+    'Complaints & Escalation Handling', 'Customer Success & Retention', 'Team Leadership & Coaching',
+    'Workforce Planning & Scheduling', 'Quality Assurance & Monitoring', 'CRM & Ticketing Systems',
+    'BPO Operations', 'Customer Experience (CX) Design',
+  ],
+  'Administration & Office Support': [
+    'Office Management', 'Executive & Personal Assistance', 'Reception & Front of House',
+    'Diary & Travel Coordination', 'Minute Taking & Board Support', 'Data Capture & Records Management',
+    'Filing & Document Control', 'Invoicing & Petty Cash', 'Procurement of Office Supplies',
+    'Switchboard & Correspondence',
+  ],
+  'Entrepreneurship & Startups': [
+    'Founding & Company Building', 'Fundraising & Investor Relations', 'Product-Market Fit',
+    'Business Model Design', 'Go-to-Market Strategy', 'Bootstrapping & Cash Flow Management',
+    'Small Business Operations', 'Franchising', 'Freelancing & Consulting',
+    'Scaling & Hiring', 'Exits & Acquisitions', 'Pitching & Storytelling',
+  ],
+  'Events & Conference Management': [
+    'Conference & Seminar Management', 'Wedding Planning', 'Corporate Functions',
+    'Exhibition & Expo Management', 'Venue Sourcing & Management', 'Event Production & AV',
+    'Sponsorship & Exhibitor Sales', 'Delegate & Guest Management', 'Event Catering Coordination',
+    'Event Budgeting & Logistics', 'Festival & Live Event Operations',
+  ],
+  'Design (Graphic, UX & Product)': [
+    'Graphic Design', 'Brand & Identity Design', 'UX Research', 'UI Design',
+    'Product Design', 'Web Design', 'Illustration', 'Motion Graphics & Animation',
+    'Typography', 'Packaging Design', 'Design Systems', 'Prototyping (Figma, etc.)',
+    'Print & Layout Design', 'Art Direction',
+  ],
+  'Photography & Videography': [
+    'Portrait Photography', 'Wedding & Event Photography', 'Commercial & Product Photography',
+    'Wildlife & Nature Photography', 'Photojournalism', 'Videography & Cinematography',
+    'Video Editing & Post-Production', 'Drone/Aerial Work', 'Studio Lighting',
+    'Colour Grading', 'Content Creation for Social Media',
+  ],
+  'Fashion, Apparel & Textiles': [
+    'Fashion Design', 'Pattern Making & Grading', 'Garment Manufacturing', 'Textile Sourcing',
+    'Tailoring & Alterations', 'Fashion Buying & Merchandising', 'Retail Fashion Management',
+    'Styling & Wardrobe', 'Fashion Marketing & PR', 'Sustainable & Ethical Fashion',
+    'Footwear & Accessories',
+  ],
+  'Printing & Packaging': [
+    'Offset & Litho Printing', 'Digital Printing', 'Large Format & Signage', 'Screen Printing',
+    'Packaging Design & Structure', 'Labelling & Barcoding', 'Prepress & Artwork',
+    'Bindery & Finishing', 'Print Estimating & Production Management', 'Substrates & Materials',
+  ],
+  'Aviation & Aerospace': [
+    'Commercial Piloting', 'Private/Charter Piloting', 'Flight Instruction',
+    'Cabin Crew & In-Flight Service', 'Air Traffic Control', 'Aircraft Maintenance (AME)',
+    'Avionics', 'Airline Operations & Dispatch', 'Airport Management & Ground Handling',
+    'Aviation Safety & Regulation', 'Aerospace Engineering', 'Drones & UAV Operations',
+  ],
+  'Automotive': [
+    'Vehicle Sales', 'Dealership Management', 'Mechanical Repair & Servicing',
+    'Auto Electrics & Diagnostics', 'Panel Beating & Spray Painting', 'Parts & Accessories',
+    'Fleet Management', 'Automotive Manufacturing & Assembly', 'Motorsport & Performance Tuning',
+    'Vehicle Finance & Insurance', 'Workshop Management',
+  ],
+  'Maritime & Shipping': [
+    'Deck Operations & Navigation', 'Marine Engineering', 'Port & Harbour Operations',
+    'Ship Chandling & Agency', 'Freight Forwarding & Chartering', 'Stevedoring & Cargo Handling',
+    'Maritime Safety & Compliance', 'Vessel Maintenance & Repair', 'Yachting & Charter',
+    'Marine Surveying', 'Customs & Documentation',
+  ],
+  'Skilled Trades (plumbing, electrical, carpentry)': [
+    'Plumbing', 'Electrical Installation & Wiring', 'Carpentry & Joinery', 'Welding & Boilermaking',
+    'Fitting & Turning', 'Bricklaying & Plastering', 'Tiling', 'Painting & Decorating',
+    'Roofing', 'HVAC & Refrigeration', 'Cabinet Making', 'Glazing & Aluminium',
+    'Solar Installation', 'Trade Supervision & Estimating', 'Apprentice Training',
+  ],
+  'Facilities Management & Cleaning': [
+    'Building & Property Maintenance', 'Cleaning Operations', 'Hygiene Services',
+    'Pest Control', 'Landscaping & Grounds Maintenance', 'Health & Safety Compliance',
+    'Contract & Vendor Management', 'Energy & Utilities Management', 'Soft Services Management',
+    'Caretaking & Site Supervision',
+  ],
+  'Security Services & Risk': [
+    'Guarding & Manned Security', 'Armed Response', 'Alarm & CCTV Systems',
+    'Access Control', 'Risk Assessment & Management', 'Investigations & Loss Prevention',
+    'Close Protection', 'Security Operations Management', 'Cash-in-Transit',
+    'Event Security', 'Business Continuity Planning',
+  ],
+  'Emergency Services (police, fire, paramedic)': [
+    'Policing & Patrol', 'Criminal Investigation', 'Traffic & Metro Policing',
+    'Firefighting & Rescue', 'Emergency Medical Services (EMS)', 'Advanced Life Support',
+    'Disaster & Incident Management', 'Emergency Call Dispatch', 'Search & Rescue',
+    'Fire Safety & Inspection', 'Forensic Services',
+  ],
+  'Waste Management & Recycling': [
+    'Waste Collection & Refuse Operations', 'Recycling Operations', 'Landfill Management',
+    'Hazardous Waste Handling', 'Scrap Metal & Materials Trading', 'Waste Minimisation Consulting',
+    'Environmental Compliance', 'Circular Economy & Reuse', 'Composting & Organic Waste',
+  ],
+  'Beauty, Wellness & Personal Care': [
+    'Hairdressing & Styling', 'Barbering', 'Nail Technology', 'Skincare & Facials',
+    'Make-Up Artistry', 'Massage Therapy', 'Spa Management', 'Aesthetics & Advanced Treatments',
+    'Salon Ownership & Management', 'Cosmetics Retail & Training', 'Wellness Coaching',
+  ],
+  'Funeral Services': [
+    'Funeral Directing', 'Mortuary Science & Embalming', 'Bereavement Support',
+    'Cremation Services', 'Funeral Policy & Insurance', 'Memorial & Service Planning',
+    'Repatriation & Documentation', 'Funeral Home Management',
+  ],
+  'Veterinary & Animal Care': [
+    'Veterinary Medicine', 'Veterinary Nursing', 'Veterinary Surgery', 'Equine Care',
+    'Livestock & Production Animal Health', 'Wildlife & Game Management', 'Animal Behaviour & Training',
+    'Grooming & Kennels', 'Animal Welfare & Rescue', 'Veterinary Practice Management',
+    'Animal Nutrition',
+  ],
+  'Forestry & Fishing': [
+    'Plantation & Forest Management', 'Timber Harvesting & Logging', 'Sawmilling & Timber Processing',
+    'Silviculture', 'Forest Certification & Compliance', 'Commercial Fishing Operations',
+    'Fisheries Management & Quotas', 'Aquaculture & Mariculture', 'Seafood Processing & Export',
+    'Marine Resource Conservation',
+  ],
+  'Religion & Ministry': [
+    'Pastoral Ministry', 'Preaching & Teaching', 'Youth Ministry', 'Worship & Music Ministry',
+    'Missions & Outreach', 'Chaplaincy', 'Church Administration', 'Theology & Biblical Studies',
+    'Pastoral Counselling', 'Small Group & Discipleship Leadership', 'Church Planting',
+  ],
+  'Social Work & Community Development': [
+    'Statutory Social Work', 'Child Protection & Family Services', 'Community Development',
+    'Youth Work', 'Substance Abuse & Rehabilitation', 'Case Management',
+    'Probation & Correctional Services', 'Poverty Alleviation Programmes', 'Advocacy & Rights',
+    'Programme Monitoring & Evaluation', 'Volunteer Coordination',
+  ],
+  'Childcare & Early Childhood Development': [
+    'Early Childhood Development (ECD)', 'Preschool & Grade R Teaching', 'Creche & Daycare Management',
+    'Curriculum Design (Early Years)', 'Child Psychology & Development', 'Special Needs Support',
+    'Au Pairing & Nannying', 'Parent Engagement', 'Play-Based Learning', 'Child Nutrition & Safety',
+  ],
+  'Translation, Language & Localisation': [
+    'Translation (Afrikaans/English)', 'Translation (Other Languages)', 'Interpreting',
+    'Sign Language Interpreting', 'Proofreading & Copy Editing', 'Subtitling & Captioning',
+    'Transcription', 'Software & Website Localisation', 'Technical & Legal Translation',
+    'Language Teaching', 'Terminology & Linguistics',
+  ],
+  'Between roles': [
+    'Career Transition', 'Open to Opportunities', 'Upskilling & Study',
+    'Freelance/Contract Work', 'Industry Knowledge & Networks',
+  ],
+  'Homemaker & Caregiver': [
+    'Household & Family Management', 'Caregiving & Elder Care', 'Budgeting & Household Finance',
+    'Volunteering & School Involvement', 'Event & Community Organising', 'Home Education',
   ],
   'Retired': [
     'Mentoring & Coaching', 'Board & Advisory Roles', 'Community Volunteering',

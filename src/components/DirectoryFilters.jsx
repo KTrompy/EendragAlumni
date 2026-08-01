@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { COUNTRIES, INDUSTRIES, SA_CITIES, SERVICES_OFFERED } from '../constants.js'
+import { COUNTRIES, INDUSTRIES, INDUSTRY_KEYWORDS, SA_CITIES, SERVICES_OFFERED } from '../constants.js'
 import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import { useIsWide } from '../utils.js'
 
@@ -229,6 +229,7 @@ export function DirectoryFilterPanel({ f }) {
       <FilterSection title="Industry">
         <MultiSelectAutocomplete
           options={INDUSTRIES}
+          keywords={INDUSTRY_KEYWORDS}
           values={f.draftFilters.industries}
           onChange={(v) => f.setDraft('industries', v)}
           placeholder="All industries — start typing to add one"

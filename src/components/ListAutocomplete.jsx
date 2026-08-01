@@ -1,16 +1,23 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import DropdownPortal from './DropdownPortal.jsx'
 import { useListboxKeys } from '../useListboxKeys.js'
+import { rankOptions } from '../utils.js'
 
 // Generic type-to-filter text box backed by a static list of options —
 // used anywhere we want "start typing, pick from suggestions" instead of a
 // stock <select> (Country, Industry, both as profile fields and as
 // directory filters). Free typing is always allowed; picking a suggestion
 // just fills in the exact text you clicked.
+//
+// `keywords` is optional: pass a { option: 'hidden search terms' } map (see
+// INDUSTRY_KEYWORDS) to make options findable by words that aren't in their
+// label. Callers that don't pass it — Country, say — behave as before apart
+// from getting better-ordered results.
 export default function ListAutocomplete({
   value,
   onChange,
   options,
+  keywords,
   placeholder,
   inputClassName,
   clearable = false,
@@ -32,10 +39,13 @@ export default function ListAutocomplete({
     setOpen(true)
   }
 
-  const needle = value.trim().toLowerCase()
-  const suggestions = needle
-    ? options.filter((o) => o.toLowerCase().includes(needle))
-    : options
+  // Memoised because the industry list is ~70 entries each carrying a long
+  // keyword string, and this would otherwise re-rank on every render of the
+  // form around it, not just on every keystroke.
+  const suggestions = useMemo(
+    () => rankOptions(options, value, keywords),
+    [options, value, keywords]
+  )
 
   function pick(option) {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)

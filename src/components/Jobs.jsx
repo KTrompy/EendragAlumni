@@ -16,7 +16,7 @@ import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
 import ApplyModal from './ApplyModal.jsx'
 import { useIsWide, isSafeHttpUrl } from '../utils.js'
 import { geocodeCity } from '../geocode.js'
-import { INDUSTRIES } from '../constants.js'
+import { INDUSTRIES, INDUSTRY_KEYWORDS } from '../constants.js'
 
 const NEW_WINDOW_MS = 48 * 60 * 60 * 1000 // how recent counts as "New"
 const PAGE_SIZE = 20
@@ -365,6 +365,7 @@ export default function Jobs({ session, profile, onMessage }) {
           values={filters.industries}
           onChange={(v) => set('industries', v)}
           options={industryOptions}
+          keywords={INDUSTRY_KEYWORDS}
           placeholder="Search or add industries"
         />
       </FilterSection>
@@ -1054,6 +1055,7 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
                 value={form.industry}
                 onChange={(v) => set('industry', v)}
                 options={INDUSTRIES}
+                keywords={INDUSTRY_KEYWORDS}
                 placeholder="Search or type an industry"
                 clearable
               />
