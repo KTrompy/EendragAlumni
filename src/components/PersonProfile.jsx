@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { supabase, isNetworkError } from '../supabaseClient'
+import { supabase, isNetworkError, openStorageFile } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -259,7 +259,17 @@ export default function PersonProfile({ session, me, onMessage }) {
       {p.cv_url && (
         <div className="profile-section">
           <h3 className="profile-card-section-title">CV / Resume</h3>
-          <a className="cv-download-link" href={p.cv_url} target="_blank" rel="noopener noreferrer">
+          {/* The cvs bucket is private as of schema-update-47 — CVs carry home
+              addresses and phone numbers, and a public bucket meant anyone
+              with the URL could read one without signing in at all. Approved
+              members can still open any CV; it just goes through a 60-second
+              signed URL now instead of a permanent public one. */}
+          <a
+            className="cv-download-link"
+            href={p.cv_url}
+            onClick={(e) => { e.preventDefault(); openStorageFile('cvs', p.cv_url) }}
+            rel="noopener noreferrer"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <path d="M14 2v6h6" />

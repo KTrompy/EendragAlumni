@@ -62,6 +62,12 @@ export default function JobApplications({ jobId, session }) {
         event: 'INSERT', schema: 'public', table: 'job_applications',
         filter: `job_id=eq.${jobId}`,
       }, () => load())
+      // This filter only works because schema-update-47 set job_applications
+      // to REPLICA IDENTITY FULL. Under the default replica identity a DELETE
+      // payload carries primary-key columns only — and this table's PK is
+      // `id`, so `job_id` was never in the payload and the filter could never
+      // match. The listener silently never fired, and a withdrawn application
+      // stayed on the poster's screen until they reloaded the page.
       .on('postgres_changes', {
         event: 'DELETE', schema: 'public', table: 'job_applications',
         filter: `job_id=eq.${jobId}`,

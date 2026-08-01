@@ -2,7 +2,7 @@
   "name": "Eendrag Alumni Hub",
   "short_name": "Eendrag",
   "description": "A community platform for Eendrag alumni — directory, feed, events, jobs and messaging.",
-  "start_url": "/directory",
+  "start_url": "/home",
   "scope": "/",
   "display": "standalone",
   "background_color": "#FAF7F2",

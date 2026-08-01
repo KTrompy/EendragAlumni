@@ -1,7 +1,26 @@
+# Dependencies — never commit these. They were tracked in git until
+# 2026-08-01, which made every clone enormous and shipped a frozen, months-old
+# dependency tree alongside the source. package.json + package-lock.json are
+# the record of what to install; node_modules is the result of installing it.
 node_modules/
+
+# Build output
 dist/
-.env
+dist-test/
+dist.old*/
+
+# Vite writes one of these every time it reloads its config in dev. Several
+# hundred had accumulated in the project root.
 vite.config.js.timestamp-*
 
-dist-test/
-dist/
+# Local secrets. .env.example is the tracked template.
+.env
+.env.local
+.env.*.local
+
+# Scratch / editor / OS noise
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+.~lock.*#

@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { TILE_URL, TILE_ATTRIBUTION, TILE_SIZE, ZOOM_OFFSET } from '../mapTiles.js'
+import { BusinessLogo } from './BusinessLogo.jsx'
 import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
@@ -910,14 +911,9 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
 }
 
 /* ---------- Small pieces ---------- */
-export function BusinessLogo({ url, name }) {
-  const initial = (name || '?').trim().charAt(0).toUpperCase()
-  return url ? (
-    <img className="job-logo" src={url} alt={name ? `${name} logo` : 'Business logo'} loading="lazy" />
-  ) : (
-    <div className="job-logo job-logo-fallback" aria-hidden="true">{initial}</div>
-  )
-}
+// Moved to ./BusinessLogo.jsx so Home can render it without importing this
+// whole module. Re-exported here so existing importers keep working.
+export { BusinessLogo }
 
 function ImagePlaceholderIcon() {
   return (

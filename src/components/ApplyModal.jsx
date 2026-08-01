@@ -81,18 +81,20 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
     setBusy(true)
     setError(null)
     try {
-      const cvPath = await uploadFile(cvFile, 'cv')
-      let coverPath = null
-      if (coverFile) {
-        coverPath = await uploadFile(coverFile, 'cover')
-      }
+      // Both uploads are optional — the hint above the buttons says so. This
+      // used to call uploadFile(cvFile) unconditionally, which threw
+      // "Cannot read properties of null (reading 'name')" the moment anyone
+      // applied without attaching a CV, and surfaced that raw error in the
+      // form. Applying with just a cover message was impossible.
+      const cvPath = cvFile ? await uploadFile(cvFile, 'cv') : null
+      const coverPath = coverFile ? await uploadFile(coverFile, 'cover') : null
 
       const { error: insertErr } = await supabase.from('job_applications').insert({
         job_id: job.id,
         applicant_id: session.user.id,
         cover_letter: coverLetter.trim(),
         cv_url: cvPath,
-        cv_name: cvFile.name,
+        cv_name: cvFile?.name || null,
         cover_letter_url: coverPath,
         cover_letter_name: coverFile?.name || null,
       })
@@ -109,16 +111,14 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
         return
       }
 
-      // Notify the poster
-      await supabase.from('notifications').insert({
-        user_id: job.posted_by,
-        actor_id: session.user.id,
-        type: 'job_application',
-        entity_type: 'job',
-        entity_id: job.id,
-        message: `${profile?.full_name || 'Someone'} applied to your "${job.title}" listing.`,
-      }).catch(() => {}) // non-critical
-
+      // The poster's notification is written by the notify_job_application()
+      // trigger (schema-update-47), not from here. This used to be a direct
+      // client-side insert into `notifications` — a table with no INSERT
+      // policy for `authenticated`, since every notification in this app comes
+      // from a SECURITY DEFINER trigger. So RLS rejected it on every single
+      // application, and nobody noticed because the `.catch(() => {})` could
+      // never fire: a supabase-js query builder resolves with { error } rather
+      // than rejecting. Job posters were never told anyone had applied.
       showToast('Application sent!')
       onApplied?.()
       onClose()

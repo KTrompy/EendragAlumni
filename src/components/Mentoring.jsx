@@ -5,7 +5,7 @@ import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
-import { normalizeExpertise } from '../utils.js'
+import { normalizeExpertise, safeUrl } from '../utils.js'
 
 const POSTER_FIELDS =
   'id, full_name, avatar_url, grad_year, degree, industry, occupation, company, city, country, ' +
@@ -178,8 +178,10 @@ function FindMentorTab({ mentors, onOpenProfile, onMessage, profile }) {
                     <button className="header-icon-btn mentor-message-btn" onClick={() => onMessage?.({ id: person.id, full_name: person.full_name }, buildIcebreaker(profile, person))} aria-label="Message" title="Message">
                       <MessageIcon />
                     </button>
-                    {person.linkedin_url && (
-                      <a href={person.linkedin_url} target="_blank" rel="noopener noreferrer" className="header-icon-btn mentor-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
+                    {/* safeUrl rather than the raw column — see the note on
+                        the same field in Directory.jsx. */}
+                    {safeUrl(person.linkedin_url) && (
+                      <a href={safeUrl(person.linkedin_url)} target="_blank" rel="noopener noreferrer" className="header-icon-btn mentor-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
                         <LinkedInIcon />
                       </a>
                     )}

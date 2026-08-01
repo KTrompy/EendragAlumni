@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { supabase, adminDeleteAccount } from '../supabaseClient'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
@@ -113,10 +113,19 @@ export default function Admin({ session }) {
 
   // Permanent removal — replaces the old "Revoke" (which only flipped
   // `approved` back to false and left the account and everything they'd
-  // posted in place). admin_delete_member deletes the auth user, and every
-  // person-owned table cascades off that; see schema-update-44.sql.
+  // posted in place). Deleting the auth user cascades through every
+  // person-owned table; see schema-update-44.sql.
+  //
+  // Goes through the delete-account Edge Function rather than the
+  // admin_delete_member() RPC it used to call. Two reasons: the RPC did a raw
+  // `delete from auth.users`, which the codebase's own comments elsewhere
+  // claim hosted Supabase can silently no-op (the Admin API used by the Edge
+  // Function is the documented, reliable route) — and the RPC did no storage
+  // cleanup, so an admin-deleted member left their CV, avatar, business photos
+  // and job attachments behind in public buckets. Self-deletion and admin
+  // deletion now run the exact same code path.
   async function deleteMember(id) {
-    const { error } = await supabase.rpc('admin_delete_member', { target_id: id })
+    const { error } = await adminDeleteAccount(id)
     if (error) { setMemberError(error.message); return }
     setMembers((prev) => prev.filter((m) => m.id !== id))
     loadCounts()
@@ -364,7 +373,7 @@ function ReportList({ items, onSetStatus, navigate }) {
 
 /* ---------- Members table ---------- */
 function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDeleteMember }) {
-  const [confirmTarget, setConfirmTarget] = useState(null) // { member, action: 'delete' | 'promote' | 'demote' }
+  const [confirmTarget, setConfirmTarget] = useState(null) // { member, action: 'delete' | 'promote' | 'demote' | 'unapprove' }
   const [q, setQ] = useState('')
 
   if (loading) return <LoadingState message="Loading members…" />
@@ -378,12 +387,14 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
   function askDelete(m) { setConfirmTarget({ member: m, action: 'delete' }) }
   function askPromote(m) { setConfirmTarget({ member: m, action: 'promote' }) }
   function askDemote(m) { setConfirmTarget({ member: m, action: 'demote' }) }
+  function askUnapprove(m) { setConfirmTarget({ member: m, action: 'unapprove' }) }
 
   function runConfirmed() {
     const { member, action } = confirmTarget
     if (action === 'delete') onDeleteMember(member.id)
     if (action === 'promote') onSetAdmin(member.id, true)
     if (action === 'demote') onSetAdmin(member.id, false)
+    if (action === 'unapprove') onSetApproved(member.id, false)
     setConfirmTarget(null)
   }
 
@@ -423,12 +434,27 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                   </span>
                 </div>
                 <div className="admin-row-actions">
-                  {!m.approved && (
+                  {!m.approved ? (
                     m.consented_at ? (
                       <button className="btn primary small" onClick={() => onSetApproved(m.id, true)}>Approve</button>
                     ) : (
                       <button className="btn primary small" disabled title="Hasn't finished signing up yet">Approve</button>
                     )
+                  ) : (
+                    // Approving the wrong person used to be irreversible from
+                    // here: the only remedy on offer was permanently deleting
+                    // their account and everything they'd posted. This puts
+                    // them back to Pending instead — they land on the
+                    // verification screen, keep their data, and can be
+                    // approved again once it's sorted out.
+                    <button
+                      className="btn ghost small"
+                      onClick={() => askUnapprove(m)}
+                      disabled={isMe}
+                      title={isMe ? "You can't un-approve yourself" : 'Move back to pending verification'}
+                    >
+                      Un-approve
+                    </button>
                   )}
                   {m.is_admin ? (
                     <button className="btn ghost small" onClick={() => askDemote(m)} disabled={isMe} title={isMe ? "Can't remove your own admin rights" : undefined}>
@@ -460,6 +486,7 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
           title={
             confirmTarget.action === 'delete' ? 'Delete this account?'
               : confirmTarget.action === 'promote' ? 'Grant admin access?'
+              : confirmTarget.action === 'unapprove' ? 'Move back to pending?'
               : 'Remove admin access?'
           }
           message={
@@ -467,9 +494,16 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
               ? `${confirmTarget.member.full_name || 'This member'} will be removed from the site entirely — their login, profile, posts, comments, job listings, events, RSVPs, business listings and messages all go with it. This can't be undone, and they'd have to sign up and be approved again from scratch.`
               : confirmTarget.action === 'promote'
               ? `${confirmTarget.member.full_name || 'This member'} will be able to approve members and moderate posts, jobs and events — the same access you have.`
+              : confirmTarget.action === 'unapprove'
+              ? `${confirmTarget.member.full_name || 'This member'} will lose access to the site and go back to the "waiting to be verified" screen. Nothing they've posted is deleted, and you can approve them again at any time.`
               : `${confirmTarget.member.full_name || 'This member'} will lose admin access.`
           }
-          confirmLabel={confirmTarget.action === 'delete' ? 'Delete account' : confirmTarget.action === 'promote' ? 'Make admin' : 'Remove admin'}
+          confirmLabel={
+            confirmTarget.action === 'delete' ? 'Delete account'
+              : confirmTarget.action === 'promote' ? 'Make admin'
+              : confirmTarget.action === 'unapprove' ? 'Move to pending'
+              : 'Remove admin'
+          }
           onConfirm={runConfirmed}
           onCancel={() => setConfirmTarget(null)}
         />

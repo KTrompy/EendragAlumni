@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Avatar } from './Directory.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
+import { safeUrl } from '../utils.js'
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso)) / 1000)
@@ -111,8 +112,10 @@ export default function JobModal({
           >
             <BookmarkIcon filled={isSaved} /> {isSaved ? 'Saved' : 'Save'}
           </button>
-          {j.apply_url && (
-            <a className="btn primary small" href={j.apply_url} target="_blank" rel="noopener noreferrer">
+          {/* safeUrl rather than the raw column — JobDetail already renders
+              apply_url/attachment_url this way; this modal didn't. */}
+          {safeUrl(j.apply_url) && (
+            <a className="btn primary small" href={safeUrl(j.apply_url)} target="_blank" rel="noopener noreferrer">
               Apply now
             </a>
           )}

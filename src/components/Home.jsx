@@ -2,8 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
-import { WhosOnline } from './Feed.jsx'
-import { BusinessLogo } from './BusinessDirectory.jsx'
+// Imported from their own modules, not from Feed.jsx / BusinessDirectory.jsx.
+// Home is eagerly loaded (it's the default route), so a named import from
+// either of those pulled the whole ~40-60 kB module into the initial bundle
+// and cancelled out the lazy route split in App.jsx — Vite warns about
+// exactly this at build time.
+import { WhosOnline } from './WhosOnline.jsx'
+import { BusinessLogo } from './BusinessLogo.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
 
@@ -263,7 +268,10 @@ export default function Home({ session, profile, onMessage }) {
       ] = await Promise.all([
         supabase
           .from('posts')
-          .select('id, title, content, image_urls, pinned, created_at, profiles!posts_author_id_fkey ( full_name, avatar_url )')
+          // `occupation` is rendered under the author's name in the preview
+          // card below — it was missing from this select, so that line could
+          // never display anything no matter whose post it was.
+          .select('id, title, content, image_urls, pinned, created_at, profiles!posts_author_id_fkey ( full_name, avatar_url, occupation )')
           .order('created_at', { ascending: false })
           .limit(3),
         supabase
@@ -320,16 +328,22 @@ export default function Home({ session, profile, onMessage }) {
       }
       if (cancelled) return
 
-      // Community and Businesses both always fall back to "most recently
-      // added" when there's no direct profile match (see the comments
-      // above), so in a real, populated directory there's no legitimate
-      // way for *both* to come back completely empty at once. Seeing that
-      // combination is a much stronger signal that we hit the
-      // auth-not-settled race described above than that this genuinely is
-      // an empty community — worth one automatic retry, after giving the
-      // client a beat to finish settling, before showing the wrong empty
-      // state to the person.
-      if (!isRetry && communityList.length === 0 && businessList.length === 0) {
+      // Retry canary for the auth-not-settled race described above.
+      //
+      // This used to check "community AND businesses both came back empty",
+      // which sounds reasonable but is wrong on a young site: with no business
+      // listings yet, that condition is true on *every single load*, so every
+      // visit to Home paid a 600 ms sleep plus a second full round of seven
+      // queries before rendering.
+      //
+      // `badges` is the better signal. It's a small fixed reference table with
+      // no per-user filtering, readable by any approved member — and Home only
+      // renders for approved members at all (App.jsx gates on it). So a
+      // non-empty badges result means the client's auth header really did make
+      // it onto the request; an empty one means nothing did, which is exactly
+      // the race. It can't be confused with "this community is genuinely
+      // empty" the way the old check could.
+      if (!isRetry && (badgeDefs || []).length === 0) {
         await new Promise((r) => setTimeout(r, 600))
         if (!cancelled) await load(true)
         return

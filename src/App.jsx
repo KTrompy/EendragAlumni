@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { supabase, isAuthError } from './supabaseClient'
 import Auth from './components/Auth.jsx'
@@ -6,24 +6,41 @@ import ResetPassword from './components/ResetPassword.jsx'
 import FinishSignup from './components/FinishSignup.jsx'
 import PendingVerification from './components/PendingVerification.jsx'
 import Home from './components/Home.jsx'
-import Feed from './components/Feed.jsx'
-import Mentoring from './components/Mentoring.jsx'
 import People from './components/People.jsx'
 import { Avatar } from './components/Directory.jsx'
 import FloatingMessages from './components/FloatingMessages.jsx'
-import Profile from './components/Profile.jsx'
-import PersonProfile from './components/PersonProfile.jsx'
-import Events from './components/Events.jsx'
-import Jobs from './components/Jobs.jsx'
-import JobDetail from './components/JobDetail.jsx'
-import BusinessDirectory from './components/BusinessDirectory.jsx'
-import BusinessDetail from './components/BusinessDetail.jsx'
-import Donate from './components/Donate.jsx'
-import Admin from './components/Admin.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
 import ConfirmDialog from './components/ConfirmDialog.jsx'
-import Settings from './components/Settings.jsx'
-import NotFound from './components/NotFound.jsx'
+
+// Route-level code splitting.
+//
+// Everything used to be a static import, which built one 947 kB JS bundle
+// (268 kB gzipped) that had to download and parse in full before anything
+// rendered — including Leaflet, the rich-text editors and every screen a
+// given person might never open. On a mid-range phone that's seconds of
+// blank page, and every deploy invalidated the whole thing.
+//
+// Kept eager above: the sign-in path (Auth/ResetPassword/FinishSignup/
+// PendingVerification), Home (the default landing route), and the chrome that
+// renders on every screen (header bell, messages dock, dialogs). Splitting
+// those would only add a spinner to the very first paint.
+//
+// Everything below is fetched on first navigation to it and cached from then
+// on. Rollup hoists whatever they genuinely share into common chunks, so
+// nothing is downloaded twice.
+const Feed = lazy(() => import('./components/Feed.jsx'))
+const Mentoring = lazy(() => import('./components/Mentoring.jsx'))
+const Profile = lazy(() => import('./components/Profile.jsx'))
+const PersonProfile = lazy(() => import('./components/PersonProfile.jsx'))
+const Events = lazy(() => import('./components/Events.jsx'))
+const Jobs = lazy(() => import('./components/Jobs.jsx'))
+const JobDetail = lazy(() => import('./components/JobDetail.jsx'))
+const BusinessDirectory = lazy(() => import('./components/BusinessDirectory.jsx'))
+const BusinessDetail = lazy(() => import('./components/BusinessDetail.jsx'))
+const Donate = lazy(() => import('./components/Donate.jsx'))
+const Admin = lazy(() => import('./components/Admin.jsx'))
+const Settings = lazy(() => import('./components/Settings.jsx'))
+const NotFound = lazy(() => import('./components/NotFound.jsx'))
 
 // Eendragters (directory) now includes the alumni map as a view toggle
 // (see People.jsx) instead of splitting "find a person" across two nav
@@ -655,6 +672,11 @@ export default function App() {
 
         <div className="app-main">
           <main className="content">
+            {/* Covers the brief fetch of a lazy route's chunk on first visit.
+                Deliberately the same "Loading…" treatment the auth/profile
+                gates above use, so a first navigation to Jobs looks like every
+                other load in the app rather than like something broke. */}
+            <Suspense fallback={<div className="center-page">Loading…</div>}>
             <Routes>
               <Route path="/" element={<Navigate to="/home" replace />} />
               <Route path="/home" element={<Home session={session} profile={profile} onMessage={openMessage} />} />
@@ -699,6 +721,7 @@ export default function App() {
               />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </main>
 
           <footer className="footer">

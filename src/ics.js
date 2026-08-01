@@ -28,19 +28,56 @@ function escapeText(s) {
     .replace(/\r?\n/g, '\\n')
 }
 
-// The spec caps content lines at 75 octets, folding longer ones onto a
+// The spec caps content lines at 75 OCTETS, folding longer ones onto a
 // continuation line that starts with a space. Without this, a long
 // description can get truncated or rejected outright by stricter clients
 // (Outlook in particular).
+//
+// Counting octets, not JS string length, matters here: this is an Afrikaans
+// alumni network, so titles and descriptions routinely carry ë/é/ê/ï, each of
+// which is 2 bytes in UTF-8. Measuring by `.length` would let a line of 75
+// characters run to 90+ octets and blow the limit the fold exists to respect.
+//
+// The walk below also never splits a multi-byte character across a fold (it
+// only breaks between whole code points), and never splits an escape sequence
+// like `\,` or `\n` written by escapeText — a break between the backslash and
+// the character it escapes would change the meaning of the value.
 function foldLine(line) {
-  if (line.length <= 75) return line
-  let out = ''
-  let rest = line
-  while (rest.length > 75) {
-    out += rest.slice(0, 75) + '\r\n '
-    rest = rest.slice(75)
+  const encoder = new TextEncoder()
+  if (encoder.encode(line).length <= 75) return line
+
+  const out = []
+  let current = ''
+  let currentBytes = 0
+  // Array.from splits on code points rather than UTF-16 units, so surrogate
+  // pairs (emoji) stay intact too.
+  const chars = Array.from(line)
+
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i]
+    const size = encoder.encode(ch).length
+    // Continuation lines start with a space, which itself costs an octet, so
+    // every line after the first has 74 to play with rather than 75.
+    const limit = out.length === 0 ? 75 : 74
+    if (currentBytes + size > limit) {
+      out.push(current)
+      current = ''
+      currentBytes = 0
+    }
+    current += ch
+    currentBytes += size
+    // Don't leave a fold sitting between a backslash and the character it
+    // escapes — carry the escaped character onto this line too.
+    if (ch === '\\' && i + 1 < chars.length) {
+      const next = chars[i + 1]
+      current += next
+      currentBytes += encoder.encode(next).length
+      i++
+    }
   }
-  return out + rest
+  if (current) out.push(current)
+
+  return out.join('\r\n ')
 }
 
 function icsLine(key, value) {

@@ -10,6 +10,11 @@ import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 import { useObjectUrl, useObjectUrls } from '../utils.js'
+import { WhosOnline } from './WhosOnline.jsx'
+
+// Re-exported so existing importers keep working; the component itself now
+// lives in its own module so Home can use it without dragging all of Feed in.
+export { WhosOnline }
 
 // Full profile shape needed for the "click a name → open their profile"
 // modal — same fields Directory/Jobs pull for the same purpose, so a post
@@ -24,6 +29,20 @@ const MAX_IMAGES = 4
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024
 const PAGE_SIZE = 10
+
+// Video posting is switched off until the storage side of it is ready.
+//
+// The composer has had a working-looking "Video" button, a file picker and a
+// live preview this whole time, but uploadVideo() writes to a `post-videos`
+// bucket that has never existed in the Supabase project — so every video post
+// died on publish with a raw "Bucket not found" in the composer's error line.
+// Better to not offer it than to offer it and fail.
+//
+// To turn it back on: create the bucket and its policies (the commented block
+// at the top of schema-update-47.sql has the SQL), then flip this to true.
+// Everything else — picker, preview, upload, render, storage cleanup on
+// delete — is already wired up and stays in place behind this flag.
+const VIDEO_UPLOADS_ENABLED = false
 
 function timeAgo(iso) {
   const s = Math.floor((Date.now() - new Date(iso)) / 1000)
@@ -660,9 +679,11 @@ function Composer({ session, profile, onPosted, openRef }) {
       <button className="composer-quick-btn" onClick={openModalWithPhoto} disabled={!canPost}>
         <PhotoIcon /> Photo
       </button>
-      <button className="composer-quick-btn" onClick={openModalWithVideo} disabled={!canPost}>
-        <VideoIcon /> Video
-      </button>
+      {VIDEO_UPLOADS_ENABLED && (
+        <button className="composer-quick-btn" onClick={openModalWithVideo} disabled={!canPost}>
+          <VideoIcon /> Video
+        </button>
+      )}
     </div>
   )
 
@@ -687,22 +708,26 @@ function Composer({ session, profile, onPosted, openRef }) {
         style={{ display: 'none' }}
         onChange={pickFiles}
       />
-      <button
-        type="button"
-        className="composer-photo-btn"
-        onClick={() => videoFileRef.current?.click()}
-        disabled={!canPost || !!videoFile}
-        title="Add video"
-      >
-        <VideoIcon />
-      </button>
-      <input
-        ref={videoFileRef}
-        type="file"
-        accept="video/mp4,video/webm,video/quicktime"
-        style={{ display: 'none' }}
-        onChange={pickVideo}
-      />
+      {VIDEO_UPLOADS_ENABLED && (
+        <>
+          <button
+            type="button"
+            className="composer-photo-btn"
+            onClick={() => videoFileRef.current?.click()}
+            disabled={!canPost || !!videoFile}
+            title="Add video"
+          >
+            <VideoIcon />
+          </button>
+          <input
+            ref={videoFileRef}
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime"
+            style={{ display: 'none' }}
+            onChange={pickVideo}
+          />
+        </>
+      )}
     </>
   )
 
@@ -1170,109 +1195,6 @@ function Comments({ postId, session, profile, onOpenProfile }) {
         </button>
       </div>
       {error && <p className="form-error">{error}</p>}
-    </div>
-  )
-}
-
-/* ---------- Who's online ---------- */
-// Live presence strip using Supabase Realtime Presence — tracked only while
-// the Feed page is mounted (joining/leaving the shared "online-members"
-// channel), so "online" here means "currently on the Feed", not "logged in
-// somewhere in the app". Simpler to reason about than app-wide presence,
-// and it's the page this actually shows on in the reference.
-export function WhosOnline({ session, onOpenProfile }) {
-  const [members, setMembers] = useState([])
-  const [showAll, setShowAll] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    async function join() {
-      const { data: me } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .eq('id', session.user.id)
-        .single()
-      if (cancelled) return
-
-      const channel = supabase.channel('online-members', {
-        config: { presence: { key: session.user.id } },
-      })
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          const state = channel.presenceState()
-          const list = Object.values(state)
-            .map((entries) => entries[0])
-            .filter(Boolean)
-          setMembers(list)
-        })
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            await channel.track({
-              id: session.user.id,
-              full_name: me?.full_name || 'Alumnus',
-              avatar_url: me?.avatar_url || null,
-              online_at: new Date().toISOString(),
-            })
-          }
-        })
-
-      return () => supabase.removeChannel(channel)
-    }
-    const cleanupPromise = join()
-    return () => { cancelled = true; cleanupPromise.then((fn) => fn?.()) }
-  }, [session.user.id])
-
-  if (members.length === 0) return null
-
-  const others = members.filter((m) => m.id !== session.user.id)
-  const shown = members.slice(0, 9)
-
-  return (
-    <div className="whos-online">
-      <div className="whos-online-head">
-        <span className="whos-online-title">
-          <span className="whos-online-dot" /> Who's online · See who's been online recently
-        </span>
-        {members.length > shown.length && (
-          <button className="whos-online-seeall" onClick={() => setShowAll(true)}>See all live members ›</button>
-        )}
-      </div>
-      <div className="whos-online-strip">
-        {shown.map((m) => (
-          <button
-            key={m.id}
-            className="whos-online-avatar"
-            onClick={() => onOpenProfile?.(m.id)}
-            title={m.full_name}
-            aria-label={`Open profile for ${m.full_name}`}
-          >
-            <Avatar url={m.avatar_url} name={m.full_name} size={44} />
-          </button>
-        ))}
-      </div>
-
-      {showAll && (
-        <div className="modal-backdrop" onClick={() => setShowAll(false)} role="dialog" aria-modal="true" aria-label="Live members">
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
-            <div className="modal-header">
-              <h2>Live members ({members.length})</h2>
-              <button className="modal-close" onClick={() => setShowAll(false)} aria-label="Close">×</button>
-            </div>
-            <div className="modal-body">
-              <ul className="whos-online-list">
-                {members.map((m) => (
-                  <li key={m.id}>
-                    <button className="whos-online-list-row" onClick={() => { setShowAll(false); onOpenProfile?.(m.id) }}>
-                      <Avatar url={m.avatar_url} name={m.full_name} size={36} />
-                      <span>{m.full_name}{m.id === session.user.id ? ' (you)' : ''}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

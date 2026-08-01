@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { supabase, deleteOwnAccount } from '../supabaseClient'
+import { supabase, deleteOwnAccount, openStorageFile } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import { INDUSTRIES, SA_CITIES, EXPERTISE_OPTIONS, EXPERTISE_BY_INDUSTRY, SERVICES_OFFERED, AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS } from '../constants.js'
 import PhotoCropper from './PhotoCropper.jsx'
@@ -452,6 +452,12 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       .from('cvs')
       .upload(path, file, { upsert: false, contentType: file.type })
     if (upErr) { setError(upErr.message); setCvUploading(false); return }
+    // The bucket is private now (schema-update-47), so this URL won't resolve
+    // on its own — it's kept purely as the storage-path carrier, matching the
+    // shape of every cv_url row saved before the change. Everything that
+    // actually opens a CV goes through openStorageFile(), which pulls the path
+    // back out and mints a short-lived signed URL. Keeping one shape means no
+    // data migration and no "old CVs stopped working".
     const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(path)
     // Remove old CV file if one exists
     const prevPath = profile?.cv_url?.match(/\/cvs\/([^?]+)/)?.[1]
@@ -958,7 +964,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <div className="cv-upload-area">
           {profile?.cv_url ? (
             <div className="cv-file-row">
-              <a className="cv-file-link" href={profile.cv_url} target="_blank" rel="noopener noreferrer">
+              {/* Signed URL rather than a public one — see openStorageFile()
+                  and the cvs-bucket note in schema-update-47.sql. */}
+              <a
+                className="cv-file-link"
+                href={profile.cv_url}
+                onClick={(e) => { e.preventDefault(); openStorageFile('cvs', profile.cv_url) }}
+                rel="noopener noreferrer"
+              >
                 <CvFileIcon /> {profile.cv_filename || 'CV'}
               </a>
               <div className="cv-file-actions">

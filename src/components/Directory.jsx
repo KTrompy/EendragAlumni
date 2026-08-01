@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
-import { normalizeExpertise, isRecentlyOnline } from '../utils.js'
+import { normalizeExpertise, isRecentlyOnline, safeUrl } from '../utils.js'
 
 const PAGE_SIZE = 12
 
@@ -175,8 +175,13 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
             <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label="Send a message">
               <EnvelopeIcon />
             </button>
-            {p.linkedin_url ? (
-              <a className="person-action linkedin-active" href={p.linkedin_url} target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label="LinkedIn" onClick={(e) => e.stopPropagation()}>
+            {/* safeUrl, not the raw column: isSafeHttpUrl() blocks a
+                javascript:/data: URI at save time, but a row written straight
+                against the API never passes through that form. PersonProfile
+                and ProfileModal already render this field through safeUrl —
+                this card was the one place that didn't. */}
+            {safeUrl(p.linkedin_url) ? (
+              <a className="person-action linkedin-active" href={safeUrl(p.linkedin_url)} target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label="LinkedIn" onClick={(e) => e.stopPropagation()}>
                 <LinkedInIcon />
               </a>
             ) : (
