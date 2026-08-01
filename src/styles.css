@@ -994,6 +994,67 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--ink);
 }
 
+/* ---------- Floating dropdown portal ----------
+   Every type-ahead / picker panel on the site (city, country, industry,
+   expertise, phone country code) renders through DropdownPortal.jsx, which
+   drops it into <body> and positions it over the field with inline
+   `position: fixed` coordinates.
+
+   The reason is stacking contexts: an absolutely-positioned panel can only
+   paint above things inside the same one, and plenty of our cards create
+   their own (`.profile-section` animates in with `both` fill, which makes
+   it a permanent stacking context). A dropdown inside such a card was
+   trapped there and the next card down the page painted straight over it,
+   no matter how large the dropdown's own z-index was. Portalling removes
+   every positioned ancestor from the equation, so this one z-index decides
+   the outcome for all of them.
+
+   10600 sits above modals/create-panels (10500) so pickers inside a modal
+   work, and below the toast (10700) so confirmations stay readable. */
+.dropdown-portal {
+  z-index: 10600;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* The panels themselves were written to position against their field. In
+   the portal the wrapper already carries the position and size, so they
+   flatten into plain in-flow boxes that fill it. */
+.dropdown-portal > .city-suggestions,
+.dropdown-portal > .phone-input-dropdown,
+.dropdown-portal > .dtp-popover {
+  position: static;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  min-height: 0;
+  max-height: 100%;
+  margin: 0;
+  overflow-y: auto;
+}
+/* Panels that track the field's width fill the wrapper; the date picker
+   keeps its own fixed 280px instead, so it's left out of this. */
+.dropdown-portal > .city-suggestions,
+.dropdown-portal > .phone-input-dropdown {
+  width: 100%;
+  max-width: none;
+}
+/* The phone picker has a fixed search box above a scrolling country list,
+   so it scrolls internally rather than as a whole — otherwise the search
+   field scrolls out of view as you page through countries. */
+.dropdown-portal > .phone-input-dropdown {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dropdown-portal .phone-input-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
 /* ---------- City autocomplete ---------- */
 .city-autocomplete { position: relative; overflow: visible; }
 .city-suggestions {
@@ -5154,27 +5215,24 @@ button.delete-danger svg { flex-shrink: 0; }
   overflow: visible;
 }
 .profile-section:hover { border-color: var(--line-strong); }
-/* Every .profile-section is its own stacking context (the entrance
-   animation touches transform/opacity), so a position:absolute dropdown
-   inside one — the city autocomplete list — can't out-rank a later section
-   just by having a high z-index; the whole section it lives in needs to
-   out-rank its siblings. */
-.profile-section-location { position: relative; z-index: 5; }
-/* Career sits above Location in the DOM but its Industry suggestions
-   list still needs to float over the Location card below it, so it
-   needs an even higher stacking order than .profile-section-location. */
-.profile-section-career { position: relative; z-index: 6; }
-/* Same reasoning as Career above — Experience's own per-entry Industry
-   autocomplete needs to float over the Location card that follows it. */
-.profile-section-experience { position: relative; z-index: 6; }
-/* Connect sits below all three of the above but above Business Profile —
-   its phone country dropdown was rendering underneath the Business Profile
-   card and the sticky Save bar for the same reason (see comment above):
-   an unpositioned sibling later in the DOM paints over an absolutely
-   positioned dropdown that's trapped inside an earlier, animated section's
-   own stacking context. Highest number here since nothing needs to float
-   over Connect itself. */
-.profile-section-connect { position: relative; z-index: 8; }
+/* Every .profile-section is its own stacking context — the entrance
+   animation touches transform/opacity and uses `both` fill, so the context
+   outlives the animation. That used to trap each card's autocomplete
+   dropdown inside it, letting the next card down the page paint over the
+   suggestions, and was worked around by hand-assigning a z-index to every
+   section that happened to contain a dropdown (Location 5, Career 6,
+   Experience 6, Connect 8) — which needed re-tuning every time a section
+   moved, was added, or gained a dropdown it hadn't had before.
+
+   Dropdowns now render in a portal on <body> instead (see .dropdown-portal
+   further up, and DropdownPortal.jsx), so no section has to out-rank its
+   siblings any more. `position: relative` stays because absolutely
+   positioned bits inside these cards measure against it; the z-index
+   escalation is gone. */
+.profile-section-location { position: relative; }
+.profile-section-career { position: relative; }
+.profile-section-experience { position: relative; }
+.profile-section-connect { position: relative; }
 /* Stagger each card's entrance slightly so the page feels like it's
    settling into place rather than popping in all at once. */
 .profile-section:nth-of-type(1) { animation-delay: 0.02s; }

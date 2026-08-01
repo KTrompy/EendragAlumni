@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getApproxLocation } from '../ipLocation'
+import DropdownPortal from './DropdownPortal.jsx'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -35,6 +36,8 @@ export default function CityAutocomplete({
   const [needsPick, setNeedsPick] = useState(false)
   const debounceRef = useRef(null)
   const blurTimeoutRef = useRef(null)
+  // Anchor for the portalled suggestion list — see DropdownPortal.
+  const anchorRef = useRef(null)
   const [approxLocation, setApproxLocation] = useState(null)
 
   // Detect the person's approximate location from their IP address once,
@@ -168,7 +171,7 @@ export default function CityAutocomplete({
   }
 
   return (
-    <div className="city-autocomplete has-clear">
+    <div className="city-autocomplete has-clear" ref={anchorRef}>
       <input
         className={inputClassName}
         value={text}
@@ -190,7 +193,7 @@ export default function CityAutocomplete({
       {text && (
         <button type="button" className="search-clear" onMouseDown={(e) => e.preventDefault()} onClick={clear} aria-label="Clear">×</button>
       )}
-      {showDropdown && (
+      <DropdownPortal anchorRef={anchorRef} open={showDropdown}>
         <ul className="city-suggestions">
           {loading && <li className="city-suggestion-loading">Searching…</li>}
           {!loading && suggestions.map((s) => (
@@ -201,7 +204,7 @@ export default function CityAutocomplete({
             </li>
           ))}
         </ul>
-      )}
+      </DropdownPortal>
       {needsPick && !showDropdown && (
         <p className="form-warning">Please choose a suggestion from the list — that typed text wasn't saved.</p>
       )}

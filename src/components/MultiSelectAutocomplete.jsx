@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import DropdownPortal from './DropdownPortal.jsx'
 
 // Same "type to filter, pick from suggestions" behaviour as ListAutocomplete,
 // but lets you pick more than one value — each pick adds a removable chip
@@ -24,6 +25,8 @@ export default function MultiSelectAutocomplete({
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const blurTimeoutRef = useRef(null)
+  // Anchor for the portalled suggestion list — see DropdownPortal.
+  const anchorRef = useRef(null)
 
   function handleBlur() {
     blurTimeoutRef.current = setTimeout(() => setOpen(false), 150)
@@ -80,7 +83,7 @@ export default function MultiSelectAutocomplete({
           ))}
         </ul>
       )}
-      <div className="city-autocomplete">
+      <div className="city-autocomplete" ref={anchorRef}>
         <input
           className={inputClassName}
           value={query}
@@ -92,7 +95,7 @@ export default function MultiSelectAutocomplete({
           placeholder={values.length ? 'Add another…' : placeholder}
           autoComplete="off"
         />
-        {showDropdown && (
+        <DropdownPortal anchorRef={anchorRef} open={showDropdown}>
           <ul className="city-suggestions">
             {suggestions.map((option) => (
               <li key={option}>
@@ -114,7 +117,7 @@ export default function MultiSelectAutocomplete({
               </li>
             )}
           </ul>
-        )}
+        </DropdownPortal>
       </div>
     </div>
   )

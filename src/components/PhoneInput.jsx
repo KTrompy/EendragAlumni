@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { COUNTRY_DIAL_CODES, PHONE_PRIORITY_COUNTRIES } from '../constants.js'
+import DropdownPortal from './DropdownPortal.jsx'
 
 const GENERIC_FORMAT = '123 456 7890'
 
@@ -75,15 +76,27 @@ export default function PhoneInput({ value, onChange, id }) {
   useEffect(() => {
     if (!open) return
     function onDocClick(e) {
+      // The country list lives in a portal on <body> now (see
+      // DropdownPortal), so it is no longer inside wrapRef — without the
+      // second check, clicking the search box or a country inside it would
+      // read as an outside click and slam the dropdown shut.
+      if (e.target.closest?.('.dropdown-portal')) return
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [open])
 
-  useEffect(() => {
-    if (open) searchRef.current?.focus()
-  }, [open])
+  // Focus via a callback ref rather than an effect keyed on `open`. The
+  // dropdown lives in a portal that only mounts once its position has been
+  // measured — a render later than `open` flipping true — so an effect
+  // watching `open` would run while the search box still didn't exist.
+  // useCallback with no deps keeps the ref identity stable, so React only
+  // invokes it when the input actually attaches or detaches.
+  const focusSearch = useCallback((el) => {
+    searchRef.current = el
+    el?.focus()
+  }, [])
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -145,10 +158,10 @@ export default function PhoneInput({ value, onChange, id }) {
         )}
       </div>
 
-      {open && (
+      <DropdownPortal anchorRef={wrapRef} open={open} gap={6} maxHeight={340}>
         <div className="phone-input-dropdown" role="listbox">
           <input
-            ref={searchRef}
+            ref={focusSearch}
             className="phone-input-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -167,7 +180,7 @@ export default function PhoneInput({ value, onChange, id }) {
             )}
           </ul>
         </div>
-      )}
+      </DropdownPortal>
     </div>
   )
 }

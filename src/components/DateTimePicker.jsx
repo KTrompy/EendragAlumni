@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import DropdownPortal from './DropdownPortal.jsx'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const WEEKDAYS = ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -30,6 +31,10 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
 
   useEffect(() => {
     function onDocClick(e) {
+      // The calendar renders in a portal on <body> (see DropdownPortal), so
+      // it's no longer inside wrapRef — without this, clicking a day would
+      // count as an outside click and close the picker.
+      if (e.target.closest?.('.dropdown-portal')) return
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
@@ -84,7 +89,7 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
         <span className="dtp-trigger-icon">📅</span>
       </button>
 
-      {open && (
+      <DropdownPortal anchorRef={wrapRef} open={open} gap={6} matchWidth={false} maxHeight={440}>
         <div className="dtp-popover">
           <div className="dtp-cal-header">
             <button type="button" className="btn ghost small" onClick={() => setViewMonth(new Date(year, month - 1, 1))} aria-label="Previous month">‹</button>
@@ -142,7 +147,7 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
             <button type="button" className="btn primary small" onClick={() => setOpen(false)}>Done</button>
           </div>
         </div>
-      )}
+      </DropdownPortal>
     </div>
   )
 }

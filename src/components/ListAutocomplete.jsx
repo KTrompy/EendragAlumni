@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import DropdownPortal from './DropdownPortal.jsx'
 
 // Generic type-to-filter text box backed by a static list of options —
 // used anywhere we want "start typing, pick from suggestions" instead of a
@@ -15,6 +16,10 @@ export default function ListAutocomplete({
 }) {
   const [open, setOpen] = useState(false)
   const blurTimeoutRef = useRef(null)
+  // The suggestion list renders in a portal on <body> (see DropdownPortal)
+  // so it can never be painted over by a card further down the page — this
+  // is what it anchors to.
+  const anchorRef = useRef(null)
 
   // Same delayed-close trick as CityAutocomplete — without it, a tap on a
   // suggestion can lose to the input's blur event, especially on mobile.
@@ -40,7 +45,7 @@ export default function ListAutocomplete({
   const showDropdown = open && suggestions.length > 0
 
   return (
-    <div className={clearable ? 'city-autocomplete has-clear' : 'city-autocomplete'}>
+    <div className={clearable ? 'city-autocomplete has-clear' : 'city-autocomplete'} ref={anchorRef}>
       <input
         className={inputClassName}
         value={value}
@@ -59,7 +64,7 @@ export default function ListAutocomplete({
           aria-label="Clear"
         >×</button>
       )}
-      {showDropdown && (
+      <DropdownPortal anchorRef={anchorRef} open={showDropdown}>
         <ul className="city-suggestions">
           {suggestions.map((option) => (
             <li key={option}>
@@ -69,7 +74,7 @@ export default function ListAutocomplete({
             </li>
           ))}
         </ul>
-      )}
+      </DropdownPortal>
     </div>
   )
 }
