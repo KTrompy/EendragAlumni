@@ -4,6 +4,8 @@ import { supabase, isAuthError } from './supabaseClient'
 import Auth from './components/Auth.jsx'
 import ResetPassword from './components/ResetPassword.jsx'
 import Onboarding from './components/Onboarding.jsx'
+import FinishSignup from './components/FinishSignup.jsx'
+import PendingVerification from './components/PendingVerification.jsx'
 import Home from './components/Home.jsx'
 import Feed from './components/Feed.jsx'
 import Mentoring from './components/Mentoring.jsx'
@@ -389,12 +391,17 @@ export default function App() {
     }
   }, [session])
 
-  // First time a brand-new profile loads (no name filled in yet), walk them
-  // through the onboarding wizard question-by-question. Only checked once
-  // per session so it doesn't yank people back into it on every visit.
+  // First time an approved member's profile loads without the wizard done,
+  // walk them through onboarding question-by-question. Signup now collects
+  // name/years/consent up front (see Auth.jsx), so the trigger is the
+  // explicit onboarding_complete flag rather than the old "no name yet"
+  // heuristic. Deliberately not marked checked while still unconsented or
+  // unapproved — those states show their own full-screen gates below, and
+  // the wizard should still fire on the first load *after* approval.
   useEffect(() => {
     if (!profile || checkedFirstRun) return
-    if (!profile.full_name?.trim()) setShowOnboarding(true)
+    if (!profile.consented_at || !profile.approved) return
+    if (!profile.onboarding_complete) setShowOnboarding(true)
     setCheckedFirstRun(true)
   }, [profile, checkedFirstRun])
 
@@ -420,6 +427,24 @@ export default function App() {
   if (loading) return <div className="center-page">Loading…</div>
   if (recoveryMode) return <ResetPassword onDone={() => setRecoveryMode(false)} />
   if (!session) return <Auth />
+
+  // Signed in but signup details/consent never captured — social-login
+  // joiners land here first (they skipped the signup form entirely).
+  if (profile && !profile.consented_at) {
+    return (
+      <FinishSignup
+        session={session}
+        profile={profile}
+        onDone={(updatedProfile) => setProfile(updatedProfile)}
+      />
+    )
+  }
+
+  // Locked out until the committee verifies them against residence
+  // records — no browsing while pending.
+  if (profile && !profile.approved) {
+    return <PendingVerification session={session} profile={profile} />
+  }
 
   if (showOnboarding) {
     return (
@@ -525,12 +550,6 @@ export default function App() {
         </div>
       </header>
 
-      {profile && !profile.approved && (
-        <div className="pending-banner">
-          Your account is awaiting approval by the alumni committee. You can browse,
-          but posting and messaging unlock once you're verified as an Eendragter.
-        </div>
-      )}
 
       {/* Full-width photo banner, sitting above the sidebar/content row so
           the sidebar no longer runs flush from the header all the way down

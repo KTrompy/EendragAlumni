@@ -5,7 +5,7 @@ import {
   AVAILABILITY_OPTIONS, GEOGRAPHIC_FOCUS,
 } from '../constants.js'
 import { geocodeCity } from '../geocode.js'
-import { normalizeExpertise, isValidGradYear, isSafeHttpUrl } from '../utils.js'
+import { normalizeExpertise, isSafeHttpUrl } from '../utils.js'
 import { Avatar } from './Directory.jsx'
 import PhotoCropper from './PhotoCropper.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
@@ -18,8 +18,11 @@ import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 // page can ask, including its collapsible "Mentoring" section
 // (opportunities/availability/expertise/services/geography/website), so
 // nothing is left for someone to discover only by opening My Profile later.
+// Name and Eendrag years are no longer asked here — the signup form
+// (Auth.jsx) collects them before the account is even verified, so the
+// wizard picks up from "current resident or alumnus?" onwards.
 const QUESTION_KEYS = [
-  'name', 'status', 'year', 'degree', 'industry', 'occupation',
+  'status', 'degree', 'industry', 'occupation',
   'company', 'country', 'city', 'linkedin', 'bio',
   'opportunities', 'availability', 'expertise', 'services', 'geography', 'website',
   'photo',
@@ -43,7 +46,7 @@ function visibleQuestionKeys(industry) {
 // skip-friendly, same as before. Occupation/company are only required when
 // they're actually being asked (see visibleQuestionKeys) — i.e. for anyone
 // who didn't pick "Student" as their industry.
-const REQUIRED_KEYS = new Set(['name', 'status', 'year', 'degree', 'industry', 'occupation', 'company', 'country', 'city', 'photo'])
+const REQUIRED_KEYS = new Set(['status', 'degree', 'industry', 'occupation', 'company', 'country', 'city', 'photo'])
 function isRequiredQuestion(key) {
   return REQUIRED_KEYS.has(key)
 }
@@ -174,8 +177,6 @@ export default function Onboarding({ session, profile, onDone }) {
   // always have a default selected, so there's nothing to nudge.
   function isCurrentEmpty() {
     switch (currentKey) {
-      case 'name': return !form.full_name.trim()
-      case 'year': return !form.grad_year
       case 'degree': return !form.degree.trim()
       case 'industry': return !form.industry || (form.industry === 'Other' && !customIndustry.trim())
       case 'occupation': return !form.occupation.trim()
@@ -199,9 +200,6 @@ export default function Onboarding({ session, profile, onDone }) {
   // grad year or a non-http(s) link shouldn't be allowed through just
   // because something was typed. Returns a message, or null if fine.
   function currentFormatError() {
-    if (currentKey === 'year' && form.grad_year && !isValidGradYear(form.grad_year)) {
-      return 'Enter a valid 4-digit year.'
-    }
     if (currentKey === 'linkedin' && !isSafeHttpUrl(form.linkedin_url)) {
       return 'That should start with http:// or https://.'
     }
@@ -268,10 +266,11 @@ export default function Onboarding({ session, profile, onDone }) {
     setBusy(true)
     setError(null)
     const industry = form.industry === 'Other' ? customIndustry.trim() : form.industry
+    // full_name and grad_year are deliberately absent — signup owns those
+    // now, and rewriting them here could clobber what was captured there.
     const payload = {
-      full_name: form.full_name.trim(),
+      onboarding_complete: true,
       is_current_resident: form.is_current_resident,
-      grad_year: form.grad_year ? Number(form.grad_year) : null,
       degree: form.degree,
       industry,
       occupation: form.occupation,
@@ -352,21 +351,6 @@ export default function Onboarding({ session, profile, onDone }) {
           </div>
         )
 
-      case 'name':
-        return (
-          <>
-            <h2 className="onboarding-question">What's your full name?</h2>
-            <input
-              className="onboarding-input"
-              autoFocus
-              value={form.full_name}
-              onChange={(e) => set('full_name', e.target.value)}
-              onKeyDown={onEnter}
-              placeholder="e.g. Pieter van der Merwe"
-            />
-          </>
-        )
-
       case 'status':
         return (
           <>
@@ -385,21 +369,6 @@ export default function Onboarding({ session, profile, onDone }) {
                 Still living in Eendrag
               </button>
             </div>
-          </>
-        )
-
-      case 'year':
-        return (
-          <>
-            <h2 className="onboarding-question">What year did you leave — or are you leaving — Eendrag?</h2>
-            <input
-              className="onboarding-input"
-              type="number"
-              value={form.grad_year}
-              onChange={(e) => set('grad_year', e.target.value)}
-              onKeyDown={onEnter}
-              placeholder="e.g. 2018"
-            />
           </>
         )
 

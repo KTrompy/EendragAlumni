@@ -1206,6 +1206,165 @@ button.delete-danger svg { flex-shrink: 0; }
   margin-top: 18px;
 }
 
+/* ---------- Auth: sign in / join tabs ---------- */
+.auth-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 18px 0 16px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  padding: 4px;
+}
+.auth-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 9px 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.auth-tab.on {
+  background: var(--paper);
+  color: var(--maroon);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Auth: social sign-in buttons ---------- */
+.auth-social-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.auth-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 10px;
+  background: var(--paper);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.auth-social-btn:hover { background: rgba(0, 0, 0, 0.03); }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Auth: signup wizard ---------- */
+.auth-field-row { display: flex; gap: 10px; }
+.auth-field-row .field { flex: 1; }
+
+.auth-steps {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 14px 0 18px;
+}
+.auth-step-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--ink-soft);
+}
+.auth-step-dot.on { background: var(--orange); color: #fff; }
+.auth-step-dot.done { background: var(--maroon); color: #fff; }
+
+.auth-step-heading {
+  font-family: var(--display);
+  text-transform: uppercase;
+  font-size: 18px;
+  color: var(--maroon);
+  margin: 0 0 6px;
+  text-align: center;
+}
+.auth-step-sub {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  text-align: center;
+  margin: 0 0 14px;
+}
+
+.auth-wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+.auth-wizard-actions .btn { flex: 1; }
+
+/* ---------- Auth: password strength meter ---------- */
+.pw-strength { display: flex; align-items: center; gap: 10px; margin: -6px 0 12px; }
+.pw-strength-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.09);
+  overflow: hidden;
+}
+.pw-strength-fill { height: 100%; border-radius: 3px; transition: width 0.25s ease, background 0.25s ease; }
+.pw-strength-fill.s0, .pw-strength-fill.s1 { background: #c0392b; }
+.pw-strength-fill.s2 { background: var(--orange); }
+.pw-strength-fill.s3 { background: #b8a02c; }
+.pw-strength-fill.s4 { background: var(--ok, #2c6e49); }
+.pw-strength-label { font-size: 12px; color: var(--ink-soft); min-width: 64px; text-align: right; }
+
+/* ---------- Auth: consent step ---------- */
+.auth-consent-group {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  padding: 12px 14px 14px;
+  margin: 0 0 14px;
+}
+.auth-consent-group legend {
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 0 6px;
+}
+.auth-consent-row { display: flex; gap: 10px; }
+.auth-consent-row .onboarding-choice { flex: 1; padding: 10px 0; }
+.auth-consent-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+.auth-consent-check input { margin-top: 3px; }
+
+/* ---------- Auth: verification pending / signup done ---------- */
+.auth-verify-note {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  text-align: center;
+  margin: 14px 0 18px;
+}
+.pending-verify-icon { font-size: 34px; text-align: center; margin-top: 10px; }
+
 /* ---------- Onboarding wizard (one question at a time) ---------- */
 .onboarding-page {
   min-height: 100vh;

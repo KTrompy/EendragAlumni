@@ -91,6 +91,11 @@ export default function Admin({ session }) {
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, approved } : m)))
     const { error } = await supabase.from('profiles').update({ approved }).eq('id', id)
     if (error) { setMemberError(error.message); loadMembers() }
+    // TODO(approval email): once a sending domain + Resend (or similar) is
+    // set up, invoke an Edge Function here on approve so the member gets
+    // their "you're verified — come sign in" email. Until then they find
+    // out via the "Check my status" button on PendingVerification.jsx.
+    // e.g. if (approved && !error) supabase.functions.invoke('send-approval-email', { body: { user_id: id } })
   }
 
   async function setAdmin(id, is_admin) {
