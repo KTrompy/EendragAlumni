@@ -7,15 +7,59 @@ import DeleteButton from './DeleteButton.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import { Avatar } from './Directory.jsx'
 import { useToast } from './Toast.jsx'
+import AdminHandbook from './AdminHandbook.jsx'
 
+// `help` is the one-line explainer rendered under the tab strip whenever that
+// section is open. It exists because this page is meant to be handed to a
+// committee member who has never seen it before: every tab should say what it
+// is for and what the buttons on it will do, without them having to click one
+// to find out. The Handbook tab is the long-form version of the same idea.
 const SUBTABS = [
-  { id: 'pending', label: 'Pending approval' },
-  { id: 'reports', label: 'Reports' },
-  { id: 'members', label: 'Members' },
-  { id: 'posts', label: 'Posts' },
-  { id: 'jobs', label: 'Jobs' },
-  { id: 'events', label: 'Events' },
-  { id: 'businesses', label: 'Businesses' },
+  {
+    id: 'pending',
+    label: 'Pending approval',
+    help: "New signups waiting to be let in. Approving someone gives them full access — the directory, private messaging and posting. Only approve people you can actually place.",
+  },
+  {
+    id: 'reports',
+    label: 'Reports',
+    help: "Things members have flagged. Use View to judge it yourself, then Mark reviewed once you've dealt with it, or Dismiss if there's nothing wrong. Neither button deletes anything.",
+  },
+  {
+    id: 'members',
+    label: 'Members',
+    help: "Everyone with an account. Un-approve is the reversible one — it pauses access but keeps everything they've written. Delete account is permanent and has no undo.",
+  },
+  {
+    id: 'posts',
+    label: 'Posts',
+    help: "Everything on the feed, newest first. Members can delete their own posts, so you only need this for something that shouldn't be up.",
+  },
+  {
+    id: 'jobs',
+    label: 'Jobs',
+    help: "Job listings members have posted. Deleting one also removes any applications sent to it.",
+  },
+  {
+    id: 'events',
+    label: 'Events',
+    help: "All events, newest first. Deleting an event also wipes everyone's RSVPs, so check with the organiser first.",
+  },
+  {
+    id: 'businesses',
+    label: 'Businesses',
+    help: "Alumni businesses. Feature pins one to the top of the directory — harmless and reversible, but worth agreeing a rule for so it doesn't become a favour.",
+  },
+  {
+    id: 'activity',
+    label: 'Activity log',
+    help: "A permanent record of every admin action — who approved, removed or deleted what, and when. Written by the database itself, so nobody can edit or erase it, including you.",
+  },
+  {
+    id: 'handbook',
+    label: 'Handbook',
+    help: null, // it explains itself
+  },
 ]
 
 function timeAgo(iso) {
@@ -153,21 +197,47 @@ export default function Admin({ session }) {
   }
 
   const pending = useMemo(() => members.filter((m) => !m.approved), [members])
+  // Split out because they mean different things to whoever's on duty: one is
+  // a decision waiting to be made, the other is someone who wandered off
+  // mid-signup and can't be approved yet no matter what you do.
+  const readyToApprove = useMemo(() => pending.filter((m) => m.consented_at), [pending])
+  const unfinished = pending.length - readyToApprove.length
+  const adminCount = useMemo(() => members.filter((m) => m.is_admin).length, [members])
   const needsSetup = !!memberError && (memberError.includes('does not exist') || memberError.includes('function'))
+
+  const activeTab = SUBTABS.find((t) => t.id === subtab)
 
   return (
     <section className="panel">
       <h2 className="panel-title">Admin</h2>
-      <p className="panel-sub">Approve new Eendragters and keep an eye on what's being posted.</p>
+      <p className="panel-sub">
+        Everything needed to run this site. New to the job? Start with the{' '}
+        <button className="linklike" onClick={() => setSubtab('handbook')}>Handbook</button> tab —
+        it's the whole role written down.
+      </p>
+
+      {/* The point of this strip: someone opening this page should be able to
+          tell in one glance whether they need to do anything, without reading
+          seven tabs to find out. When there's nothing outstanding it says so
+          explicitly rather than showing a row of zeroes that still looks like
+          homework. */}
+      <AttentionPanel
+        loading={loadingMembers}
+        readyToApprove={readyToApprove.length}
+        unfinished={unfinished}
+        openReports={openReportsCount}
+        adminCount={adminCount}
+        onGo={setSubtab}
+      />
 
       <div className="admin-stats-row">
-        <StatCard label="Members" value={members.length} />
-        <StatCard label="Pending" value={pending.length} highlight={pending.length > 0} />
-        <StatCard label="Open reports" value={openReportsCount} highlight={openReportsCount > 0} />
-        <StatCard label="Posts" value={counts.posts} />
-        <StatCard label="Jobs" value={counts.jobs} />
-        <StatCard label="Events" value={counts.events} />
-        <StatCard label="Businesses" value={counts.businesses} />
+        <StatCard label="Members" value={members.length} hint="Everyone with an account, approved or not." />
+        <StatCard label="Pending" value={pending.length} highlight={pending.length > 0} hint="Signed up but not yet let in." />
+        <StatCard label="Open reports" value={openReportsCount} highlight={openReportsCount > 0} hint="Flags from members you haven't ruled on." />
+        <StatCard label="Posts" value={counts.posts} hint="Total posts on the feed." />
+        <StatCard label="Jobs" value={counts.jobs} hint="Job listings, open and closed." />
+        <StatCard label="Events" value={counts.events} hint="Events, past and upcoming." />
+        <StatCard label="Businesses" value={counts.businesses} hint="Alumni businesses listed." />
       </div>
 
       <div className="admin-subtabs" role="tablist" aria-label="Admin sections">
@@ -176,12 +246,15 @@ export default function Admin({ session }) {
             key={t.id}
             role="tab"
             aria-selected={subtab === t.id}
-            className={subtab === t.id ? 'on' : ''}
+            className={[
+              subtab === t.id ? 'on' : '',
+              t.id === 'handbook' ? 'admin-subtab-guide' : '',
+            ].filter(Boolean).join(' ')}
             onClick={() => setSubtab(t.id)}
           >
             {t.label}
-            {t.id === 'pending' && pending.length > 0 && (
-              <span className="admin-subtab-badge">{pending.length}</span>
+            {t.id === 'pending' && readyToApprove.length > 0 && (
+              <span className="admin-subtab-badge">{readyToApprove.length}</span>
             )}
             {t.id === 'reports' && openReportsCount > 0 && (
               <span className="admin-subtab-badge">{openReportsCount}</span>
@@ -189,6 +262,8 @@ export default function Admin({ session }) {
           </button>
         ))}
       </div>
+
+      {activeTab?.help && <p className="admin-tab-help">{activeTab.help}</p>}
 
       {needsSetup ? (
         <div className="admin-setup-banner">
@@ -229,16 +304,83 @@ export default function Admin({ session }) {
       {subtab === 'jobs' && <JobsModeration />}
       {subtab === 'events' && <EventsModeration />}
       {subtab === 'businesses' && <BusinessesModeration />}
+      {subtab === 'activity' && <ActivityLog />}
+      {subtab === 'handbook' && <AdminHandbook />}
     </section>
   )
 }
 
-/* ---------- Stat card ---------- */
-function StatCard({ label, value, highlight }) {
+/* ---------- "Does anything need me?" ---------- */
+function AttentionPanel({ loading, readyToApprove, unfinished, openReports, adminCount, onGo }) {
+  if (loading) return null
+
+  const items = []
+  if (readyToApprove > 0) {
+    items.push({
+      key: 'approve',
+      text: readyToApprove === 1 ? '1 person is waiting to be approved' : `${readyToApprove} people are waiting to be approved`,
+      action: 'Review them',
+      tab: 'pending',
+    })
+  }
+  if (openReports > 0) {
+    items.push({
+      key: 'reports',
+      text: openReports === 1 ? '1 report needs a decision' : `${openReports} reports need a decision`,
+      action: 'Open reports',
+      tab: 'reports',
+    })
+  }
+  // Not urgent, but the thing most likely to end the site: a single admin who
+  // loses their phone takes the admin tools with them. Says so once there's
+  // someone to promote, rather than nagging on an empty site.
+  if (adminCount === 1) {
+    items.push({
+      key: 'soloadmin',
+      text: "You're the only admin — if you lose access, nobody can approve members",
+      action: 'Add a second',
+      tab: 'members',
+      tone: 'soft',
+    })
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="admin-attention clear">
+        <span className="admin-attention-icon" aria-hidden="true">✓</span>
+        <div>
+          <strong>Nothing needs you right now.</strong>
+          <p>
+            No one's waiting on approval and there are no open reports.
+            {unfinished > 0 && ` (${unfinished} ${unfinished === 1 ? 'person has' : 'people have'} started signing up but not finished — nothing to do until they come back.)`}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={highlight ? 'admin-stat-card highlight' : 'admin-stat-card'}>
+    <div className="admin-attention">
+      <strong className="admin-attention-title">Needs your attention</strong>
+      <ul>
+        {items.map((it) => (
+          <li key={it.key} className={it.tone === 'soft' ? 'soft' : undefined}>
+            <span>{it.text}</span>
+            <button className="btn ghost small" onClick={() => onGo(it.tab)}>{it.action}</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/* ---------- Stat card ---------- */
+function StatCard({ label, value, highlight, hint }) {
+  return (
+    <div className={highlight ? 'admin-stat-card highlight' : 'admin-stat-card'} title={hint}>
       <span className="admin-stat-value">{value === null || value === undefined ? '–' : value}</span>
       <span className="admin-stat-label">{label}</span>
+      {hint && <span className="admin-stat-hint">{hint}</span>}
     </div>
   )
 }
@@ -255,9 +397,50 @@ function PendingList({ loading, pending, onApprove, busyIds }) {
       />
     )
   }
+
+  // Two very different situations sharing one list made it look like half the
+  // queue was stuck. Split them: the top group is a decision you can make now,
+  // the bottom group is nothing you can act on at all.
+  const ready = pending.filter((m) => m.consented_at)
+  const unfinished = pending.filter((m) => !m.consented_at)
+
+  return (
+    <>
+      <div className="admin-guidance">
+        <strong>Before you approve someone</strong>
+        <p>
+          Approving lets them read every member's profile, message anyone privately and post to the
+          feed. If you can't place the name, leave them here and ask a classmate first — waiting
+          costs them nothing, and there's no way to un-send access to the directory.
+        </p>
+        <p className="admin-guidance-note">
+          They aren't emailed when you approve them, so drop them a message. They can also press
+          “Check my status” on the waiting screen themselves.
+        </p>
+      </div>
+
+      {ready.length > 0 && <h3 className="admin-list-heading">Waiting on your decision</h3>}
+      {ready.length > 0 && <PendingRows rows={ready} onApprove={onApprove} busyIds={busyIds} />}
+
+      {unfinished.length > 0 && (
+        <>
+          <h3 className="admin-list-heading">Started but didn't finish signing up</h3>
+          <p className="admin-tab-footnote" style={{ marginTop: 0, marginBottom: 10 }}>
+            Nothing to do here — these accounts have no profile yet, usually because someone used
+            the Google button and closed the tab. They move up automatically when the person
+            returns and finishes.
+          </p>
+          <PendingRows rows={unfinished} onApprove={onApprove} busyIds={busyIds} />
+        </>
+      )}
+    </>
+  )
+}
+
+function PendingRows({ rows, onApprove, busyIds }) {
   return (
     <ul className="admin-list">
-      {pending.map((m) => (
+      {rows.map((m) => (
         <li className="admin-row" key={m.id}>
           <Avatar url={null} name={m.full_name} size={40} />
           <div className="admin-row-info">
@@ -337,7 +520,7 @@ function ReportsModeration({ onCountChange }) {
       <EmptyState
         icon="feed"
         message="No reports filed."
-        subMessage="Flags members submit on posts, jobs, businesses and profiles will show up here."
+        subMessage="When a member flags a post, job, business or profile it lands here. An empty list is a good sign, not a broken page."
       />
     )
   }
@@ -386,12 +569,28 @@ function ReportList({ items, onSetStatus, navigate }) {
               {r.details && <p className="admin-row-preview">{truncate(r.details)}</p>}
             </div>
             <div className="admin-row-actions">
-              {path && <button className="btn ghost small" onClick={() => navigate(path)}>View</button>}
+              {path && (
+                <button className="btn ghost small" onClick={() => navigate(path)} title="Go and look at what was reported">
+                  View
+                </button>
+              )}
               {r.status !== 'reviewed' && (
-                <button className="btn ghost small" onClick={() => onSetStatus(r.id, 'reviewed')}>Mark reviewed</button>
+                <button
+                  className="btn ghost small"
+                  onClick={() => onSetStatus(r.id, 'reviewed')}
+                  title="You've looked at it and dealt with it. Doesn't delete anything."
+                >
+                  Mark reviewed
+                </button>
               )}
               {r.status !== 'dismissed' && (
-                <button className="btn ghost small" onClick={() => onSetStatus(r.id, 'dismissed')}>Dismiss</button>
+                <button
+                  className="btn ghost small"
+                  onClick={() => onSetStatus(r.id, 'dismissed')}
+                  title="You've looked at it and there's nothing wrong. Doesn't delete anything."
+                >
+                  Dismiss
+                </button>
               )}
             </div>
           </li>
@@ -430,6 +629,22 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
 
   return (
     <>
+      <div className="admin-guidance">
+        <strong>Un-approve, or delete?</strong>
+        <p>
+          <strong>Un-approve</strong> is almost always the right one. It pauses someone's access —
+          they see the “waiting to be verified” screen — but keeps their profile, posts and
+          messages, and you can let them back in with one click.
+        </p>
+        <p>
+          <strong>Delete account</strong> erases them and everything they've ever posted, for good.
+          There is no undo and no backup. Keep it for spam accounts and for people who've asked to
+          be removed.
+        </p>
+        <p className="admin-guidance-note">
+          Every action on this tab is recorded in the Activity log with your name against it.
+        </p>
+      </div>
       <input
         className="search"
         style={{ marginBottom: 14 }}
@@ -545,6 +760,132 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
   )
 }
 
+/* ---------- Activity log ---------- */
+// Read-only by design. The rows are written by database triggers
+// (schema-update-52.sql), never by this component — so the log records what
+// actually happened to the data, including changes made straight from the
+// Supabase dashboard, and can't be quietly skipped by a bug up here.
+const ACTION_TEXT = {
+  approve_member:    { verb: 'approved',                 tone: 'good' },
+  unapprove_member:  { verb: 'moved back to pending',    tone: 'warn' },
+  grant_admin:       { verb: 'made an admin',            tone: 'warn' },
+  revoke_admin:      { verb: 'removed admin access from', tone: 'warn' },
+  delete_member:     { verb: 'permanently deleted the account of', tone: 'bad' },
+  delete_post:       { verb: 'deleted the post',         tone: 'bad' },
+  delete_job:        { verb: 'deleted the job listing',  tone: 'bad' },
+  delete_event:      { verb: 'deleted the event',        tone: 'bad' },
+  delete_business:   { verb: 'deleted the business',     tone: 'bad' },
+  feature_business:  { verb: 'featured',                 tone: 'good' },
+  unfeature_business:{ verb: 'unfeatured',               tone: 'good' },
+  resolve_report:    { verb: 'marked reviewed:',         tone: 'good' },
+  dismiss_report:    { verb: 'dismissed:',               tone: 'good' },
+  reopen_report:     { verb: 'reopened:',                tone: 'warn' },
+}
+
+const ACTIVITY_FILTERS = [
+  { id: 'all', label: 'Everything' },
+  { id: 'members', label: 'Members', match: (a) => a.target_type === 'member' },
+  { id: 'content', label: 'Content removed', match: (a) => a.action.startsWith('delete_') && a.target_type !== 'member' },
+  { id: 'reports', label: 'Reports', match: (a) => a.target_type === 'report' },
+]
+
+function ActivityLog() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [filter, setFilter] = useState('all')
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('admin_actions')
+        .select('id, actor_name, action, target_type, target_id, target_label, details, created_at')
+        .order('created_at', { ascending: false })
+        .limit(300)
+      if (!alive) return
+      if (error) setError(error.message)
+      else setItems(data || [])
+      setLoading(false)
+    })()
+    return () => { alive = false }
+  }, [])
+
+  if (loading) return <LoadingState message="Loading the activity log…" />
+
+  // Same reasoning as the setup banner above: a bare error string tells a
+  // non-technical admin nothing they can act on.
+  if (error) {
+    return (
+      <div className="admin-setup-banner">
+        <strong>The activity log isn't set up yet</strong>
+        <p>
+          It needs one database update that hasn't been run — <code>schema-update-52.sql</code>,
+          in the project folder. Everything else on this page works fine without it; you just
+          won't have a record of who did what until it's run.
+        </p>
+        <p className="admin-setup-banner-detail">Error detail: {error}</p>
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon="feed"
+        message="Nothing recorded yet."
+        subMessage="Approvals, removals and deletions will appear here from now on, with who did them."
+      />
+    )
+  }
+
+  const active = ACTIVITY_FILTERS.find((f) => f.id === filter)
+  const shown = active?.match ? items.filter(active.match) : items
+
+  return (
+    <>
+      <div className="admin-filter-row">
+        {ACTIVITY_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            className={filter === f.id ? 'admin-filter on' : 'admin-filter'}
+            onClick={() => setFilter(f.id)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+      {shown.length === 0 ? (
+        <EmptyState icon="search" message="Nothing of that kind has happened yet." />
+      ) : (
+        <ul className="admin-list">
+          {shown.map((a) => {
+            const meta = ACTION_TEXT[a.action] || { verb: a.action.replace(/_/g, ' '), tone: 'warn' }
+            return (
+              <li className="admin-row admin-activity-row" key={a.id}>
+                <span className={`admin-activity-dot ${meta.tone}`} aria-hidden="true" />
+                <div className="admin-row-info">
+                  <span className="admin-row-name">
+                    <strong>{a.actor_name || 'An admin'}</strong> {meta.verb}{' '}
+                    <strong>{a.target_label || 'something'}</strong>
+                  </span>
+                  <span className="admin-row-meta">
+                    {new Date(a.created_at).toLocaleString()} · {timeAgo(a.created_at)}
+                  </span>
+                  {a.details && <p className="admin-row-preview">{a.details}</p>}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <p className="admin-tab-footnote">
+        Showing the {items.length} most recent entries. Nothing here can be edited or removed.
+      </p>
+    </>
+  )
+}
+
 /* ---------- Posts moderation ---------- */
 function PostsModeration() {
   const [posts, setPosts] = useState([])
@@ -570,7 +911,15 @@ function PostsModeration() {
   }
 
   if (loading) return <LoadingState message="Loading posts…" />
-  if (posts.length === 0) return <EmptyState icon="feed" message="No posts yet." />
+  if (posts.length === 0) {
+    return (
+      <EmptyState
+        icon="feed"
+        message="Nothing's been posted yet."
+        subMessage="Every feed post will appear here, newest first, so you can remove one without hunting for it."
+      />
+    )
+  }
 
   return (
     <ul className="admin-list">
@@ -615,7 +964,15 @@ function JobsModeration() {
   }
 
   if (loading) return <LoadingState message="Loading job listings…" />
-  if (jobs.length === 0) return <EmptyState icon="jobs" message="No job listings yet." />
+  if (jobs.length === 0) {
+    return (
+      <EmptyState
+        icon="jobs"
+        message="No job listings yet."
+        subMessage="Anything members post to the Jobs board shows up here for removal if it's not genuine."
+      />
+    )
+  }
 
   return (
     <ul className="admin-list">
@@ -660,7 +1017,15 @@ function EventsModeration() {
   }
 
   if (loading) return <LoadingState message="Loading events…" />
-  if (events.length === 0) return <EmptyState icon="events" message="No events yet." />
+  if (events.length === 0) {
+    return (
+      <EmptyState
+        icon="events"
+        message="No events yet."
+        subMessage="Reunions, socials and anything else members schedule will be listed here."
+      />
+    )
+  }
 
   return (
     <ul className="admin-list">
@@ -712,7 +1077,15 @@ function BusinessesModeration() {
   }
 
   if (loading) return <LoadingState message="Loading businesses…" />
-  if (items.length === 0) return <EmptyState icon="business" message="No businesses listed yet." />
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon="business"
+        message="No businesses listed yet."
+        subMessage="Alumni businesses appear here. Featuring one pins it to the top of the public directory."
+      />
+    )
+  }
 
   return (
     <ul className="admin-list">
@@ -730,7 +1103,11 @@ function BusinessesModeration() {
             </span>
           </div>
           <div className="admin-row-actions">
-            <button className="btn ghost small" onClick={() => togglePromote(b)}>
+            <button
+              className="btn ghost small"
+              onClick={() => togglePromote(b)}
+              title={b.promoted ? 'Stop pinning this to the top of the directory' : 'Pin this to the top of the business directory'}
+            >
               {b.promoted ? 'Unfeature' : 'Feature'}
             </button>
             <DeleteButton onConfirm={() => remove(b.id)} label="Delete business" message="This removes the business listing. This can't be undone." />

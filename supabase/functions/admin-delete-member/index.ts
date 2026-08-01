@@ -80,6 +80,26 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
+    // Write the activity-log entry *before* the delete, for two reasons: the
+    // profile row (and the name we want to record) is gone afterwards, and the
+    // log_member_deletion trigger in schema-update-52.sql can't cover this
+    // path — it keys off auth.uid(), which is null under the service-role
+    // client used here. A failure to log must never block the deletion, so
+    // this is deliberately not awaited into the error path.
+    const [{ data: actor }, { data: target }] = await Promise.all([
+      adminClient.from('profiles').select('full_name').eq('id', callerId).maybeSingle(),
+      adminClient.from('profiles').select('full_name, email').eq('id', targetUserId).maybeSingle(),
+    ])
+    await adminClient.from('admin_actions').insert({
+      actor_id: callerId,
+      actor_name: actor?.full_name ?? 'an admin',
+      action: 'delete_member',
+      target_type: 'member',
+      target_id: targetUserId,
+      target_label: target?.full_name ?? target?.email ?? 'a member',
+      details: 'Account and all their content permanently removed',
+    })
+
     const { error: deleteErr } = await purgeAndDeleteUser(adminClient, targetUserId)
     if (deleteErr) return json(req, { error: deleteErr.message }, 400)
 

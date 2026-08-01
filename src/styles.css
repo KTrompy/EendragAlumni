@@ -7111,10 +7111,294 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .admin-setup-banner-detail { color: var(--ink-soft); font-size: 12px !important; }
 
+/* "Does anything need me?" strip at the top of the Admin page. Deliberately
+   the loudest thing on the page when there's work, and deliberately calm and
+   green when there isn't — a row of zeroes still reads as a to-do list, an
+   explicit "nothing needs you" does not. */
+.admin-attention {
+  background: var(--orange-soft);
+  border: 1px solid var(--orange);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.admin-attention-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--orange-dark);
+  margin-bottom: 8px;
+}
+.admin-attention ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.admin-attention li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--maroon-dark);
+  font-weight: 600;
+}
+.admin-attention li.soft { font-weight: 500; color: var(--ink-soft); }
+.admin-attention.clear {
+  background: rgba(44, 110, 73, 0.07);
+  border-color: rgba(44, 110, 73, 0.3);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.admin-attention.clear strong { color: var(--ok); display: block; }
+.admin-attention.clear p { margin: 3px 0 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
+.admin-attention-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--ok);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+/* A button that reads as a link — used for in-sentence "jump to that tab"
+   affordances, where a real <a> would be wrong (no URL to point at). */
+.linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--orange-dark);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.linklike:hover { color: var(--maroon); }
+
+.admin-stat-hint {
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  margin-top: 6px;
+  opacity: 0.85;
+}
+
+/* Per-tab explainer, so nobody has to click a button to learn what it does. */
+.admin-tab-help {
+  margin: -6px 0 16px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 74ch;
+}
+.admin-tab-footnote {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.admin-subtabs button.admin-subtab-guide { margin-left: auto; color: var(--orange-dark); }
+.admin-subtabs button.admin-subtab-guide.on { color: var(--maroon); }
+
+/* Longer "here's how to think about this" note, used on the two tabs where a
+   wrong click is expensive (Pending approval, Members). */
+.admin-guidance {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--maroon);
+  border-radius: var(--radius-sm);
+  padding: 13px 16px;
+  margin-bottom: 16px;
+  max-width: 74ch;
+}
+.admin-guidance strong { display: block; margin-bottom: 5px; color: var(--maroon); font-size: 14px; }
+.admin-guidance p { margin: 5px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); }
+.admin-guidance p strong { display: inline; margin: 0; font-size: inherit; color: var(--ink); }
+.admin-guidance-note { font-style: italic; }
+
+.admin-filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.admin-filter {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.admin-filter:hover { border-color: var(--line-strong); }
+.admin-filter.on { background: var(--maroon); border-color: var(--maroon); color: #fff; }
+
+.admin-activity-row { align-items: flex-start; }
+.admin-activity-row .admin-row-name { font-weight: 500; line-height: 1.5; }
+.admin-activity-dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  margin-top: 6px;
+  background: var(--ink-soft);
+}
+.admin-activity-dot.good { background: var(--ok); }
+.admin-activity-dot.warn { background: var(--orange); }
+.admin-activity-dot.bad  { background: var(--danger); }
+
 @media (max-width: 560px) {
   .admin-row { flex-wrap: wrap; }
   .admin-row-actions { width: 100%; justify-content: flex-start; }
+  .admin-attention li { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .admin-subtabs button.admin-subtab-guide { margin-left: 0; }
 }
+
+/* ---------- Admin handbook ----------
+   Long-form documentation living inside the app, on the theory that a
+   handover document nobody can find is the same as no handover document.
+   Collapsed by default so it reads as a table of contents rather than a wall
+   of text; the two sections a new admin must read are open on arrival. */
+.admin-handbook { max-width: 78ch; }
+.hb-intro {
+  background: var(--maroon);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+.hb-intro h3 {
+  font-family: var(--display);
+  font-size: 22px;
+  margin: 0 0 8px;
+  color: #fff;
+}
+.hb-intro p { margin: 0 0 8px; font-size: 14px; line-height: 1.6; color: rgba(255, 255, 255, 0.86); }
+.hb-intro p:last-child { margin-bottom: 0; }
+.hb-intro-note { font-style: italic; color: rgba(255, 255, 255, 0.7) !important; font-size: 13px !important; }
+
+.hb-section {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.hb-section.open { box-shadow: var(--shadow-card); }
+.hb-section-head {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 15px 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 14px;
+  align-items: center;
+}
+.hb-section-head:hover { background: var(--paper); }
+.hb-section-title {
+  font-family: var(--display);
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--maroon);
+}
+.hb-section-summary { grid-column: 1; font-size: 12.5px; color: var(--ink-soft); }
+.hb-chevron {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: 20px;
+  color: var(--ink-soft);
+  width: 26px;
+  text-align: center;
+}
+.hb-section-body {
+  padding: 4px 18px 20px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+.hb-section-body h4 {
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--maroon);
+  margin: 20px 0 6px;
+}
+.hb-section-body > p:first-child { margin-top: 14px; }
+.hb-section-body p { margin: 10px 0; }
+.hb-note { font-size: 13px; color: var(--ink-soft); font-style: italic; }
+.hb-section-body code {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12.5px;
+}
+
+.hb-list { margin: 8px 0; padding-left: 20px; }
+.hb-list li { margin-bottom: 7px; }
+.hb-list.tight li { margin-bottom: 3px; }
+
+.hb-dl { margin: 8px 0; }
+.hb-dl dt {
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 12px;
+}
+.hb-dl dt.hb-dt-danger { color: var(--danger); }
+.hb-dl dd { margin: 3px 0 0; padding-left: 0; color: var(--ink-soft); }
+
+.hb-callout {
+  border-radius: var(--radius-sm);
+  padding: 12px 15px;
+  margin: 14px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  border: 1px solid;
+}
+.hb-callout strong { display: block; margin-bottom: 4px; }
+.hb-callout.note { background: var(--paper); border-color: var(--line); color: var(--ink-soft); }
+.hb-callout.note strong { color: var(--ink); }
+.hb-callout.good { background: rgba(44, 110, 73, 0.07); border-color: rgba(44, 110, 73, 0.3); color: var(--ink); }
+.hb-callout.good strong { color: var(--ok); }
+.hb-callout.warn { background: var(--orange-soft); border-color: var(--orange); color: var(--maroon-dark); }
+.hb-callout.warn strong { color: var(--orange-dark); }
+.hb-callout.bad { background: rgba(163, 51, 39, 0.07); border-color: rgba(163, 51, 39, 0.35); color: var(--ink); }
+.hb-callout.bad strong { color: var(--danger); }
+.hb-callout ul { margin: 6px 0 0; }
+
+/* Marks a gap that only the outgoing admin can close, rather than leaving a
+   blank that reads as an oversight. */
+.hb-todo {
+  display: inline;
+  background: var(--orange-soft);
+  border-bottom: 1px dashed var(--orange);
+  color: var(--orange-dark);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.hb-table-wrap { overflow-x: auto; margin: 12px 0; }
+.hb-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 520px; }
+.hb-table th, .hb-table td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.hb-table th {
+  background: var(--paper);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+.hb-table td { color: var(--ink-soft); }
+.hb-table td strong { color: var(--ink); }
 
 /* =====================================================================
    Eendragters page — bits unique to this page only
