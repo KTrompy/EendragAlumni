@@ -250,9 +250,13 @@ export default function Home({ session, profile, onMessage }) {
       const forOr = (v) => `"${String(v).replace(/"/g, '\\"')}"`
 
       // Suggested connections for "My Community — Strengthen Your Network":
-      // prioritizes industry match, then grad year, then city. Falls back to
-      // recently-joined members if the profile doesn't have enough filled in
-      // to match on, so the widget is never empty for a sparse profile.
+      // pulls a candidate pool of anyone matching on industry, grad year, or
+      // city, then scores + sorts them client-side (industry weighted above
+      // grad year, above city — see communityWeight below) so a triple match
+      // outranks a single one instead of coming back in arbitrary DB order.
+      // Falls back to recently-joined members if the profile doesn't have
+      // enough filled in to match on, so the widget is never empty for a
+      // sparse profile.
       const communityFilters = []
       if (profile?.industry) communityFilters.push(`industry.eq.${forOr(profile.industry)}`)
       if (profile?.grad_year) communityFilters.push(`grad_year.eq.${profile.grad_year}`)
@@ -284,14 +288,17 @@ export default function Home({ session, profile, onMessage }) {
         supabase.from('badges').select('id, key, name, description').order('sort_order', { ascending: true }),
         supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', uid),
         supabase.from('event_rsvps').select('event_id', { count: 'exact', head: true }).eq('user_id', uid),
+        // Pull a wider candidate pool than we'll actually show (24, not 6) —
+        // the weighting below needs enough rows to sort through, otherwise
+        // "top 6" is really just "first 6 the DB happened to return".
         communityFilters.length
           ? supabase
               .from('profiles')
-              .select('id, full_name, avatar_url, occupation, company, industry')
+              .select('id, full_name, avatar_url, occupation, company, industry, grad_year, city, created_at')
               .eq('approved', true)
               .neq('id', uid)
               .or(communityFilters.join(','))
-              .limit(6)
+              .limit(24)
           : Promise.resolve({ data: [] }),
         businessFilters.length
           ? supabase
@@ -328,16 +335,40 @@ export default function Home({ session, profile, onMessage }) {
         return
       }
 
+      // Industry match outweighs city, which outweighs grad year.
+      // Ties fall back to newest-joined first.
+      const communityWeight = (m) => {
+        let score = 0
+        if (profile?.industry && m.industry === profile.industry) score += 4
+        if (profile?.city && m.city === profile.city) score += 2
+        if (profile?.grad_year && m.grad_year === profile.grad_year) score += 1
+        return score
+      }
+
       let communityList = matchedCommunity || []
-      if (communityList.length === 0) {
-        const { data: fallback } = await supabase
+      if (communityList.length > 0) {
+        communityList = [...communityList]
+          .sort((a, b) => {
+            const diff = communityWeight(b) - communityWeight(a)
+            if (diff !== 0) return diff
+            return new Date(b.created_at) - new Date(a.created_at)
+          })
+          .slice(0, 6)
+      }
+      // Always fill the widget to 6 — if the match/fallback above didn't
+      // produce enough people, top up with the most recently joined
+      // approved profiles that aren't already in the list, so the widget
+      // never looks sparse just because few people match the viewer.
+      if (communityList.length < 6) {
+        const excludeIds = [uid, ...communityList.map((m) => m.id)]
+        const { data: fillIn } = await supabase
           .from('profiles')
           .select('id, full_name, avatar_url, occupation, company, industry')
           .eq('approved', true)
-          .neq('id', uid)
+          .not('id', 'in', `(${excludeIds.join(',')})`)
           .order('created_at', { ascending: false })
-          .limit(6)
-        communityList = fallback || []
+          .limit(6 - communityList.length)
+        communityList = [...communityList, ...(fillIn || [])]
       }
 
       let businessList = matchedBusinesses || []
