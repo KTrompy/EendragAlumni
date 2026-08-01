@@ -3,6 +3,7 @@ import { supabase, deleteOwnAccount } from '../supabaseClient'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import LoadingState from './LoadingState.jsx'
 import { useToast } from './Toast.jsx'
+import { PASSWORD_MIN, PASSWORD_TOO_SHORT, PasswordStrengthMeter } from '../passwordRules.jsx'
 
 const SETTINGS_TABS = [
   { id: 'account', label: 'Account' },
@@ -84,7 +85,21 @@ function AccountTab({ session, profile, onSaved }) {
   // the "current password" flow below would just fail for them forever.
   // Show a plain set-password form instead: no current-password check
   // needed since they're already authenticated via their Google session.
-  const hasPassword = (session.user.identities || []).some((i) => i.provider === 'email')
+  //
+  // Checked against identities *and* app_metadata.providers, plus a local
+  // flag set the moment setNewPassword() succeeds. Identities alone was
+  // wrong: updateUser({ password }) on a Google account adds a usable
+  // password but does NOT add an 'email' identity to the session object, so
+  // hasPassword stayed false permanently. Those accounts kept getting the
+  // no-re-auth "set a password" form for the rest of time — meaning anyone
+  // on a borrowed session could change the password without knowing the
+  // current one, which is exactly what the re-auth below exists to prevent.
+  const [passwordJustSet, setPasswordJustSet] = useState(false)
+  const providers = session.user.app_metadata?.providers || []
+  const hasPassword =
+    passwordJustSet ||
+    (session.user.identities || []).some((i) => i.provider === 'email') ||
+    providers.includes('email')
 
   async function saveLanguage(next) {
     const prev = language
@@ -100,17 +115,37 @@ function AccountTab({ session, profile, onSaved }) {
 
   async function saveEmail() {
     setEmailMsg(null)
-    if (email.trim() === session.user.email) return
+    const next = email.trim()
+    if (next === session.user.email) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) {
+      setEmailMsg('Enter a valid email address.')
+      return
+    }
     setBusy(true)
-    const { error } = await supabase.auth.updateUser({ email: email.trim() })
+    const { data, error } = await supabase.auth.updateUser({ email: next })
     setBusy(false)
-    setEmailMsg(error ? error.message : 'Check your inbox to confirm the new email address.')
+    if (error) { setEmailMsg(error.message); return }
+
+    // The message used to be an unconditional "check your inbox to confirm"
+    // — but whether a confirmation is actually sent depends on the
+    // project's email settings. With confirmations off, the change applies
+    // immediately and no email ever arrives, so someone could be left
+    // waiting for a confirmation that isn't coming while their sign-in
+    // address had already changed underneath them. Read the result instead
+    // of assuming: Supabase leaves new_email pending when a confirmation is
+    // required, and swaps email over when it isn't.
+    const pending = data?.user?.new_email
+    setEmailMsg(
+      pending
+        ? `Check your inbox at ${pending} — the change takes effect once you confirm it.`
+        : 'Email address updated. Use it next time you sign in.'
+    )
   }
 
   async function savePassword() {
     setPasswordMsg(null)
     if (!currentPassword) { setPasswordMsg('Enter your current password.'); return }
-    if (password.length < 6) { setPasswordMsg('Password must be at least 6 characters.'); return }
+    if (password.length < PASSWORD_MIN) { setPasswordMsg(PASSWORD_TOO_SHORT); return }
     if (password !== passwordConfirm) { setPasswordMsg('Passwords don’t match.'); return }
     setBusy(true)
 
@@ -146,7 +181,7 @@ function AccountTab({ session, profile, onSaved }) {
   // fallback if Google access is ever lost.
   async function setNewPassword() {
     setPasswordMsg(null)
-    if (password.length < 6) { setPasswordMsg('Password must be at least 6 characters.'); return }
+    if (password.length < PASSWORD_MIN) { setPasswordMsg(PASSWORD_TOO_SHORT); return }
     if (password !== passwordConfirm) { setPasswordMsg('Passwords don’t match.'); return }
     setBusy(true)
     const { error } = await supabase.auth.updateUser({ password })
@@ -154,6 +189,9 @@ function AccountTab({ session, profile, onSaved }) {
     if (error) { setPasswordMsg(error.message); return }
     setPassword('')
     setPasswordConfirm('')
+    // Flip to the re-authenticating form from here on — see hasPassword.
+    // Without this the account keeps the no-current-password form forever.
+    setPasswordJustSet(true)
     setPasswordMsg('Password set. You can now sign in with your email and this password, as well as Google.')
   }
 
@@ -208,8 +246,9 @@ function AccountTab({ session, profile, onSaved }) {
               <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
             </label>
             <label className="field settings-field"><span>New password</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} />
             </label>
+            <PasswordStrengthMeter password={password} />
             <label className="field settings-field"><span>Confirm new password</span>
               <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
             </label>
@@ -222,8 +261,9 @@ function AccountTab({ session, profile, onSaved }) {
               Set one to also be able to sign in with your email address.
             </p>
             <label className="field settings-field"><span>New password</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} />
             </label>
+            <PasswordStrengthMeter password={password} />
             <label className="field settings-field"><span>Confirm new password</span>
               <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} />
             </label>

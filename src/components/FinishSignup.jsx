@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
+import { MAX_RESIDENCE_YEARS } from '../constants.js'
 
 // Shown (full-screen, before anything else) to anyone signed in whose
 // profile has no consented_at yet — in practice that's people who joined
@@ -52,8 +53,11 @@ export default function FinishSignup({ session, profile, onDone }) {
     if (!startYear) return 'Select the year you arrived at Eendrag.'
     if (!endYear) return 'Select your final year (or expected final year).'
     if (Number(endYear) < Number(startYear)) return 'Your final year can’t be before your first year.'
+    // Same sanity check as the signup wizard — see Auth.jsx.
+    if (Number(endYear) - Number(startYear) > MAX_RESIDENCE_YEARS) {
+      return `That's more than ${MAX_RESIDENCE_YEARS} years in Eendrag — check the years are right.`
+    }
     if (!city.trim()) return 'Enter your city or town.'
-    if (!postCode.trim()) return 'Enter your post code.'
     if (!country.trim()) return 'Enter your country.'
     if (newsOptIn === null) return 'Choose whether you’d like news and events by email.'
     if (!dataConsent) return 'You’ll need to consent to your data being held to join.'
@@ -169,8 +173,9 @@ export default function FinishSignup({ session, profile, onDone }) {
           </div>
           <div className="auth-field-row">
             <label className="field">
-              <span>Post code *</span>
-              <input value={postCode} inputMode="numeric" onChange={(e) => setPostCode(e.target.value)} autoComplete="postal-code" />
+              {/* Optional and non-numeric — see the note in Auth.jsx. */}
+              <span>Post code</span>
+              <input value={postCode} onChange={(e) => setPostCode(e.target.value)} autoComplete="postal-code" />
             </label>
             <label className="field">
               <span>Country *</span>

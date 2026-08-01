@@ -3,6 +3,9 @@ import { supabase } from '../supabaseClient'
 import ClearableInput from './ClearableInput.jsx'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
+import { PASSWORD_MIN, PASSWORD_TOO_SHORT, PasswordStrengthMeter } from '../passwordRules.jsx'
+import { authRedirectTo } from '../authRedirect.js'
+import { MAX_RESIDENCE_YEARS } from '../constants.js'
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
 
@@ -23,27 +26,15 @@ const SOCIAL_PROVIDERS = [
   { id: 'google', label: 'Google' },
 ]
 
-// Rough client-side strength score, 0..4 — mirrors the usual zxcvbn-style
-// buckets without pulling in a library. Server-side rules (min length etc.)
-// still apply regardless of what this says.
-export function passwordStrength(pw) {
-  if (!pw) return { score: 0, label: '', percent: 0 }
-  let score = 0
-  if (pw.length >= 8) score++
-  if (pw.length >= 12) score++
-  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++
-  if (/\d/.test(pw)) score++
-  if (/[^a-zA-Z0-9]/.test(pw)) score++
-  score = Math.min(4, score)
-  const labels = ['Very weak', 'Weak', 'Fair', 'Good', 'Strong']
-  return { score, label: labels[score], percent: (score / 4) * 100 }
-}
+// passwordStrength moved to ../passwordRules.jsx so ResetPassword.jsx and
+// Settings.jsx can share it — see the note there about the three screens
+// having drifted to different minimums.
 
 function SocialButtons({ prefix, onError }) {
   async function social(provider) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: authRedirectTo() },
     })
     if (error) onError(error.message)
   }
@@ -107,6 +98,10 @@ export default function Auth() {
   const [newsOptIn, setNewsOptIn] = useState(null) // null until they choose
   const [dataConsent, setDataConsent] = useState(false)
   const [signupDone, setSignupDone] = useState(false)
+  // Set when signUp succeeded but the follow-up sign-in didn't: the account
+  // exists, so the only useful next step is signing in, not signing up
+  // again. Drives the "Go to sign in" button under the error.
+  const [accountExists, setAccountExists] = useState(false)
 
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null)
@@ -193,6 +188,15 @@ export default function Auth() {
     setSignupStep(1)
     setError(null)
     setNotice(null)
+    setAccountExists(false)
+  }
+
+  // "Your account exists — go sign in" recovery. Carries the email across
+  // so they only have to type the password.
+  function goToSignIn() {
+    setEmail(signupEmail.trim())
+    switchMode('signin')
+    setNotice('Your account is ready — sign in with the password you just chose.')
   }
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -219,7 +223,7 @@ export default function Auth() {
         // session and fires PASSWORD_RECOVERY — App.jsx swaps in
         // ResetPassword.jsx on that event.
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin,
+          redirectTo: authRedirectTo(),
           captchaToken,
         })
         if (error) throw error
@@ -247,7 +251,7 @@ export default function Auth() {
     if (!EMAIL_RE.test(cleanEmail)) return 'Enter a valid email address.'
     if (cleanEmail.toLowerCase() !== confirmEmail.trim().toLowerCase()) return "Email addresses don't match."
     if (!signupPassword) return 'Choose a password.'
-    if (signupPassword.length < 8) return 'Password must be at least 8 characters.'
+    if (signupPassword.length < PASSWORD_MIN) return PASSWORD_TOO_SHORT
     if (signupPassword !== confirmPassword) return "Passwords don't match."
     return null
   }
@@ -256,8 +260,13 @@ export default function Auth() {
     if (!startYear) return 'Select the year you arrived at Eendrag.'
     if (!endYear) return 'Select your final year (or expected final year).'
     if (Number(endYear) < Number(startYear)) return 'Your final year can’t be before your first year.'
+    // Nobody lives in res for more than about a decade. Catches the common
+    // slip of picking the wrong decade in one of the two dropdowns, which
+    // the committee otherwise has to spot by hand during verification.
+    if (Number(endYear) - Number(startYear) > MAX_RESIDENCE_YEARS) {
+      return `That's more than ${MAX_RESIDENCE_YEARS} years in Eendrag — check the years are right.`
+    }
     if (!city.trim()) return 'Enter your city or town.'
-    if (!postCode.trim()) return 'Enter your post code.'
     if (!country.trim()) return 'Enter your country.'
     return null
   }
@@ -303,6 +312,11 @@ export default function Auth() {
       city: city.trim(),
       postal_code: postCode.trim(),
       country: country.trim(),
+      // Ticked on step 3 to get here. handle_new_user (schema-update-46)
+      // reads this and stamps consented_at server-side, so the details are
+      // saved by the trigger itself rather than depending on the follow-up
+      // update below having a session to run under.
+      data_consent: true,
       // Only present when a City suggestion was picked — a null pair would
       // wipe coordinates the profile might already have.
       ...(cityCoords ? { lat: cityCoords.lat, lng: cityCoords.lng } : {}),
@@ -326,21 +340,34 @@ export default function Auth() {
         const { data: signinData, error: signInError } =
           await supabase.auth.signInWithPassword({ email: signupEmail.trim(), password: signupPassword })
         if (signInError) {
+          // Whatever went wrong here, the auth user from signUp above
+          // already exists. Rethrowing (the old behaviour) showed a raw
+          // error that read like "signup failed", so people retried — and
+          // got "User already registered", with no way forward and no hint
+          // that the account they'd just made was sitting there waiting.
+          // Every branch below has to leave them somewhere they can act.
           if (/confirm/i.test(signInError.message)) {
-            // Project still has "Confirm email" on. They'll land in the
-            // pending-verification flow after confirming.
+            // "Confirm email" is on in the project. Their details are
+            // already saved by the handle_new_user trigger, so there's
+            // nothing left to do but confirm and come back.
             setSignupDone(true)
             return
           }
-          throw signInError
+          setAccountExists(true)
+          setError(
+            "Your account was created, but we couldn't sign you in just now. " +
+            'Try signing in below with the email and password you just chose.'
+          )
+          return
         }
         session = signinData?.session
       }
 
       if (session) {
-        // The handle_new_user trigger has already created the profile row —
-        // fill in everything collected during signup. consented_at doubles
-        // as the "signup details captured" marker App.jsx checks.
+        // Belt-and-braces. As of schema-update-46 handle_new_user writes
+        // all of this from user_metadata the moment the auth user is
+        // created, so this update is a safety net for anything the trigger
+        // couldn't apply — not the primary write path it used to be.
         const { error: profErr } = await supabase
           .from('profiles')
           .update({
@@ -365,7 +392,15 @@ export default function Auth() {
       // App.jsx's auth listener picks the session up and shows the
       // pending-verification screen (accounts start unapproved).
     } catch (e2) {
-      setError(e2.message)
+      // Someone re-running a signup they thought had failed lands here.
+      // Point them at sign-in rather than leaving them to work out that
+      // "User already registered" means "you're fine, just log in".
+      if (/already registered|already exists|user_already_exists/i.test(e2.message || '')) {
+        setAccountExists(true)
+        setError('There’s already an account with that email address. Try signing in instead — or reset your password if you’ve forgotten it.')
+      } else {
+        setError(e2.message)
+      }
       resetCaptcha()
     } finally {
       setBusy(false)
@@ -373,8 +408,6 @@ export default function Auth() {
   }
 
   /* ---------- Render ---------- */
-
-  const strength = passwordStrength(signupPassword)
 
   if (signupDone) {
     return (
@@ -493,7 +526,17 @@ export default function Auth() {
         )}
 
         {mode === 'signup' && (
-          <form onSubmit={handleSignupSubmit} noValidate>
+          <>
+            {/* Above the wizard, not inside step 1. Sitting below the name
+                and password fields, this button was a trap: anyone who
+                filled the form in and only then noticed it lost everything
+                they'd typed, because OAuth navigates away and FinishSignup
+                can't recover form state it never saw. Offering the choice
+                before the form starts means it's a choice, not a mistake. */}
+            <SocialButtons prefix="Join with" onError={setError} />
+            <div className="auth-divider"><span>or complete the form</span></div>
+
+            <form onSubmit={handleSignupSubmit} noValidate>
             <div className="auth-steps">
               {[1, 2, 3].map((n) => (
                 <span key={n} className={`auth-step-dot ${signupStep === n ? 'on' : ''} ${signupStep > n ? 'done' : ''}`}>
@@ -504,8 +547,6 @@ export default function Auth() {
 
             {signupStep === 1 && (
               <>
-                <SocialButtons prefix="Join with" onError={setError} />
-                <div className="auth-divider"><span>or complete the form</span></div>
                 <div className="auth-field-row">
                   <label className="field">
                     <span>First name *</span>
@@ -538,18 +579,11 @@ export default function Auth() {
                     type="password"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
-                    placeholder="At least 8 characters"
+                    placeholder={`At least ${PASSWORD_MIN} characters`}
                     autoComplete="new-password"
                   />
                 </label>
-                {signupPassword && (
-                  <div className="pw-strength">
-                    <div className="pw-strength-bar">
-                      <div className={`pw-strength-fill s${strength.score}`} style={{ width: `${strength.percent}%` }} />
-                    </div>
-                    <span className="pw-strength-label">{strength.label}</span>
-                  </div>
-                )}
+                <PasswordStrengthMeter password={signupPassword} />
                 <label className="field">
                   <span>Confirm password *</span>
                   <input
@@ -624,10 +658,14 @@ export default function Auth() {
                 </div>
                 <div className="auth-field-row">
                   <label className="field">
-                    <span>Post code *</span>
+                    {/* Optional, and no longer hinted as numeric: plenty of
+                        countries use letters in theirs (UK, Canada,
+                        Netherlands) and a few have none at all, so
+                        requiring a numeric post code blocked exactly the
+                        overseas alumni this directory most wants to find. */}
+                    <span>Post code</span>
                     <input
                       value={postCode}
-                      inputMode="numeric"
                       onChange={(e) => setPostCode(e.target.value)}
                       autoComplete="postal-code"
                     />
@@ -690,23 +728,33 @@ export default function Auth() {
 
             {error && <p className="form-error">{error}</p>}
 
-            <div className="auth-wizard-actions">
-              {signupStep > 1 && (
-                <button type="button" className="btn ghost" onClick={prevStep} disabled={busy}>
-                  Back
-                </button>
-              )}
-              {signupStep < 3 ? (
-                <button type="button" className="btn primary" onClick={nextStep} disabled={busy}>
-                  Continue
-                </button>
-              ) : (
-                <button type="submit" className="btn primary" disabled={busy}>
-                  {busy ? 'One moment…' : 'Join our community'}
-                </button>
-              )}
-            </div>
-          </form>
+            {accountExists ? (
+              // The account is already there — retrying the wizard can only
+              // fail. Sign-in is the only route forward, so it's the only
+              // button we show.
+              <button type="button" className="btn primary wide" onClick={goToSignIn}>
+                Go to sign in
+              </button>
+            ) : (
+              <div className="auth-wizard-actions">
+                {signupStep > 1 && (
+                  <button type="button" className="btn ghost" onClick={prevStep} disabled={busy}>
+                    Back
+                  </button>
+                )}
+                {signupStep < 3 ? (
+                  <button type="button" className="btn primary" onClick={nextStep} disabled={busy}>
+                    Continue
+                  </button>
+                ) : (
+                  <button type="submit" className="btn primary" disabled={busy}>
+                    {busy ? 'One moment…' : 'Join our community'}
+                  </button>
+                )}
+              </div>
+            )}
+            </form>
+          </>
         )}
 
         <p className="auth-note">

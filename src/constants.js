@@ -1,3 +1,12 @@
+// Longest plausible stay in the residence, used by the signup wizard
+// (Auth.jsx) and the social-login catch-up form (FinishSignup.jsx) to
+// sanity-check the "from" and "to" year dropdowns against each other.
+// Generous on purpose — a long degree plus a year or two on house
+// committee is real; twenty years is a mis-picked decade in one of the two
+// dropdowns, which the committee otherwise has to catch by hand when
+// verifying against residence records.
+export const MAX_RESIDENCE_YEARS = 12
+
 // Grouped from the Eendrag/SACS alumni occupation data.
 // "Other" is handled separately in the UI (shows a text input).
 export const INDUSTRIES = [

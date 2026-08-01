@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import ClearableInput from './ClearableInput.jsx'
+import { PASSWORD_MIN, PASSWORD_TOO_SHORT, PasswordStrengthMeter } from '../passwordRules.jsx'
 
 // Shown instead of the normal app when App.jsx detects a PASSWORD_RECOVERY
 // auth event — i.e. someone arrived via the "reset your password" link
@@ -17,7 +18,10 @@ export default function ResetPassword({ onDone }) {
 
   async function submit() {
     setError(null)
-    if (password.length < 6) { setError('Password needs to be at least 6 characters.'); return }
+    // Was 6 while signup required 8 — so this screen was a standing offer
+    // to weaken any password below the minimum it was created under.
+    // Shared with Auth.jsx and Settings.jsx now (see passwordRules.jsx).
+    if (password.length < PASSWORD_MIN) { setError(PASSWORD_TOO_SHORT); return }
     if (password !== confirm) { setError("Passwords don't match."); return }
     setBusy(true)
     const { error: err } = await supabase.auth.updateUser({ password })
@@ -47,10 +51,11 @@ export default function ResetPassword({ onDone }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onClear={() => setPassword('')}
-                placeholder="At least 6 characters"
+                placeholder={`At least ${PASSWORD_MIN} characters`}
                 autoComplete="new-password"
               />
             </label>
+            <PasswordStrengthMeter password={password} />
             <label className="field">
               <span>Confirm new password</span>
               <ClearableInput

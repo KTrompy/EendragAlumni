@@ -554,8 +554,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       // linkedin_url/phone used to be the only two fields trimmed here —
       // everything else (name, degree, occupation, company, city, bio,
       // business website) saved with whatever leading/trailing whitespace
-      // someone typed or pasted in, inconsistent with Onboarding.jsx, which
-      // does trim full_name. Trimming the same free-text fields here keeps
+      // someone typed or pasted in, inconsistent with the signup flows
+      // (Auth.jsx / FinishSignup.jsx), which do trim full_name. Trimming
+      // the same free-text fields here keeps
       // the directory/search and this profile's own display from showing
       // stray whitespace depending on which flow last touched the row.
       full_name: form.full_name.trim(),

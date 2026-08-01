@@ -46,7 +46,18 @@ export function useDirectoryFilters(session, refetchTrigger) {
 
   async function fetchPeople() {
     setLoading(true)
-    const { data } = await supabase.from('profiles').select(PEOPLE_SELECT).order('grad_year', { ascending: false, nullsFirst: false })
+    // approved only. Without this filter the Eendragters list and the
+    // alumni map showed every pending signup — including the ones that only
+    // got as far as the Google button, which have no name yet and rendered
+    // as blank cards. Home.jsx already filtered this way; the directory
+    // didn't. (The RLS policies added in schema-update-46 stop *unapproved
+    // members* reading the directory at all; this is the other direction —
+    // keeping unapproved people out of what approved members see.)
+    const { data } = await supabase
+      .from('profiles')
+      .select(PEOPLE_SELECT)
+      .eq('approved', true)
+      .order('grad_year', { ascending: false, nullsFirst: false })
     setPeople(data || [])
     setLoading(false)
   }

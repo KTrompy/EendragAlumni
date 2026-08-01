@@ -89,6 +89,14 @@ export default function App() {
   const [moreNavOverride, setMoreNavOverride] = useState(null)
   const [loading, setLoading] = useState(true)
   const [checkedFirstRun, setCheckedFirstRun] = useState(false)
+  // Lifecycle of the profile fetch below, kept separate from `profile`
+  // itself because "still loading" and "loaded, and there's genuinely
+  // nothing there" used to be indistinguishable — both were just
+  // `profile === null`, and the render gates further down read that as
+  // "skip the checks", dropping people into the full app. See the gates.
+  const [profileStatus, setProfileStatus] = useState('loading') // 'loading' | 'ready' | 'error'
+  // Bumped by the error screen's "Try again" to re-run the fetch effect.
+  const [profileReloadKey, setProfileReloadKey] = useState(0)
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -323,8 +331,9 @@ export default function App() {
   // id means this only re-runs on an actual sign-in/sign-out/account switch.
   const sessionUserId = session?.user?.id
   useEffect(() => {
-    if (!sessionUserId) { setProfile(null); return }
+    if (!sessionUserId) { setProfile(null); setProfileStatus('loading'); return }
     let cancelled = false
+    setProfileStatus('loading')
 
     // Same auth-not-settled race documented in Home.jsx's dashboard load:
     // this effect can still fire around a token refresh (sign-in itself
@@ -361,11 +370,22 @@ export default function App() {
         await supabase.auth.signOut()
         return
       }
-      setProfile(data || null)
+      // Still failing, or the row genuinely isn't there (handle_new_user
+      // can now warn-and-continue rather than take the whole signup down
+      // with it, so a session with no profile row is a real possibility).
+      // Flagging it as an error rather than leaving `profile` null is what
+      // keeps the approval gates below from being skipped entirely.
+      if (error || !data) {
+        setProfile(null)
+        setProfileStatus('error')
+        return
+      }
+      setProfile(data)
+      setProfileStatus('ready')
     }
     load()
     return () => { cancelled = true }
-  }, [sessionUserId])
+  }, [sessionUserId, profileReloadKey])
 
   // Heartbeat: writes last_seen every few minutes while the app is open (and
   // once immediately on load/tab-refocus) — this is what powers the
@@ -374,8 +394,15 @@ export default function App() {
   // *right now* and forgets everyone the instant they close the tab) — a
   // persisted timestamp is what lets "recently online" mean something for
   // someone who was here 10 minutes ago too.
+  //
+  // Gated on approval, not just on having a session: this effect sits above
+  // the render gates, so before it was gated it also ran for people stuck on
+  // the FinishSignup and PendingVerification screens. Combined with the
+  // directory not filtering on `approved` (fixed in DirectoryFilters.jsx),
+  // that put half-finished accounts — blank name and all — in the
+  // Eendragters list with a green "recently online" dot next to them.
   useEffect(() => {
-    if (!session) return
+    if (!session || !profile?.approved) return
     function beat() {
       supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).then(() => {})
     }
@@ -387,7 +414,7 @@ export default function App() {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [session])
+  }, [session, profile?.approved])
 
   // First load after approval: instead of the old question-by-question
   // wizard, drop them straight onto their Profile page with every
@@ -421,7 +448,10 @@ export default function App() {
     if (entityId && entityType === 'post') { goTo(`/feed/${entityId}`); return }
     if (entityId && entityType === 'event') { goTo(`/events/${entityId}`); return }
     if (entityId && entityType === 'job') { goTo(`/jobs/${entityId}`); return }
-    const tab = TABS.find((t) => t.id === target)
+    // ADMIN_TAB is included deliberately: new-signup notifications
+    // (schema-update-46) point admins at 'admin', which isn't in TABS.
+    // Without it those notifications were clickable but went nowhere.
+    const tab = [...TABS, ADMIN_TAB].find((t) => t.id === target)
     if (tab) goTo(tab.path)
   }
 
@@ -429,9 +459,24 @@ export default function App() {
   if (recoveryMode) return <ResetPassword onDone={() => setRecoveryMode(false)} />
   if (!session) return <Auth />
 
+  // Everything below this point assumes a loaded profile. These three
+  // checks used to read `if (profile && …)`, which meant a null profile —
+  // the exact thing the fetch above produces when it fails twice, or when
+  // the row is missing — sailed past *both* approval gates and rendered the
+  // entire app. Now an unresolved profile is its own state and stops here.
+  if (profileStatus === 'loading') return <div className="center-page">Loading…</div>
+  if (profileStatus === 'error' || !profile) {
+    return (
+      <ProfileLoadError
+        onRetry={() => setProfileReloadKey((k) => k + 1)}
+        onSignOut={() => supabase.auth.signOut()}
+      />
+    )
+  }
+
   // Signed in but signup details/consent never captured — social-login
   // joiners land here first (they skipped the signup form entirely).
-  if (profile && !profile.consented_at) {
+  if (!profile.consented_at) {
     return (
       <FinishSignup
         session={session}
@@ -442,8 +487,10 @@ export default function App() {
   }
 
   // Locked out until the committee verifies them against residence
-  // records — no browsing while pending.
-  if (profile && !profile.approved) {
+  // records — no browsing while pending. Enforced in the database too as
+  // of schema-update-46: every SELECT policy now requires is_approved(),
+  // so this screen is a real lock rather than just a screen.
+  if (!profile.approved) {
     return <PendingVerification session={session} profile={profile} onProfileChange={setProfile} />
   }
 
@@ -777,6 +824,32 @@ export default function App() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Shown when there's a valid session but the profile row couldn't be
+// loaded — a repeated fetch failure, or (rarely) no row at all because
+// handle_new_user warned and continued instead of aborting the signup.
+// Deliberately a dead end with two ways out rather than a silent
+// fall-through: the previous behaviour rendered the whole signed-in app
+// with profile === null, which looked like the site was broken and, for
+// anyone not yet approved, showed them past the verification gate.
+function ProfileLoadError({ onRetry, onSignOut }) {
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <img src="/eendrag-logo.png" alt="Eendrag logo" className="auth-logo" />
+        <h1 className="auth-title">We couldn't load your profile</h1>
+        <p className="auth-verify-note">
+          Your account is fine — we just couldn't reach it this time. This is
+          usually a brief connection problem, so trying again normally sorts
+          it. If it keeps happening,{' '}
+          <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">let us know</a>.
+        </p>
+        <button className="btn primary wide" onClick={onRetry}>Try again</button>
+        <button className="link-btn" onClick={onSignOut}>Sign out</button>
+      </div>
     </div>
   )
 }

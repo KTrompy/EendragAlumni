@@ -68,6 +68,22 @@ export default function PendingVerification({ session, profile, onProfileChange 
         <button className="btn primary wide" onClick={checkStatus} disabled={checking}>
           {checking ? 'Checking…' : 'Check my status'}
         </button>
+        {/* The profile editor sits behind the approval gate, so until the
+            committee verifies them there is no way for someone to correct
+            a misspelt surname or the wrong years — the very details being
+            checked against residence records. This at least gives them a
+            route to say so, with the account's email already in the
+            subject line so it can be matched up. */}
+        <p className="auth-verify-contact">
+          Spotted a mistake in your details, or been waiting a while?{' '}
+          <a
+            className="footer-link"
+            href={`mailto:kyletrompeter0@gmail.com?subject=${encodeURIComponent('Eendrag Alumni — my signup details')}&body=${encodeURIComponent(`Hi,\n\nI signed up for Eendrag Alumni with ${email} and wanted to check on / correct my details:\n\n`)}`}
+          >
+            Get in touch
+          </a>{' '}
+          and we&rsquo;ll sort it out.
+        </p>
         <button className="link-btn" onClick={() => supabase.auth.signOut()}>
           Sign out
         </button>

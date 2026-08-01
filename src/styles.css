@@ -1379,6 +1379,16 @@ button.delete-danger svg { flex-shrink: 0; }
   padding: 10px 12px;
   margin: 0 0 14px;
 }
+/* "Spotted a mistake / been waiting a while?" escape hatch under the
+   pending-verification actions. Deliberately quieter than the buttons above
+   it — it's a fallback, not the expected next step. */
+.auth-verify-contact {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-align: center;
+  margin: 14px 0 4px;
+}
 .pending-verify-icon { font-size: 34px; text-align: center; margin-top: 10px; }
 
 /* ---------- URL input with a fixed, visible https:// prefix ---------- */
