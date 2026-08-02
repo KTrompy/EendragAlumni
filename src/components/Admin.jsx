@@ -163,11 +163,13 @@ export default function Admin({ session }) {
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, approved } : m)))
     const { error } = await supabase.from('profiles').update({ approved }).eq('id', id)
     if (error) { setMemberError(error.message); loadMembers() }
-    // TODO(approval email): once a sending domain + Resend (or similar) is
-    // set up, invoke an Edge Function here on approve so the member gets
-    // their "you're verified — come sign in" email. Until then they find
-    // out via the "Check my status" button on PendingVerification.jsx.
-    // e.g. if (approved && !error) supabase.functions.invoke('send-approval-email', { body: { user_id: id } })
+    // Fire-and-forget: a failed email must never block or roll back the
+    // approval itself. The member can still find out via "Check my status"
+    // on PendingVerification.jsx if this silently fails.
+    if (approved && !error) {
+      supabase.functions.invoke('send-approval-email', { body: { user_id: id } })
+        .catch((e) => console.error('send-approval-email failed:', e))
+    }
   }
 
   // Permanent removal — replaces the old "Revoke" (which only flipped

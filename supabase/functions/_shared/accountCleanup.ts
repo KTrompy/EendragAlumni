@@ -18,8 +18,8 @@
 // session is an explicit Authorization header), so that was never directly
 // exploitable, but there's no reason to leave the door open.
 export const ALLOWED_ORIGINS = [
-  'https://eendragalumni.com',
-  'https://www.eendragalumni.com',
+  'https://eendragalumni.org',
+  'https://www.eendragalumni.org',
   'https://eendrag-alumni-six.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',
