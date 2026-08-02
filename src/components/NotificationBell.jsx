@@ -140,7 +140,7 @@ export default function NotificationBell({ session, onNavigate }) {
 
   return (
     <div className="notif-wrap" ref={wrapRef}>
-      <button
+      <button type="button"
         className="notif-bell-btn"
         onClick={() => setOpen((o) => !o)}
         aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
@@ -155,19 +155,19 @@ export default function NotificationBell({ session, onNavigate }) {
           <div className="notif-dropdown-header">
             <h3>Notifications</h3>
             {unreadCount > 0 && (
-              <button className="link-btn" onClick={markAllRead}>Mark all read</button>
+              <button type="button" className="link-btn" onClick={markAllRead}>Mark all read</button>
             )}
           </div>
           <div className="notif-list">
             {loadError && (
               <p className="form-error">
                 Couldn&rsquo;t load your notifications.{' '}
-                <button className="link-btn" onClick={load}>Try again</button>
+                <button type="button" className="link-btn" onClick={load}>Try again</button>
               </p>
             )}
             {!loadError && items.length === 0 && <p className="empty small">Nothing yet — likes, comments, RSVPs and messages will show up here.</p>}
             {items.map((n) => (
-              <button
+              <button type="button"
                 key={n.id}
                 className={n.read ? 'notif-item' : 'notif-item unread'}
                 onClick={() => openNotification(n)}

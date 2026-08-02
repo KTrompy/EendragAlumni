@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -22,11 +22,6 @@ export default function Mentoring({ session, profile, onMessage }) {
   const tab = TABS.find((t) => t.id === params.get('tab'))?.id || 'find'
   const [mentors, setMentors] = useState([])
   const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
-
-  function goToProfile(person) {
-    if (person?.id) navigate(`/people/${person.id}`)
-  }
 
   function setTab(id) {
     const p = new URLSearchParams(params)
@@ -56,7 +51,7 @@ export default function Mentoring({ session, profile, onMessage }) {
 
       <div className="section-tabs mentoring-tabs" role="tablist">
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'section-tab on' : 'section-tab'} onClick={() => setTab(t.id)}>
+          <button type="button" key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'section-tab on' : 'section-tab'} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
         ))}
@@ -67,7 +62,6 @@ export default function Mentoring({ session, profile, onMessage }) {
           {tab === 'find' && (
             <FindMentorTab
               mentors={mentors}
-              onOpenProfile={goToProfile}
               onMessage={onMessage}
               profile={profile}
             />
@@ -84,7 +78,7 @@ export default function Mentoring({ session, profile, onMessage }) {
 /* ============================================================
    Find a Mentor — with search, industry filter, card layout
    ============================================================ */
-function FindMentorTab({ mentors, onOpenProfile, onMessage, profile }) {
+function FindMentorTab({ mentors, onMessage, profile }) {
   const [search, setSearch] = useState('')
   const [industryFilter, setIndustryFilter] = useState('')
 
@@ -129,7 +123,7 @@ function FindMentorTab({ mentors, onOpenProfile, onMessage, profile }) {
             onChange={(e) => setSearch(e.target.value)}
             className="mentoring-search"
           />
-          {search && <button className="mentoring-search-clear" onClick={() => setSearch('')} aria-label="Clear search">×</button>}
+          {search && <button type="button" className="mentoring-search-clear" onClick={() => setSearch('')} aria-label="Clear search">×</button>}
         </div>
         <div className="mentoring-filter-selects">
           {mentorIndustries.length > 1 && (
@@ -152,7 +146,12 @@ function FindMentorTab({ mentors, onOpenProfile, onMessage, profile }) {
             const roleLine = person.occupation && person.company ? `${person.occupation} @ ${person.company}` : (person.occupation || person.company || '')
 
             return (
-              <div key={person.id} className="mentor-card" role="button" tabIndex={0} onClick={() => onOpenProfile(person)} onKeyDown={(e) => { if (e.key === 'Enter') onOpenProfile(person) }}>
+              <div key={person.id} className="mentor-card">
+                {/* Stretched link rather than a clickable div — see the
+                    note on the same pattern in Directory.jsx. */}
+                <Link className="stretched-link" to={`/people/${person.id}`}>
+                  <span className="sr-only">{`Open profile for ${person.full_name || 'mentor'}`}</span>
+                </Link>
                 <div className="mentor-card-top">
                   <Avatar url={person.avatar_url} name={person.full_name} size={56} />
                   <div className="mentor-card-identity">
@@ -174,8 +173,8 @@ function FindMentorTab({ mentors, onOpenProfile, onMessage, profile }) {
                 {person.grad_year && <span className="mentor-card-grad">Class of {person.grad_year}</span>}
 
                 <div className="mentor-card-footer">
-                  <div className="mentor-card-actions" onClick={(e) => e.stopPropagation()}>
-                    <button className="header-icon-btn mentor-message-btn" onClick={() => onMessage?.({ id: person.id, full_name: person.full_name }, buildIcebreaker(profile, person))} aria-label="Message" title="Message">
+                  <div className="mentor-card-actions">
+                    <button type="button" className="header-icon-btn mentor-message-btn" onClick={() => onMessage?.({ id: person.id, full_name: person.full_name }, buildIcebreaker(profile, person))} aria-label="Message" title="Message">
                       <MessageIcon />
                     </button>
                     {/* safeUrl rather than the raw column — see the note on
@@ -210,7 +209,7 @@ function SettingsTab({ profile }) {
             ? 'Your profile is open to mentoring, so you show up under Find a Mentor.'
             : 'Your profile isn\'t showing up under Find a Mentor yet — set "Open to mentoring and other opportunities" to yes on your profile.'}
         </p>
-        <button className="btn ghost small" onClick={() => navigate('/profile')}>Edit on your profile</button>
+        <button type="button" className="btn ghost small" onClick={() => navigate('/profile')}>Edit on your profile</button>
       </div>
     </div>
   )

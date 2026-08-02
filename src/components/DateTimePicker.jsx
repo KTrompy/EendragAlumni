@@ -141,7 +141,7 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
           <div className="dtp-time-row">
             <span className="dtp-time-label">Time</span>
             <div className="select-wrap dtp-time-select">
-              <select value={hour} onChange={(e) => setHour(e.target.value)} disabled={!value}>
+              <select value={hour} onChange={(e) => setHour(e.target.value)} disabled={!value} title={value ? undefined : 'Pick a date first'}>
                 {Array.from({ length: 24 }, (_, h) => (
                   <option key={h} value={h}>{pad(h)}</option>
                 ))}
@@ -149,7 +149,7 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Pick a 
             </div>
             <span>:</span>
             <div className="select-wrap dtp-time-select">
-              <select value={minute} onChange={(e) => setMinute(e.target.value)} disabled={!value}>
+              <select value={minute} onChange={(e) => setMinute(e.target.value)} disabled={!value} title={value ? undefined : 'Pick a date first'}>
                 {[0, 15, 30, 45].map((m) => (
                   <option key={m} value={m}>{pad(m)}</option>
                 ))}

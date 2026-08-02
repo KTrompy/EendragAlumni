@@ -13,6 +13,7 @@ import ClearableInput from './ClearableInput.jsx'
 import PhoneInput from './PhoneInput.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
+import useModal from '../useModal.js'
 import { normalizeExpertise, formatExperienceRange, formatExperienceDuration, isValidGradYear, isSafeHttpUrl } from '../utils.js'
 
 const MAX_CV_SIZE = 10 * 1024 * 1024 // 10 MB
@@ -670,7 +671,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     <section className="panel narrow profile-page">
       {/* Header */}
       <div className="profile-header-with-back">
-        <button className="profile-back-btn" onClick={onNavigateHome} aria-label="Back to home">
+        <button type="button" className="profile-back-btn" onClick={onNavigateHome} aria-label="Back to home">
           ← Home
         </button>
         <div>
@@ -681,6 +682,11 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         </div>
       </div>
 
+      {/* A real <form> wrapping the editor, so Enter in any text field
+          saves instead of doing nothing — see the note in Jobs.jsx. It
+          closes before the photo/cropper/delete modals below, which are
+          their own overlays and shouldn't be nested inside it. */}
+      <form onSubmit={(e) => { e.preventDefault(); if (!busy) save() }} noValidate>
       {missingFields.size > 0 && (
         <div className="profile-missing-banner">
           <span>
@@ -705,7 +711,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             <Avatar url={profile?.avatar_url} name={form.full_name} size={120} />
           </button>
           <div className="profile-photo-actions">
-            <button
+            <button type="button"
               className="btn primary small"
               onClick={() => setShowPhotoModal(true)}
             >
@@ -1114,7 +1120,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
       {/* Mentoring - Collapsible */}
       <div className="profile-section">
-        <button
+        <button type="button"
           className="profile-mentoring-toggle"
           onClick={() => setShowMentoring(!showMentoring)}
         >
@@ -1248,13 +1254,13 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
 
       {/* Actions */}
       <div className="profile-actions">
-        <button className="btn primary" onClick={save} disabled={busy}>
+        <button type="submit" className="btn primary" disabled={busy} title={busy ? 'Saving…' : undefined}>
           {busy ? 'Saving…' : 'Save changes'}
         </button>
-        <button className="btn ghost" onClick={() => supabase.auth.signOut()} disabled={busy}>
+        <button type="button" className="btn ghost" onClick={() => supabase.auth.signOut()} disabled={busy}>
           Sign out
         </button>
-        <button className="btn ghost delete-danger" onClick={() => setConfirmingDelete(true)} disabled={busy}>
+        <button type="button" className="btn ghost delete-danger" onClick={() => setConfirmingDelete(true)} disabled={busy}>
           Delete account
         </button>
         {saved && (
@@ -1264,6 +1270,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           </span>
         )}
       </div>
+      </form>
 
       {showPhotoModal && (
         <ProfilePhotoModal
@@ -1350,12 +1357,15 @@ function CvFileIcon() {
 
 function ProfilePhotoModal({ avatarUrl, name, onClose, onEdit, onUpdate, onDelete, deleting, hasPhoto }) {
   const initials = (name || 'A').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+  // Escape, focus trap and Back-button close — this one was closable by
+  // backdrop click only.
+  const modalRef = useModal({ onClose, closeOnEscape: !deleting })
   return (
-    <div className="modal-backdrop pfp-modal-backdrop" onClick={onClose}>
-      <div className="pfp-modal" onClick={e => e.stopPropagation()}>
+    <div className="modal-backdrop pfp-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Profile photo">
+      <div className="pfp-modal" ref={modalRef} onClick={e => e.stopPropagation()}>
         <div className="pfp-modal-header">
           <h2>Profile photo</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className="pfp-modal-body">
           <div className="pfp-modal-photo">

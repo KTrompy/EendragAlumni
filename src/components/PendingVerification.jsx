@@ -100,7 +100,7 @@ export default function PendingVerification({ session, profile, onProfileChange 
             {result.text}
           </p>
         )}
-        <button className="btn primary wide" onClick={checkStatus} disabled={checking || result?.type === 'removed'}>
+        <button type="button" className="btn primary wide" onClick={checkStatus} disabled={checking || result?.type === 'removed'}>
           {checking ? 'Checking…' : 'Check my status'}
         </button>
         {/* The profile editor sits behind the approval gate, so until the
@@ -119,7 +119,7 @@ export default function PendingVerification({ session, profile, onProfileChange 
           </a>{' '}
           and we&rsquo;ll sort it out.
         </p>
-        <button className="link-btn" onClick={() => supabase.auth.signOut()}>
+        <button type="button" className="link-btn" onClick={() => supabase.auth.signOut()}>
           Sign out
         </button>
       </div>

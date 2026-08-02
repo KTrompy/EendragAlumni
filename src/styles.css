@@ -4083,11 +4083,20 @@ button.delete-danger svg { flex-shrink: 0; }
   justify-content: center;
   background: #000;
 }
-.post-images.count-1 img {
+/* These target the .post-image-btn wrapper rather than the <img> directly:
+   each thumbnail is now a real <button> (it was a bare <img onClick>, so
+   the lightbox couldn't be opened from the keyboard at all), and the button
+   is what the grid lays out. The inner <img> just fills it. */
+.post-images.count-1 .post-image-btn {
+  width: 100%;
+  max-height: 520px;
+  cursor: zoom-in;
+  display: block;
+}
+.post-images.count-1 .post-image-btn img {
   width: 100%;
   max-height: 520px;
   object-fit: contain;
-  cursor: zoom-in;
   display: block;
 }
 
@@ -4097,10 +4106,9 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-columns: 1fr 1fr;
   gap: 2px;
 }
-.post-images.count-2 img {
+.post-images.count-2 .post-image-btn {
   width: 100%;
   aspect-ratio: 1;
-  object-fit: contain;
   background: #000;
   cursor: zoom-in;
   display: block;
@@ -4113,20 +4121,18 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-rows: 1fr 1fr;
   gap: 2px;
 }
-.post-images.count-3 img:first-child {
+.post-images.count-3 .post-image-btn:first-child {
   grid-row: 1 / 3;
   width: 100%;
   height: 100%;
   aspect-ratio: auto;
-  object-fit: contain;
   background: #000;
   cursor: zoom-in;
   display: block;
 }
-.post-images.count-3 img:not(:first-child) {
+.post-images.count-3 .post-image-btn:not(:first-child) {
   width: 100%;
   aspect-ratio: 1;
-  object-fit: contain;
   background: #000;
   cursor: zoom-in;
   display: block;
@@ -4139,17 +4145,36 @@ button.delete-danger svg { flex-shrink: 0; }
   grid-template-rows: 1fr 1fr;
   gap: 2px;
 }
-.post-images.count-4 img {
+.post-images.count-4 .post-image-btn {
   width: 100%;
   aspect-ratio: 1;
-  object-fit: contain;
   background: #000;
   cursor: zoom-in;
   display: block;
 }
 
+/* Shared by every multi-image layout: the button owns the box, the image
+   fills it. count-1 sets its own height cap above. */
+.post-images .post-image-btn {
+  padding: 0;
+  border: none;
+  background: none;
+}
+.post-images.count-2 .post-image-btn img,
+.post-images.count-3 .post-image-btn img,
+.post-images.count-4 .post-image-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.post-images .post-image-btn:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: -3px;
+}
+
 .post-images img { transition: opacity 0.15s; }
-.post-images img:hover { opacity: 0.92; }
+.post-images .post-image-btn:hover img { opacity: 0.92; }
 
 /* --- Lightbox --- */
 .lightbox-backdrop {
@@ -9712,3 +9737,141 @@ button.delete-danger svg { flex-shrink: 0; }
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   Stretched link — result cards that are actually links
+   ============================================================
+   Directory, Jobs, Business, Mentoring and the Home widgets used to be
+   <div role="button"> calling navigate(). That looks identical but behaves
+   nothing like a link: Cmd/Ctrl+click and middle-click did nothing, there
+   was no URL in the status bar on hover, "Open link in new tab" was missing
+   from the context menu, and screen readers announced "button" for what is
+   plainly navigation. In a directory-style app — where opening six people
+   in six tabs is the normal way to use it — that's a daily papercut.
+
+   The fix is the standard pattern: one real <a> per card, stretched over
+   the whole card, with any genuinely interactive controls (Message,
+   LinkedIn, Save) floated above it. That also resolves the invalid nesting
+   of buttons inside a role="button", which only worked because of
+   stopPropagation() and which assistive tech flattened into one control. */
+.stretched-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  /* The accessible name comes from an .sr-only span inside; nothing here
+     should paint over the card's own content. */
+  text-decoration: none;
+  color: inherit;
+}
+.stretched-link:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: -3px;
+  border-radius: var(--radius);
+}
+/* Anything the person can click that isn't "open this card" has to sit
+   above the stretched link, or the link swallows it. */
+.card-actions-above,
+.person-card-actions,
+.mentor-card-actions,
+.job-card-actions,
+.job-poster-row,
+.job-save-btn,
+.business-card-actions {
+  position: relative;
+  z-index: 2;
+}
+/* Already absolutely positioned — keep that, just lift it above the link. */
+.job-save-btn { position: absolute; }
+/* Cards need a containing block for the overlay, and should show the same
+   lift on keyboard focus that they show on hover. */
+.person-card,
+.mentor-card,
+.business-card,
+.home-post-preview,
+.home-business-card,
+.home-community-card,
+.home-event-widget {
+  position: relative;
+}
+.person-card:has(.stretched-link:focus-visible),
+.mentor-card:has(.stretched-link:focus-visible),
+.job-card:has(.stretched-link:focus-visible),
+.home-post-preview:has(.stretched-link:focus-visible),
+.home-business-card:has(.stretched-link:focus-visible),
+.home-community-card:has(.stretched-link:focus-visible),
+.home-event-widget:has(.stretched-link:focus-visible) {
+  border-color: var(--orange);
+}
+.home-post-preview:has(.stretched-link:hover) {
+  background: var(--orange-soft);
+  border-color: var(--orange);
+}
+.home-community-message-btn { position: relative; z-index: 2; }
+.mentor-card:has(.stretched-link:hover) {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================================
+   Image lightbox (Feed)
+   ============================================================ */
+.lightbox-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.lightbox-close:hover { background: rgba(0, 0, 0, 0.8); }
+.lightbox-close:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* The thumbnail that opens the lightbox is a real button, so it needs to
+   shed the default button chrome and keep the image's own rounding. */
+.post-image-btn {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  width: 100%;
+  border-radius: var(--radius-sm, 8px);
+}
+.post-image-btn:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* ============================================================
+   Toasts — error toasts persist until dismissed
+   ============================================================ */
+.toast { position: relative; }
+/* An error toast now stays until it's dismissed, so its text has to be
+   fully readable — one truncated line was acceptable when it disappeared
+   after three seconds anyway, but not for a message the person is meant to
+   read and act on. */
+.toast-error span {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.toast-dismiss {
+  margin-left: auto;
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.toast-dismiss:hover { opacity: 1; }
+.toast-dismiss:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

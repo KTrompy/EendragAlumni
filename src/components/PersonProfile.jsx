@@ -102,7 +102,7 @@ export default function PersonProfile({ session, me, onMessage }) {
   if (loadError) {
     return (
       <section className="panel narrow profile-page">
-        <button className="profile-back-btn" onClick={() => navigate(-1)}>← Back</button>
+        <button type="button" className="profile-back-btn" onClick={() => navigate(-1)}>← Back</button>
         <EmptyState
           icon="search"
           message="Couldn't load this profile."
@@ -117,7 +117,7 @@ export default function PersonProfile({ session, me, onMessage }) {
   if (notFound || !person) {
     return (
       <section className="panel narrow profile-page">
-        <button className="profile-back-btn" onClick={() => navigate(-1)}>← Back</button>
+        <button type="button" className="profile-back-btn" onClick={() => navigate(-1)}>← Back</button>
         <EmptyState icon="search" message="Couldn't find that profile." subMessage="It may have been removed." />
       </section>
     )
@@ -150,7 +150,7 @@ export default function PersonProfile({ session, me, onMessage }) {
 
   return (
     <section className="panel narrow profile-page person-profile-page">
-      <button className="profile-back-btn profile-back-standalone" onClick={() => navigate(-1)} aria-label="Back">
+      <button type="button" className="profile-back-btn profile-back-standalone" onClick={() => navigate(-1)} aria-label="Back">
         ← Back
       </button>
 
@@ -174,7 +174,7 @@ export default function PersonProfile({ session, me, onMessage }) {
             <div className="profile-header-actions">
               {!isMe && (
                 <>
-                  <button className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
+                  <button type="button" className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
                     <MessageIcon />
                   </button>
                   {linkedinHref && (
@@ -337,7 +337,7 @@ export default function PersonProfile({ session, me, onMessage }) {
           </a>
         )}
         {!isMe && (
-          <button
+          <button type="button"
             className="btn primary"
             onClick={() => onMessage?.({ id: p.id, full_name: p.full_name }, buildIcebreaker(me, p))}
           >

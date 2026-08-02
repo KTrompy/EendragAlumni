@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
+import useModal from '../useModal.js'
 
 // Parsed via DOMParser into a detached document rather than assigned to a
 // live element's innerHTML — a detached document never loads its
@@ -128,19 +129,14 @@ export default function GlobalSearch({ open, onClose }) {
     setExpandedLoading(false)
   }
 
-  useEffect(() => {
-    if (!open) return
-    function onKey(e) {
-      if (e.key !== 'Escape') return
-      // Escape backs out of an expanded section first, same as most
-      // search UIs' "step back before close" behaviour, then closes on a
-      // second press.
-      if (expanded) setExpanded(null)
-      else onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose, expanded])
+  // Escape backs out of an expanded section first, same as most search UIs'
+  // "step back before close" behaviour, then closes on a second press. That
+  // logic was already here; useModal now carries it, and adds the focus
+  // trap, focus restore and Back-button handling this modal was missing.
+  const modalRef = useModal({
+    enabled: open,
+    onClose: () => { if (expanded) setExpanded(null); else onClose() },
+  })
 
   if (!open) return null
 
@@ -149,17 +145,18 @@ export default function GlobalSearch({ open, onClose }) {
 
   return (
     <div className="modal-backdrop global-search-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Search">
-      <div className="modal global-search-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal global-search-modal" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         <div className="global-search-input-wrap">
           <SearchIcon />
           <input
             ref={inputRef}
+            data-autofocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search Eendragters, Feed, Jobs, Business Directory…"
             className="global-search-input"
           />
-          <button className="modal-close" onClick={onClose} aria-label="Close search">×</button>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Close search">×</button>
         </div>
 
         <div className="global-search-results">
@@ -167,7 +164,7 @@ export default function GlobalSearch({ open, onClose }) {
             <p className="empty small">Start typing to search across the whole site.</p>
           ) : expanded ? (
             <>
-              <button className="global-search-back" onClick={() => setExpanded(null)}>
+              <button type="button" className="global-search-back" onClick={() => setExpanded(null)}>
                 <BackIcon /> All results for "{q.trim()}"
               </button>
               <div className="global-search-group">
@@ -194,7 +191,7 @@ export default function GlobalSearch({ open, onClose }) {
                     <SearchResultRow key={p.id} section="people" item={p} onGo={go} />
                   ))}
                   {counts.people > PREVIEW_LIMIT && (
-                    <button className="global-search-see-all" onClick={() => expandSection('people')}>
+                    <button type="button" className="global-search-see-all" onClick={() => expandSection('people')}>
                       See all {counts.people} results →
                     </button>
                   )}
@@ -207,7 +204,7 @@ export default function GlobalSearch({ open, onClose }) {
                     <SearchResultRow key={p.id} section="posts" item={p} onGo={go} />
                   ))}
                   {counts.posts > PREVIEW_LIMIT && (
-                    <button className="global-search-see-all" onClick={() => expandSection('posts')}>
+                    <button type="button" className="global-search-see-all" onClick={() => expandSection('posts')}>
                       See all {counts.posts} results →
                     </button>
                   )}
@@ -220,7 +217,7 @@ export default function GlobalSearch({ open, onClose }) {
                     <SearchResultRow key={j.id} section="jobs" item={j} onGo={go} />
                   ))}
                   {counts.jobs > PREVIEW_LIMIT && (
-                    <button className="global-search-see-all" onClick={() => expandSection('jobs')}>
+                    <button type="button" className="global-search-see-all" onClick={() => expandSection('jobs')}>
                       See all {counts.jobs} results →
                     </button>
                   )}
@@ -233,7 +230,7 @@ export default function GlobalSearch({ open, onClose }) {
                     <SearchResultRow key={b.id} section="businesses" item={b} onGo={go} />
                   ))}
                   {counts.businesses > PREVIEW_LIMIT && (
-                    <button className="global-search-see-all" onClick={() => expandSection('businesses')}>
+                    <button type="button" className="global-search-see-all" onClick={() => expandSection('businesses')}>
                       See all {counts.businesses} results →
                     </button>
                   )}
@@ -253,7 +250,7 @@ export default function GlobalSearch({ open, onClose }) {
 function SearchResultRow({ section, item, onGo }) {
   if (section === 'people') {
     return (
-      <button className="global-search-result" onClick={() => onGo(`/people/${item.id}`)}>
+      <button type="button" className="global-search-result" onClick={() => onGo(`/people/${item.id}`)}>
         <Avatar url={item.avatar_url} name={item.full_name} size={32} />
         <span>
           <strong>{item.full_name || 'Alumnus'}</strong>
@@ -264,7 +261,7 @@ function SearchResultRow({ section, item, onGo }) {
   }
   if (section === 'posts') {
     return (
-      <button className="global-search-result" onClick={() => onGo(`/feed/${item.id}`)}>
+      <button type="button" className="global-search-result" onClick={() => onGo(`/feed/${item.id}`)}>
         <span>
           <strong>{item.profiles?.full_name || 'Alumnus'}</strong>
           <em>{truncate(plainText(item.content))}</em>
@@ -274,7 +271,7 @@ function SearchResultRow({ section, item, onGo }) {
   }
   if (section === 'jobs') {
     return (
-      <button className="global-search-result" onClick={() => onGo(`/jobs/${item.id}`)}>
+      <button type="button" className="global-search-result" onClick={() => onGo(`/jobs/${item.id}`)}>
         <span>
           <strong>{item.title}</strong>
           {item.company && <em>{item.company}</em>}
@@ -283,7 +280,7 @@ function SearchResultRow({ section, item, onGo }) {
     )
   }
   return (
-    <button className="global-search-result" onClick={() => onGo(`/businesses/${item.id}`)}>
+    <button type="button" className="global-search-result" onClick={() => onGo(`/businesses/${item.id}`)}>
       <span>
         <strong>{item.name}</strong>
         {item.description && <em>{truncate(plainText(item.description), 60)}</em>}

@@ -214,7 +214,7 @@ export default function Admin({ session }) {
       <h2 className="panel-title">Admin</h2>
       <p className="panel-sub">
         Everything needed to run this site. New to the job? Start with the{' '}
-        <button className="linklike" onClick={() => setSubtab('handbook')}>Handbook</button> tab —
+        <button type="button" className="linklike" onClick={() => setSubtab('handbook')}>Handbook</button> tab —
         it's the whole role written down.
       </p>
 
@@ -244,7 +244,7 @@ export default function Admin({ session }) {
 
       <div className="admin-subtabs" role="tablist" aria-label="Admin sections">
         {SUBTABS.map((t) => (
-          <button
+          <button type="button"
             key={t.id}
             role="tab"
             aria-selected={subtab === t.id}
@@ -368,7 +368,7 @@ function AttentionPanel({ loading, readyToApprove, unfinished, openReports, admi
         {items.map((it) => (
           <li key={it.key} className={it.tone === 'soft' ? 'soft' : undefined}>
             <span>{it.text}</span>
-            <button className="btn ghost small" onClick={() => onGo(it.tab)}>{it.action}</button>
+            <button type="button" className="btn ghost small" onClick={() => onGo(it.tab)}>{it.action}</button>
           </li>
         ))}
       </ul>
@@ -460,7 +460,7 @@ function PendingRows({ rows, onApprove, busyIds }) {
               No point offering Approve until they've actually filled the
               rest of their profile in. */}
           {m.consented_at ? (
-            <button className="btn primary small" onClick={() => onApprove(m.id)} disabled={busyIds?.has(m.id)}>
+            <button type="button" className="btn primary small" onClick={() => onApprove(m.id)} disabled={busyIds?.has(m.id)}>
               {busyIds?.has(m.id) ? 'Approving…' : 'Approve'}
             </button>
           ) : (
@@ -572,12 +572,12 @@ function ReportList({ items, onSetStatus, navigate }) {
             </div>
             <div className="admin-row-actions">
               {path && (
-                <button className="btn ghost small" onClick={() => navigate(path)} title="Go and look at what was reported">
+                <button type="button" className="btn ghost small" onClick={() => navigate(path)} title="Go and look at what was reported">
                   View
                 </button>
               )}
               {r.status !== 'reviewed' && (
-                <button
+                <button type="button"
                   className="btn ghost small"
                   onClick={() => onSetStatus(r.id, 'reviewed')}
                   title="You've looked at it and dealt with it. Doesn't delete anything."
@@ -586,7 +586,7 @@ function ReportList({ items, onSetStatus, navigate }) {
                 </button>
               )}
               {r.status !== 'dismissed' && (
-                <button
+                <button type="button"
                   className="btn ghost small"
                   onClick={() => onSetStatus(r.id, 'dismissed')}
                   title="You've looked at it and there's nothing wrong. Doesn't delete anything."
@@ -684,11 +684,11 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                 <div className="admin-row-actions">
                   {!m.approved ? (
                     m.consented_at ? (
-                      <button className="btn primary small" onClick={() => onSetApproved(m.id, true)} disabled={busy}>
+                      <button type="button" className="btn primary small" onClick={() => onSetApproved(m.id, true)} disabled={busy}>
                         {busy ? 'Working…' : 'Approve'}
                       </button>
                     ) : (
-                      <button className="btn primary small" disabled title="Hasn't finished signing up yet">Approve</button>
+                      <button type="button" className="btn primary small" disabled title="Hasn't finished signing up yet">Approve</button>
                     )
                   ) : (
                     // Approving the wrong person used to be irreversible from
@@ -697,7 +697,7 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                     // them back to Pending instead — they land on the
                     // verification screen, keep their data, and can be
                     // approved again once it's sorted out.
-                    <button
+                    <button type="button"
                       className="btn ghost small"
                       onClick={() => askUnapprove(m)}
                       disabled={isMe || busy}
@@ -707,16 +707,16 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                     </button>
                   )}
                   {m.is_admin ? (
-                    <button className="btn ghost small" onClick={() => askDemote(m)} disabled={isMe || busy} title={isMe ? "Can't remove your own admin rights" : undefined}>
+                    <button type="button" className="btn ghost small" onClick={() => askDemote(m)} disabled={isMe || busy} title={isMe ? "Can't remove your own admin rights" : undefined}>
                       Remove admin
                     </button>
                   ) : (
-                    <button className="btn ghost small" onClick={() => askPromote(m)} disabled={busy}>Make admin</button>
+                    <button type="button" className="btn ghost small" onClick={() => askPromote(m)} disabled={busy}>Make admin</button>
                   )}
                   {/* Permanent, and there's no undo — the confirm dialog
                       spells out what goes with it. Blocked on your own row;
                       admin_delete_member refuses it server-side too. */}
-                  <button
+                  <button type="button"
                     className="btn danger small"
                     onClick={() => askDelete(m)}
                     disabled={isMe || busy}
@@ -848,7 +848,7 @@ function ActivityLog() {
     <>
       <div className="admin-filter-row">
         {ACTIVITY_FILTERS.map((f) => (
-          <button
+          <button type="button"
             key={f.id}
             className={filter === f.id ? 'admin-filter on' : 'admin-filter'}
             onClick={() => setFilter(f.id)}
@@ -1105,7 +1105,7 @@ function BusinessesModeration() {
             </span>
           </div>
           <div className="admin-row-actions">
-            <button
+            <button type="button"
               className="btn ghost small"
               onClick={() => togglePromote(b)}
               title={b.promoted ? 'Stop pinning this to the top of the directory' : 'Pin this to the top of the business directory'}

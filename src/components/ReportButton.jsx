@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useToast } from './Toast.jsx'
+import useModal from '../useModal.js'
 
 const REASONS = [
   { id: 'spam', label: 'Spam or misleading' },
@@ -73,6 +74,11 @@ export default function ReportButton({ session, entityType, entityId, className 
     setTimeout(() => { setReason(''); setDetails(''); setDone(false); setAlreadyReported(false) }, 200)
   }
 
+  // Escape, focus trap, focus restore and Back-button close — this dialog
+  // was closable by backdrop click only, which is the half of the pair that
+  // keyboard users can't reach.
+  const modalRef = useModal({ enabled: open, onClose: () => close(), closeOnEscape: !busy })
+
   return (
     <>
       <button
@@ -87,10 +93,19 @@ export default function ReportButton({ session, entityType, entityId, className 
 
       {open && (
         <div className="modal-backdrop" onClick={close} role="dialog" aria-modal="true" aria-label="Report content">
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+          {/* A real <form> so Enter submits the report — see the note in
+              Jobs.jsx. */}
+          <form
+            className="modal"
+            ref={modalRef}
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => { e.preventDefault(); if (!busy && reason && !checkingExisting) submit() }}
+            noValidate
+            style={{ maxWidth: 420 }}
+          >
             <div className="modal-header">
               <h2>{done ? 'Thanks — we got it' : alreadyReported ? "You've already reported this" : 'Report this'}</h2>
-              <button className="modal-close" onClick={close} aria-label="Close">×</button>
+              <button type="button" className="modal-close" onClick={close} aria-label="Close">×</button>
             </div>
             <div className="modal-body">
               {checkingExisting ? (
@@ -115,15 +130,22 @@ export default function ReportButton({ session, entityType, entityId, className 
             </div>
             <div className="modal-footer">
               {done || alreadyReported ? (
-                <button className="btn primary" onClick={close}>{done ? 'Done' : 'Close'}</button>
+                <button type="button" className="btn primary" onClick={close}>{done ? 'Done' : 'Close'}</button>
               ) : (
                 <>
-                  <button className="btn ghost" onClick={close} disabled={busy}>Cancel</button>
-                  <button className="btn primary" onClick={submit} disabled={busy || !reason || checkingExisting}>{busy ? 'Sending…' : 'Submit report'}</button>
+                  <button type="button" className="btn ghost" onClick={close} disabled={busy}>Cancel</button>
+                  <button
+                    type="submit"
+                    className="btn primary"
+                    disabled={busy || !reason || checkingExisting}
+                    title={checkingExisting ? 'Checking your existing reports…' : (!reason ? 'Choose a reason first' : undefined)}
+                  >
+                    {busy ? 'Sending…' : 'Submit report'}
+                  </button>
                 </>
               )}
             </div>
-          </div>
+          </form>
         </div>
       )}
     </>

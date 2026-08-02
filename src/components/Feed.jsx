@@ -8,6 +8,8 @@ import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
+import useDiscardGuard from './useDiscardGuard.jsx'
+import useModal from '../useModal.js'
 import { sanitizeHtml } from '../sanitizeHtml.js'
 import { useObjectUrl, useObjectUrls } from '../utils.js'
 import { WhosOnline } from './WhosOnline.jsx'
@@ -410,7 +412,7 @@ export default function Feed({ session, profile, onMessage }) {
                 placeholder="Search posts…"
               />
               {query && (
-                <button className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+                <button type="button" className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
               )}
             </div>
           )}
@@ -453,7 +455,7 @@ export default function Feed({ session, profile, onMessage }) {
               matches (it fetches by date, not by relevance to the query). */}
           {!needle && hasMore && (
             <div className="load-more-row">
-              <button className="btn ghost" onClick={loadMore} disabled={loadingMore}>
+              <button type="button" className="btn ghost" onClick={loadMore} disabled={loadingMore}>
                 {loadingMore ? 'Loading…' : 'Load more'}
               </button>
             </div>
@@ -467,13 +469,31 @@ export default function Feed({ session, profile, onMessage }) {
         </aside>
       </div>
 
-      {lightbox && (
-        <div className="lightbox-backdrop" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="" />
-        </div>
-      )}
+      {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
 
     </section>
+  )
+}
+
+/* ---------- Image lightbox ---------- */
+// Backdrop click used to be the only way out of this: no Escape, no visible
+// close button, and nothing focusable inside it at all — so a keyboard user
+// who opened an image had no way to close it. It also had an empty alt, so
+// a screen reader announced nothing about what had just filled the screen.
+function Lightbox({ src, onClose }) {
+  const ref = useModal({ onClose })
+  return (
+    <div
+      className="lightbox-backdrop"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image viewer"
+      ref={ref}
+    >
+      <button type="button" className="lightbox-close" onClick={onClose} aria-label="Close image">×</button>
+      <img src={src} alt="Full-size view of the attached photo" />
+    </div>
   )
 }
 
@@ -546,6 +566,12 @@ function Composer({ session, profile, onPosted, openRef }) {
     setTimeout(() => titleRef.current?.focus(), 50)
   }
 
+  // What "you'd lose something by closing now" means here. Title/body are
+  // autosaved to localStorage above, but attachments aren't and can't be —
+  // so a composer with photos or a video queued is dirty even if no text
+  // has been typed.
+  const dirty = !!title.trim() || hasText(body) || files.length > 0 || !!videoFile
+
   function closeModal() {
     if (busy) return
     setOpen(false)
@@ -558,6 +584,18 @@ function Composer({ session, profile, onPosted, openRef }) {
     // back after any page refresh, which was inconsistent).
     draftRestoredRef.current = false
   }
+
+  // Backdrop click and Escape both go through here, so neither one can
+  // silently bin a draft.
+  const { requestClose, discardDialog } = useDiscardGuard({
+    dirty: dirty && !busy,
+    onDiscard: closeModal,
+    title: 'Discard this post?',
+    message: "Anything you've written or attached here will be lost.",
+    confirmLabel: 'Discard post',
+  })
+
+  const composerRef = useModal({ enabled: open, onClose: requestClose, closeOnEscape: !busy })
 
   // Lets a CTA outside this component (the Feed empty state) trigger the
   // same "start a post" flow as clicking the prompt.
@@ -664,7 +702,12 @@ function Composer({ session, profile, onPosted, openRef }) {
   const prompt = (
     <div className="composer-prompt" onClick={openModal}>
       <Avatar url={profile?.avatar_url} name={profile?.full_name} size={44} />
-      <button className="composer-prompt-input" disabled={!canPost}>
+      <button
+        type="button"
+        className="composer-prompt-input"
+        disabled={!canPost}
+        title={canPost ? undefined : 'Posting unlocks once your membership is approved'}
+      >
         {canPost ? 'Start a post' : 'Posting unlocks after approval'}
       </button>
     </div>
@@ -683,11 +726,27 @@ function Composer({ session, profile, onPosted, openRef }) {
   /* ---- Quick-action buttons below the prompt ---- */
   const quickActions = (
     <div className="composer-quick-actions">
-      <button className="composer-quick-btn" onClick={openModalWithPhoto} disabled={!canPost}>
+      {/* A greyed-out button with no explanation is a dead end — you can't
+          tell whether it's broken or gated. The collapsed prompt above says
+          "Posting unlocks after approval" in its label; these two only have
+          an icon, so the reason goes in the tooltip. */}
+      <button
+        type="button"
+        className="composer-quick-btn"
+        onClick={openModalWithPhoto}
+        disabled={!canPost}
+        title={canPost ? 'Add a photo' : 'Posting unlocks once your membership is approved'}
+      >
         <PhotoIcon /> Photo
       </button>
       {VIDEO_UPLOADS_ENABLED && (
-        <button className="composer-quick-btn" onClick={openModalWithVideo} disabled={!canPost}>
+        <button
+          type="button"
+          className="composer-quick-btn"
+          onClick={openModalWithVideo}
+          disabled={!canPost}
+          title={canPost ? 'Add a video' : 'Posting unlocks once your membership is approved'}
+        >
           <VideoIcon /> Video
         </button>
       )}
@@ -746,15 +805,21 @@ function Composer({ session, profile, onPosted, openRef }) {
       </div>
 
       {open && (
-        <div className="composer-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}>
-          <div className="composer-modal">
+        <div
+          className="composer-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Create a post"
+          onClick={(e) => { if (e.target === e.currentTarget) requestClose() }}
+        >
+          <div className="composer-modal" ref={composerRef}>
             {/* Header */}
             <div className="composer-modal-header">
               <div className="composer-modal-user">
                 <Avatar url={profile?.avatar_url} name={profile?.full_name} size={44} />
                 <span className="composer-modal-name">{profile?.full_name || 'Alumnus'}</span>
               </div>
-              <button className="composer-modal-close" onClick={closeModal} aria-label="Close">×</button>
+              <button type="button" className="composer-modal-close" onClick={requestClose} aria-label="Close">×</button>
             </div>
 
             {/* Title */}
@@ -800,8 +865,8 @@ function Composer({ session, profile, onPosted, openRef }) {
               <div className="composer-previews">
                 {files.map((f, i) => (
                   <div className="composer-preview" key={i}>
-                    <img src={previewUrls[i]} alt="" />
-                    <button onClick={() => removeFile(i)} aria-label="Remove image">×</button>
+                    <img src={previewUrls[i]} alt={f.name || 'Attached image'} />
+                    <button type="button" onClick={() => removeFile(i)} aria-label={`Remove ${f.name || 'image'}`}>×</button>
                   </div>
                 ))}
               </div>
@@ -811,13 +876,20 @@ function Composer({ session, profile, onPosted, openRef }) {
 
             {/* Footer */}
             <div className="composer-modal-footer">
-              <button className="btn primary" onClick={publish} disabled={busy || !canSubmit}>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={publish}
+                disabled={busy || !canSubmit}
+                title={busy ? 'Posting…' : (!canSubmit ? 'Add some text, a photo or a video first' : undefined)}
+              >
                 {busy ? 'Posting…' : 'Post'}
               </button>
             </div>
           </div>
         </div>
       )}
+      {discardDialog}
     </>
   )
 }
@@ -1007,8 +1079,8 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
           <RichTextEditor value={editBody} onChange={setEditBody} placeholder="What do you want to talk about?" />
           {editError && <p className="form-error">{editError}</p>}
           <div className="btn-row" style={{ padding: '10px 0 0' }}>
-            <button className="btn ghost" onClick={() => setEditing(false)} disabled={editBusy}>Cancel</button>
-            <button className="btn primary" onClick={saveEdit} disabled={editBusy}>
+            <button type="button" className="btn ghost" onClick={() => setEditing(false)} disabled={editBusy}>Cancel</button>
+            <button type="button" className="btn primary" onClick={saveEdit} disabled={editBusy}>
               {editBusy ? 'Saving…' : 'Save changes'}
             </button>
           </div>
@@ -1024,7 +1096,7 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(p.content) }}
               />
               {needsTruncation && !expanded && (
-                <button className="post-see-more" onClick={() => setExpanded(true)}>…see more</button>
+                <button type="button" className="post-see-more" onClick={() => setExpanded(true)}>…see more</button>
               )}
             </div>
           )}
@@ -1042,8 +1114,19 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
 
       {images.length > 0 && (
         <div className={`post-images count-${Math.min(images.length, 4)}`}>
+          {/* A real button, not a bare <img onClick> — the thumbnail wasn't
+              focusable, had no role and gave no cursor affordance, so the
+              lightbox was mouse-only and invisible to assistive tech. */}
           {images.slice(0, 4).map((src, i) => (
-            <img key={i} src={src} alt="" loading="lazy" onClick={() => onImageClick(src)} />
+            <button
+              key={i}
+              type="button"
+              className="post-image-btn"
+              onClick={() => onImageClick(src)}
+              aria-label={`View photo ${i + 1} of ${Math.min(images.length, 4)} full size`}
+            >
+              <img src={src} alt="" loading="lazy" />
+            </button>
           ))}
         </div>
       )}
@@ -1065,7 +1148,7 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
       )}
 
       <div className="post-actions">
-        <button
+        <button type="button"
           className={liked ? 'post-action liked' : 'post-action'}
           onClick={onLike}
           disabled={!canInteract}
@@ -1073,14 +1156,14 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
         >
           <HeartIcon filled={liked} /> Like
         </button>
-        <button
+        <button type="button"
           className="post-action"
           onClick={() => setShowComments((s) => !s)}
         >
           <CommentIcon /> Comment
         </button>
         {p.author_id !== session.user.id && (
-          <button
+          <button type="button"
             className="post-action"
             onClick={onMessage}
             disabled={!canInteract}
@@ -1200,16 +1283,28 @@ function Comments({ postId, session, profile, onOpenProfile }) {
           </li>
         ))}
       </ul>
+      {/* isComposing guard on Enter: with a Japanese/Chinese/Korean IME
+          active, Enter confirms the candidate word being typed rather than
+          meaning "send", so without the check that keystroke posted a
+          half-finished comment. Messages.jsx's main composer already gets
+          this right; the comment boxes didn't. */}
       <div className="comment-form">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) send() }}
           placeholder={canPost ? 'Write a comment…' : 'Commenting unlocks after approval'}
           disabled={!canPost}
+          title={canPost ? undefined : 'Commenting unlocks once your membership is approved'}
           maxLength={2000}
         />
-        <button className="btn primary small" onClick={send} disabled={!canPost || !draft.trim()}>
+        <button
+          type="button"
+          className="btn primary small"
+          onClick={send}
+          disabled={!canPost || !draft.trim()}
+          title={!canPost ? 'Commenting unlocks once your membership is approved' : (!draft.trim() ? 'Write something first' : undefined)}
+        >
           Reply
         </button>
       </div>
@@ -1242,7 +1337,7 @@ function TopJobsWidget({ onViewAll }) {
       <ul className="feed-widget-list">
         {jobs.map((j) => (
           <li key={j.id}>
-            <button className="feed-widget-row" onClick={onViewAll}>
+            <button type="button" className="feed-widget-row" onClick={onViewAll}>
               {j.logo_url
                 ? <img className="feed-widget-logo" src={j.logo_url} alt="" />
                 : <span className="feed-widget-logo feed-widget-logo-fallback">{(j.company || '?')[0]}</span>}
@@ -1254,7 +1349,7 @@ function TopJobsWidget({ onViewAll }) {
           </li>
         ))}
       </ul>
-      <button className="feed-widget-viewall" onClick={onViewAll}>View jobs</button>
+      <button type="button" className="feed-widget-viewall" onClick={onViewAll}>View jobs</button>
     </div>
   )
 }
@@ -1282,7 +1377,7 @@ function RecentMembersWidget({ onOpenProfile, onViewAll }) {
       <ul className="feed-widget-list">
         {members.map((m) => (
           <li key={m.id}>
-            <button className="feed-widget-row" onClick={() => onOpenProfile?.(m.id)}>
+            <button type="button" className="feed-widget-row" onClick={() => onOpenProfile?.(m.id)}>
               <Avatar url={m.avatar_url} name={m.full_name} size={32} />
               <span className="feed-widget-row-text">
                 <strong>{m.full_name || 'Alumnus'}</strong>
@@ -1292,7 +1387,7 @@ function RecentMembersWidget({ onOpenProfile, onViewAll }) {
           </li>
         ))}
       </ul>
-      <button className="feed-widget-viewall" onClick={onViewAll}>View directory</button>
+      <button type="button" className="feed-widget-viewall" onClick={onViewAll}>View directory</button>
     </div>
   )
 }

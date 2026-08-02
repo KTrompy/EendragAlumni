@@ -17,8 +17,16 @@ export function ToastProvider({ children }) {
   }, [])
 
   // showToast(message, { type: 'success' | 'error', duration })
+  //
+  // Errors persist until dismissed. 3.2 seconds is fine for "Post
+  // published" — you don't need to do anything about it — but it's not
+  // enough time to read "Could not delete listing", work out what it means
+  // and decide what to try next. WCAG 2.2.1 makes the same distinction:
+  // a message the person has to act on shouldn't time out on them.
+  // Callers can still pass an explicit `duration` either way.
   const showToast = useCallback((message, opts = {}) => {
-    const { type = 'success', duration = 3200 } = opts
+    const { type = 'success' } = opts
+    const duration = 'duration' in opts ? opts.duration : (type === 'error' ? 0 : 3200)
     const id = ++idCounter
     setToasts((t) => [...t, { id, message, type }])
     if (duration) setTimeout(() => dismiss(id), duration)
@@ -28,17 +36,30 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={showToast}>
       {children}
+      {/* aria-live="assertive" for errors: a polite region waits for the
+          screen reader to finish whatever it's saying, which for a failure
+          the person needs to act on is too late. */}
       <div className="toast-stack" role="status" aria-live="polite">
         {toasts.map((t) => (
-          <button
+          <div
             key={t.id}
-            type="button"
             className={`toast toast-${t.type}`}
-            onClick={() => dismiss(t.id)}
+            role={t.type === 'error' ? 'alert' : undefined}
           >
             {t.type === 'success' ? <CheckIcon /> : <ErrorIcon />}
             <span>{t.message}</span>
-          </button>
+            {/* The whole toast used to be the dismiss button, with nothing
+                indicating that. A visible × says so — and matters more now
+                that an error sits there until it's dismissed. */}
+            <button
+              type="button"
+              className="toast-dismiss"
+              onClick={() => dismiss(t.id)}
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
         ))}
       </div>
     </ToastContext.Provider>

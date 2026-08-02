@@ -285,7 +285,7 @@ export default function FinishSignup({ session, profile, onDone }) {
           </button>
         </form>
 
-        <button
+        <button type="button"
           className="link-btn"
           onClick={() => { try { localStorage.removeItem(draftKey) } catch { /* ignore */ } supabase.auth.signOut() }}
         >

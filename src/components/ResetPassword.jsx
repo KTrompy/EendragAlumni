@@ -68,7 +68,7 @@ export default function ResetPassword({ onDone, onCancel }) {
         {done ? (
           <>
             <p className="form-notice">Your password's been updated. You're signed in — head back in.</p>
-            <button className="btn primary wide" onClick={onDone}>Continue to Eendrag Alumni</button>
+            <button type="button" className="btn primary wide" onClick={onDone}>Continue to Eendrag Alumni</button>
           </>
         ) : (
           // A real <form> rather than bare labels + an onClick button: every

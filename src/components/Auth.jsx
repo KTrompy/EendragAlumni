@@ -562,7 +562,7 @@ export default function Auth({ initialError = null, initialMode = null }) {
                   {resendMsg.text}
                 </p>
               )}
-              <button className="btn ghost wide" onClick={resendConfirmation} disabled={resendBusy}>
+              <button type="button" className="btn ghost wide" onClick={resendConfirmation} disabled={resendBusy}>
                 {resendBusy ? 'Sending…' : 'Resend the confirmation email'}
               </button>
             </>
@@ -574,7 +574,7 @@ export default function Auth({ initialError = null, initialMode = null }) {
             </p>
           )}
 
-          <button className="link-btn" onClick={() => { setSignupDone(null); setResendMsg(null); switchMode('signin') }}>
+          <button type="button" className="link-btn" onClick={() => { setSignupDone(null); setResendMsg(null); switchMode('signin') }}>
             Back to sign in
           </button>
         </div>
@@ -681,7 +681,7 @@ export default function Auth({ initialError = null, initialMode = null }) {
         )}
 
         {mode === 'forgot' && (
-          <button className="link-btn" onClick={() => switchMode('signin')}>
+          <button type="button" className="link-btn" onClick={() => switchMode('signin')}>
             Back to sign in
           </button>
         )}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
@@ -64,7 +64,6 @@ export function OnlineDot({ lastSeen }) {
 // and back doesn't lose them. This component only owns what's specific to
 // the *list* itself: sort order and how many rows are revealed so far.
 export default function Directory({ session, people, loading, me, onMessage, hideHeader = false }) {
-  const navigate = useNavigate()
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [sort, setSort] = useState('alpha') // alpha | recent | online
 
@@ -94,9 +93,9 @@ export default function Directory({ session, people, loading, me, onMessage, hid
       <div className="directory-result-row">
         <p className="result-count">{sorted.length} Registered {sorted.length === 1 ? 'User' : 'Users'}</p>
         <div className="sort-switch" role="tablist" aria-label="Sort">
-          <button role="tab" aria-selected={sort === 'alpha'} className={sort === 'alpha' ? 'on' : ''} onClick={() => setSort('alpha')}>Alphabetically</button>
-          <button role="tab" aria-selected={sort === 'recent'} className={sort === 'recent' ? 'on' : ''} onClick={() => setSort('recent')}>Recently joined</button>
-          <button role="tab" aria-selected={sort === 'online'} className={sort === 'online' ? 'on' : ''} onClick={() => setSort('online')}>Recently online</button>
+          <button type="button" role="tab" aria-selected={sort === 'alpha'} className={sort === 'alpha' ? 'on' : ''} onClick={() => setSort('alpha')}>Alphabetically</button>
+          <button type="button" role="tab" aria-selected={sort === 'recent'} className={sort === 'recent' ? 'on' : ''} onClick={() => setSort('recent')}>Recently joined</button>
+          <button type="button" role="tab" aria-selected={sort === 'online'} className={sort === 'online' ? 'on' : ''} onClick={() => setSort('online')}>Recently online</button>
         </div>
       </div>
 
@@ -112,7 +111,6 @@ export default function Directory({ session, people, loading, me, onMessage, hid
             key={p.id}
             person={p}
             isMe={p.id === session.user.id}
-            onOpen={() => navigate(`/people/${p.id}`)}
             onMessage={() => messageWithIcebreaker(p)}
           />
         ))}
@@ -120,7 +118,7 @@ export default function Directory({ session, people, loading, me, onMessage, hid
 
       {hasMore && (
         <div className="load-more-row">
-          <button className="btn ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+          <button type="button" className="btn ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
             Load more ({sorted.length - shown.length} remaining)
           </button>
         </div>
@@ -130,11 +128,7 @@ export default function Directory({ session, people, loading, me, onMessage, hid
 }
 
 /* ---------- Person card (grid layout) ---------- */
-function PersonCard({ person: p, isMe, onOpen, onMessage }) {
-  function onKey(e) {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() }
-  }
-
+function PersonCard({ person: p, isMe, onMessage }) {
   const roleLine = p.occupation && p.company
     ? `${p.occupation} @ ${p.company}`
     : (p.occupation || p.company || '')
@@ -147,14 +141,16 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
 
   return (
     <li>
-      <div
-        className="person-card"
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={onKey}
-        aria-label={`Open profile for ${p.full_name || 'alumnus'}`}
-      >
+      <div className="person-card">
+        {/* A real link, stretched over the card, rather than a clickable
+            div — so Cmd/middle-click opens a tab, the URL previews on
+            hover, and screen readers announce a link instead of a button.
+            The Message and LinkedIn controls below sit above it via
+            .person-card-actions, which also un-nests them from what used
+            to be an (invalid) button-inside-a-button. */}
+        <Link className="stretched-link" to={`/people/${p.id}`}>
+          <span className="sr-only">{`Open profile for ${p.full_name || 'alumnus'}`}</span>
+        </Link>
         <PhotoBlock url={p.avatar_url} name={p.full_name} className="person-card-photo" />
         <div className="person-card-overlay">
           <OnlineDot lastSeen={p.last_seen} />
@@ -171,8 +167,8 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
             {roleLine && <p className="person-card-role">{roleLine}</p>}
             {locationLine && <p className="person-card-location">{locationLine}</p>}
           </div>
-          <div className="person-card-actions" onClick={(e) => e.stopPropagation()}>
-            <button className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label="Send a message">
+          <div className="person-card-actions">
+            <button type="button" className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label={isMe ? "That's you — you can't message yourself" : 'Send a message'}>
               <EnvelopeIcon />
             </button>
             {/* safeUrl, not the raw column: isSafeHttpUrl() blocks a
@@ -181,11 +177,11 @@ function PersonCard({ person: p, isMe, onOpen, onMessage }) {
                 and ProfileModal already render this field through safeUrl —
                 this card was the one place that didn't. */}
             {safeUrl(p.linkedin_url) ? (
-              <a className="person-action linkedin-active" href={safeUrl(p.linkedin_url)} target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label="LinkedIn" onClick={(e) => e.stopPropagation()}>
+              <a className="person-action linkedin-active" href={safeUrl(p.linkedin_url)} target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label="LinkedIn">
                 <LinkedInIcon />
               </a>
             ) : (
-              <button className="person-action" disabled title="No LinkedIn on file" aria-label="No LinkedIn on file">
+              <button type="button" className="person-action" disabled title="No LinkedIn on file" aria-label="No LinkedIn on file">
                 <LinkedInIcon />
               </button>
             )}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import useModal from '../useModal.js'
 
 // LinkedIn-style image editor: large photo area with circular crop overlay
 // on the left, control panel (Crop / Filter / Adjust tabs) on the right.
@@ -21,6 +22,10 @@ function clampOffset(pos, zoomActual, natW, natH, side) {
 export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uploading, error }) {
   const viewportRef = useRef(null)
   const imgRef = useRef(null)
+  // Escape, focus trap and Back-button close. Escape is disabled while an
+  // upload is in flight, matching the backdrop, which already refuses to
+  // close mid-save.
+  const cropperRef = useModal({ onClose: onCancel, closeOnEscape: !uploading })
   const [imgUrl, setImgUrl] = useState(null)
   const [natural, setNatural] = useState(null) // { w, h }
   const [decodeFailed, setDecodeFailed] = useState(false)
@@ -211,12 +216,12 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uplo
   ].join(' ')
 
   return (
-    <div className="modal-backdrop" onClick={uploading ? undefined : onCancel}>
-      <div className="cropper-editor" onClick={e => e.stopPropagation()}>
+    <div className="modal-backdrop" onClick={uploading ? undefined : onCancel} role="dialog" aria-modal="true" aria-label="Edit image">
+      <div className="cropper-editor" ref={cropperRef} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="cropper-editor-header">
           <h2>Edit image</h2>
-          <button className="modal-close" onClick={onCancel} aria-label="Close" disabled={uploading}>×</button>
+          <button type="button" className="modal-close" onClick={onCancel} aria-label="Close" disabled={uploading}>×</button>
         </div>
 
         {/* Main content: photo area + side panel */}
@@ -263,15 +268,15 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uplo
           {/* Side panel */}
           <div className="cropper-editor-panel">
             <div className="cropper-panel-tabs">
-              <button
+              <button type="button"
                 className={`cropper-panel-tab ${activeTab === 'crop' ? 'active' : ''}`}
                 onClick={() => setActiveTab('crop')}
               >Crop</button>
-              <button
+              <button type="button"
                 className={`cropper-panel-tab ${activeTab === 'filter' ? 'active' : ''}`}
                 onClick={() => setActiveTab('filter')}
               >Filter</button>
-              <button
+              <button type="button"
                 className={`cropper-panel-tab ${activeTab === 'adjust' ? 'active' : ''}`}
                 onClick={() => setActiveTab('adjust')}
               >Adjust</button>
@@ -300,6 +305,7 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uplo
                     <span className="cropper-slider-label">Zoom</span>
                     <input
                       type="range" min="1" max="3" step="0.01"
+                      title={natural ? undefined : 'Waiting for the image to load'}
                       value={zoomMult}
                       onChange={e => {
                         const m = Number(e.target.value)
@@ -385,9 +391,15 @@ export default function PhotoCropper({ file, initialCrop, onCancel, onSave, uplo
           )}
           {error && <p className="form-error cropper-editor-error">{error}</p>}
           {decodeFailed ? (
-            <button className="btn ghost" onClick={onCancel}>Close</button>
+            <button type="button" className="btn ghost" onClick={onCancel}>Close</button>
           ) : (
-            <button className="btn primary" onClick={handleSave} disabled={!natural || uploading}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={handleSave}
+              disabled={!natural || uploading}
+              title={uploading ? 'Saving…' : (!natural ? 'Waiting for the image to load' : undefined)}
+            >
               {uploading ? 'Saving…' : 'Save changes'}
             </button>
           )}

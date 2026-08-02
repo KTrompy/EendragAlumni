@@ -643,7 +643,7 @@ export default function App() {
           </div>
 
           <div className="masthead-actions">
-            <button
+            <button type="button"
               className="header-icon-btn"
               onClick={() => setMessagesOpen((o) => !o)}
               aria-label="Messages"
@@ -660,7 +660,7 @@ export default function App() {
                 profile / Sign out) rather than navigating straight to the
                 profile page. */}
             <div className="profile-menu-wrap" ref={profileMenuRef}>
-              <button
+              <button type="button"
                 className="header-avatar-btn"
                 onClick={() => setProfileMenuOpen((o) => !o)}
                 aria-label="Account menu"
@@ -672,13 +672,13 @@ export default function App() {
 
               {profileMenuOpen && (
                 <div className="profile-menu-dropdown" role="menu">
-                  <button role="menuitem" onClick={() => { setProfileMenuOpen(false); goTo('/settings') }}>
+                  <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); goTo('/settings') }}>
                     <SettingsIcon /> Settings
                   </button>
-                  <button role="menuitem" onClick={() => { setProfileMenuOpen(false); goTo('/profile') }}>
+                  <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); goTo('/profile') }}>
                     <EditIcon /> Edit profile
                   </button>
-                  <button
+                  <button type="button"
                     role="menuitem"
                     className="profile-menu-signout"
                     onClick={() => { setProfileMenuOpen(false); attemptNavigate(() => { setNavOpen(false); setConfirmingSignOut(true) }) }}
@@ -689,7 +689,7 @@ export default function App() {
               )}
             </div>
 
-            <button
+            <button type="button"
               className="nav-toggle"
               onClick={() => setNavOpen((o) => !o)}
               aria-label={navOpen ? 'Close menu' : 'Open menu'}
@@ -723,7 +723,7 @@ export default function App() {
             {primaryNavTabs.map((t) => {
               const Icon = t.icon
               return (
-                <button
+                <button type="button"
                   key={t.id}
                   className={activeTabId === t.id ? 'sidebar-link active' : 'sidebar-link'}
                   onClick={() => goTo(t.path)}
@@ -733,7 +733,7 @@ export default function App() {
               )
             })}
 
-            <button
+            <button type="button"
               // Highlighted only when it's standing in for the active page —
               // i.e. collapsed, so Events/Mentoring/etc. isn't itself visible
               // in the list. Once expanded, the real link below carries the
@@ -753,7 +753,7 @@ export default function App() {
                 {secondaryNavTabs.map((t) => {
                   const Icon = t.icon
                   return (
-                    <button
+                    <button type="button"
                       key={t.id}
                       className={activeTabId === t.id ? 'sidebar-link active' : 'sidebar-link'}
                       onClick={() => goTo(t.path)}
@@ -766,7 +766,7 @@ export default function App() {
             )}
           </nav>
           <div className="sidebar-footer">
-            <button
+            <button type="button"
               className="sidebar-link signout"
               onClick={() => attemptNavigate(() => { setNavOpen(false); setConfirmingSignOut(true) })}
             >
@@ -837,7 +837,7 @@ export default function App() {
                 Initiated and built by Kyle Trompeter —{' '}
                 <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>
                 {' · '}
-                <button className="footer-link footer-link-btn" onClick={() => goTo('/donate')}>Support the house</button>.
+                <button type="button" className="footer-link footer-link-btn" onClick={() => goTo('/donate')}>Support the house</button>.
               </span>
             </div>
           </footer>
@@ -848,7 +848,7 @@ export default function App() {
         {MOBILE_TABS.map((t) => {
           const Icon = t.icon
           return (
-            <button
+            <button type="button"
               key={t.id}
               className={activeTabId === t.id ? 'mobile-tab active' : 'mobile-tab'}
               onClick={() => goTo(t.path)}
@@ -871,13 +871,13 @@ export default function App() {
           <aside className="mobile-nav-panel" aria-label="Main menu">
             <div className="mobile-nav-panel-header">
               <h3>Menu</h3>
-              <button className="modal-close" onClick={() => setNavOpen(false)} aria-label="Close menu">×</button>
+              <button type="button" className="modal-close" onClick={() => setNavOpen(false)} aria-label="Close menu">×</button>
             </div>
             <nav className="sidebar-nav">
               {navTabs.map((t) => {
                 const Icon = t.icon
                 return (
-                  <button
+                  <button type="button"
                     key={t.id}
                     className={activeTabId === t.id ? 'sidebar-link active' : 'sidebar-link'}
                     onClick={() => goTo(t.path)}
@@ -888,7 +888,7 @@ export default function App() {
               })}
             </nav>
             <div className="sidebar-footer">
-              <button
+              <button type="button"
                 className="sidebar-link signout"
                 onClick={() => attemptNavigate(() => { setNavOpen(false); setConfirmingSignOut(true) })}
               >
@@ -934,18 +934,18 @@ export default function App() {
           <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Unsaved changes</h2>
-              <button className="modal-close" onClick={keepEditing} aria-label="Keep editing">×</button>
+              <button type="button" className="modal-close" onClick={keepEditing} aria-label="Keep editing">×</button>
             </div>
             <div className="modal-body">
               <p>You've made changes to your profile that haven't been saved yet. Save them before you go?</p>
               {leaveError && <p className="form-error">{leaveError}</p>}
             </div>
             <div className="modal-footer">
-              <button className="btn ghost" onClick={keepEditing} disabled={leaveBusy}>Keep editing</button>
-              <button className="btn ghost" onClick={confirmDiscardAndLeave} disabled={leaveBusy} style={{ color: 'var(--error)' }}>
+              <button type="button" className="btn ghost" onClick={keepEditing} disabled={leaveBusy}>Keep editing</button>
+              <button type="button" className="btn ghost" onClick={confirmDiscardAndLeave} disabled={leaveBusy} style={{ color: 'var(--error)' }}>
                 Discard changes
               </button>
-              <button className="btn primary" onClick={confirmSaveAndLeave} disabled={leaveBusy}>
+              <button type="button" className="btn primary" onClick={confirmSaveAndLeave} disabled={leaveBusy}>
                 {leaveBusy ? 'Saving…' : 'Save & leave'}
               </button>
             </div>
@@ -975,8 +975,8 @@ function ProfileLoadError({ onRetry, onSignOut }) {
           it. If it keeps happening,{' '}
           <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">let us know</a>.
         </p>
-        <button className="btn primary wide" onClick={onRetry}>Try again</button>
-        <button className="link-btn" onClick={onSignOut}>Sign out</button>
+        <button type="button" className="btn primary wide" onClick={onRetry}>Try again</button>
+        <button type="button" className="link-btn" onClick={onSignOut}>Sign out</button>
       </div>
     </div>
   )
@@ -1004,7 +1004,7 @@ function AccountRemoved({ onSignOut }) {
             email an admin
           </a>.
         </p>
-        <button className="btn primary wide" onClick={onSignOut}>Sign out</button>
+        <button type="button" className="btn primary wide" onClick={onSignOut}>Sign out</button>
       </div>
     </div>
   )

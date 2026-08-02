@@ -711,7 +711,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
             )}
 
             {filteredThreads.map((t) => (
-              <button
+              <button type="button"
                 key={t.conversation_id}
                 className={t.conversation_id === activeId ? 'thread active' : 'thread'}
                 onClick={() => setActiveId(t.conversation_id)}
@@ -750,7 +750,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
           ) : (
             <>
               <div className="chat-header">
-                <button
+                <button type="button"
                   className="chat-back"
                   onClick={() => setActiveId(null)}
                   aria-label="Back to conversations"
@@ -779,7 +779,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
               <div className="chat-scroll" ref={chatScrollRef}>
                 {hasMoreOlder && (
                   <div className="load-more-row">
-                    <button className="btn ghost small" onClick={loadOlder} disabled={loadingOlder}>
+                    <button type="button" className="btn ghost small" onClick={loadOlder} disabled={loadingOlder}>
                       {loadingOlder ? 'Loading…' : 'Load older messages'}
                     </button>
                   </div>
@@ -823,15 +823,19 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                               value={editDraft}
                               onChange={(e) => setEditDraft(e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') saveEdit()
+                                // Same isComposing/shiftKey checks the main
+                                // composer below already uses — this edit
+                                // field was saving on the Enter that an IME
+                                // uses to confirm a candidate word.
+                                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) saveEdit()
                                 if (e.key === 'Escape') cancelEdit()
                               }}
                               maxLength={4000}
                               autoFocus
                             />
                             <div className="message-edit-actions">
-                              <button className="btn ghost small" onClick={cancelEdit}>Cancel</button>
-                              <button className="btn primary small" onClick={saveEdit} disabled={!editDraft.trim()}>Save</button>
+                              <button type="button" className="btn ghost small" onClick={cancelEdit}>Cancel</button>
+                              <button type="button" className="btn primary small" onClick={saveEdit} disabled={!editDraft.trim()} title={!editDraft.trim() ? "A message can't be empty" : undefined}>Save</button>
                             </div>
                           </div>
                         ) : (
@@ -861,7 +865,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
 
                               {!m.deleted_at && (
                                 <div className="message-hover-actions">
-                                  <button
+                                  <button type="button"
                                     className="message-hover-btn"
                                     onClick={() => setReactionPickerFor(reactionPickerFor === m.id ? null : m.id)}
                                     aria-label="React to this message"
@@ -870,12 +874,12 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                                     <ReactIcon />
                                   </button>
                                   {mine && (
-                                    <button className="message-hover-btn" onClick={() => startEdit(m)} aria-label="Edit message" title="Edit">
+                                    <button type="button" className="message-hover-btn" onClick={() => startEdit(m)} aria-label="Edit message" title="Edit">
                                       <PencilIcon />
                                     </button>
                                   )}
                                   {mine && (
-                                    <button className="message-hover-btn" onClick={() => setDeletingId(m.id)} aria-label="Delete message" title="Delete">
+                                    <button type="button" className="message-hover-btn" onClick={() => setDeletingId(m.id)} aria-label="Delete message" title="Delete">
                                       <TrashIcon />
                                     </button>
                                   )}
@@ -885,7 +889,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                               {reactionPickerFor === m.id && (
                                 <div className={mine ? 'reaction-picker mine' : 'reaction-picker'}>
                                   {QUICK_REACTIONS.map((emoji) => (
-                                    <button key={emoji} onClick={() => toggleReaction(m.id, emoji)}>{emoji}</button>
+                                    <button type="button" key={emoji} onClick={() => toggleReaction(m.id, emoji)}>{emoji}</button>
                                   ))}
                                 </div>
                               )}
@@ -894,7 +898,7 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                             {summarizeReactions(m.id).length > 0 && (
                               <div className={mine ? 'message-reactions mine' : 'message-reactions'}>
                                 {summarizeReactions(m.id).map(({ emoji, count, mine: iReacted }) => (
-                                  <button
+                                  <button type="button"
                                     key={emoji}
                                     className={iReacted ? 'reaction-pill mine' : 'reaction-pill'}
                                     onClick={() => toggleReaction(m.id, emoji)}
@@ -930,13 +934,18 @@ export default function Messages({ session, profile, initialTarget, initialDraft
                   }}
                   placeholder={profile?.approved ? 'Type a message…' : 'Messaging unlocks after approval'}
                   disabled={!profile?.approved}
+                  title={profile?.approved ? undefined : 'Messaging unlocks once your membership is approved'}
                   maxLength={4000}
                   rows={1}
                 />
-                <button
+                <button type="button"
                   className="chat-send"
                   onClick={send}
                   disabled={!profile?.approved || !draft.trim()}
+                  title={
+                    !profile?.approved ? 'Messaging unlocks once your membership is approved'
+                      : (!draft.trim() ? 'Type a message first' : 'Send message')
+                  }
                   aria-label="Send message"
                 >
                   <SendIcon />

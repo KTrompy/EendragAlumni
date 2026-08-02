@@ -91,7 +91,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
   if (!business) {
     return (
       <section className="panel">
-        <button className="profile-back-btn" onClick={() => navigate('/businesses')}>‹ Business Directory</button>
+        <button type="button" className="profile-back-btn" onClick={() => navigate('/businesses')}>‹ Business Directory</button>
         <EmptyState icon="business" message="Listing not found." subMessage="It may have been removed." actionLabel="Back to Business Directory" onAction={() => navigate('/businesses')} />
       </section>
     )
@@ -108,7 +108,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
   if (editing) {
     return (
       <section className="panel business-detail-page">
-        <button className="profile-back-btn" onClick={() => setEditing(false)}>‹ Cancel edit</button>
+        <button type="button" className="profile-back-btn" onClick={() => setEditing(false)}>‹ Cancel edit</button>
         <BusinessForm
           session={session}
           initial={business}
@@ -121,7 +121,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
 
   return (
     <section className="panel business-detail-page">
-      <button className="profile-back-btn" onClick={() => navigate('/businesses')}>‹ Business Directory</button>
+      <button type="button" className="profile-back-btn" onClick={() => navigate('/businesses')}>‹ Business Directory</button>
 
       <div className="business-detail-layout">
         <div className="business-detail-main">
@@ -145,7 +145,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
             )}
 
             <div className="business-detail-poster-row">
-              <button className="business-detail-poster" onClick={() => owner?.id && navigate(`/people/${owner.id}`)}>
+              <button type="button" className="business-detail-poster" onClick={() => owner?.id && navigate(`/people/${owner.id}`)}>
                 <Avatar url={owner?.avatar_url} name={owner?.full_name} size={44} />
                 <span className="business-detail-poster-text">
                   <strong>{owner?.full_name || 'a member'}</strong>
@@ -153,7 +153,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
                 </span>
               </button>
               {!isMine && (
-                <button className="business-direct-message-btn" onClick={messageOwner}>
+                <button type="button" className="business-direct-message-btn" onClick={messageOwner}>
                   <MessageIcon /> Direct message
                 </button>
               )}
@@ -171,11 +171,11 @@ export default function BusinessDetail({ session, profile, onMessage }) {
             {(isMine || isAdmin) && (
               <div className="business-detail-manage-row">
                 {isAdmin && (
-                  <button className="btn ghost small" onClick={togglePromote}>
+                  <button type="button" className="btn ghost small" onClick={togglePromote}>
                     {business.promoted ? 'Remove from Featured' : 'Feature this business'}
                   </button>
                 )}
-                {isMine && <button className="btn ghost small" onClick={() => setEditing(true)}>Edit</button>}
+                {isMine && <button type="button" className="btn ghost small" onClick={() => setEditing(true)}>Edit</button>}
                 {(isMine || isAdmin) && (
                   <DeleteButton
                     onConfirm={remove}
@@ -234,7 +234,7 @@ export default function BusinessDetail({ session, profile, onMessage }) {
           <div className="feed-widget business-promote-card">
             <p className="business-sidebar-label">List your business</p>
             <p>Do you have a business you would like to promote?</p>
-            <button className="btn primary wide" onClick={() => navigate('/businesses?post=1')}>Start posting</button>
+            <button type="button" className="btn primary wide" onClick={() => navigate('/businesses?post=1')}>Start posting</button>
           </div>
         </aside>
       </div>

@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import useModal from '../useModal.js'
 
 // A styled stand-in for window.confirm() — same modal chrome as ProfileModal,
 // so a destructive action gets an on-brand prompt instead of the browser's
@@ -21,23 +21,19 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }) {
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onCancel() }
-    document.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-    }
-  }, [onCancel])
+  // history: false — this dialog is a transient answer-and-go prompt, not a
+  // view worth a Back-button stop. It also frequently unmounts in the same
+  // tick as the modal underneath it (confirm a discard and both disappear),
+  // and two overlapping history pops in one frame is a good way to eat a
+  // Back press.
+  const modalRef = useModal({ onClose: onCancel, history: false })
 
   return createPortal(
     <div className="modal-backdrop" onClick={onCancel} role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
-      <div className="modal modal-confirm" onClick={(e) => e.stopPropagation()}>
+      <div className="modal modal-confirm" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 id="confirm-dialog-title">{title}</h2>
-          <button className="modal-close" onClick={onCancel} aria-label="Close">×</button>
+          <button type="button" className="modal-close" onClick={onCancel} aria-label="Close">×</button>
         </div>
         {message && (
           <div className="modal-body">
@@ -45,8 +41,11 @@ export default function ConfirmDialog({
           </div>
         )}
         <div className="modal-footer">
-          <button className="btn ghost" onClick={onCancel}>{cancelLabel}</button>
-          <button className="btn danger" onClick={onConfirm}>{confirmLabel}</button>
+          {/* data-autofocus on Cancel, not Confirm — an accidental Enter
+              right after the dialog appears should land on the safe half of
+              a destructive choice. */}
+          <button type="button" className="btn ghost" data-autofocus onClick={onCancel}>{cancelLabel}</button>
+          <button type="button" className="btn danger" onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>
     </div>,

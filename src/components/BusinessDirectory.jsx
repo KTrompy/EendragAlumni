@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -14,6 +14,8 @@ import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
 import ReportButton from './ReportButton.jsx'
 import { useToast } from './Toast.jsx'
+import useDiscardGuard from './useDiscardGuard.jsx'
+import useModal from '../useModal.js'
 import { useIsWide } from '../utils.js'
 import { COUNTRIES } from '../constants.js'
 import BusinessDescriptionEditor from './BusinessDescriptionEditor.jsx'
@@ -314,7 +316,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
             🏢 {businesses.length} {businesses.length === 1 ? 'business has' : 'businesses have'} been listed by fellow Eendragters. Run something of your own? List it — it takes about two minutes.
           </span>
           {canPost && (
-            <button className="btn primary small" onClick={() => setShowForm(true)}>List it</button>
+            <button type="button" className="btn primary small" onClick={() => setShowForm(true)}>List it</button>
           )}
         </div>
       )}
@@ -327,10 +329,10 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by name, category, location…"
           />
-          {q && <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>}
+          {q && <button type="button" className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>}
         </div>
         {!isWide && (
-          <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
+          <button type="button" className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
             <FilterIcon />
             Filters
             {activeFilterCount > 0 && <span className="filters-toggle-badge">{activeFilterCount}</span>}
@@ -368,7 +370,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                         isAdmin={isAdmin}
                         editingId={editingId}
                         setEditingId={setEditingId}
-                        onOpen={() => navigate(`/businesses/${b.id}`)}
                         onOpenOwner={() => b.profiles?.id && navigate(`/people/${b.profiles.id}`)}
                         onMessage={() => openMessageWithOwner(b)}
                         onDelete={() => removeBusiness(b.id)}
@@ -392,7 +393,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                         isAdmin={isAdmin}
                         editingId={editingId}
                         setEditingId={setEditingId}
-                        onOpen={() => navigate(`/businesses/${b.id}`)}
                         onOpenOwner={() => b.profiles?.id && navigate(`/people/${b.profiles.id}`)}
                         onMessage={() => openMessageWithOwner(b)}
                         onDelete={() => removeBusiness(b.id)}
@@ -412,7 +412,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
               matches. */}
           {!needle && activeFilterCount === 0 && hasMore && (
             <div className="load-more-row">
-              <button className="btn ghost" onClick={loadMoreBusinesses} disabled={loadingMore}>
+              <button type="button" className="btn ghost" onClick={loadMoreBusinesses} disabled={loadingMore}>
                 {loadingMore ? 'Loading…' : 'Load more businesses'}
               </button>
             </div>
@@ -424,7 +424,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
             <div className="filter-panel-header"><h3><FilterIcon /> Filter by</h3></div>
             {filterFields}
             <div className="filter-panel-footer static">
-              <button className="filter-clear" onClick={clearFilters}>Reset</button>
+              <button type="button" className="filter-clear" onClick={clearFilters}>Reset</button>
             </div>
 
             {pinned.length > 0 && (
@@ -443,7 +443,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                               <ul className="map-popup-list">
                                 {c.items.map((b) => (
                                   <li key={b.id}>
-                                    <button className="map-popup-person" onClick={() => navigate(`/businesses/${b.id}`)}>
+                                    <button type="button" className="map-popup-person" onClick={() => navigate(`/businesses/${b.id}`)}>
                                       <BusinessLogo url={b.logo_url} name={b.name} />
                                       <span className="map-popup-info">
                                         <strong>{b.name}{b.promoted && <span className="business-featured-tag">Featured</span>}</strong>
@@ -465,7 +465,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
 
             {canPost && (
               <div className="jobs-panel-post-cta">
-                <button className="btn primary wide" onClick={() => setShowForm(true)}>List your business</button>
+                <button type="button" className="btn primary wide" onClick={() => setShowForm(true)}>List your business</button>
               </div>
             )}
           </aside>
@@ -478,12 +478,12 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
           <aside className="filter-panel open" aria-label="Filter businesses">
             <div className="filter-panel-header">
               <h3>Filter · {activeFilterCount || 'none'}</h3>
-              <button className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
+              <button type="button" className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
             </div>
             {filterFields}
             <div className="filter-panel-footer">
-              <button className="filter-clear" onClick={clearFilters}>Clear all filters</button>
-              <button className="btn primary wide" onClick={() => setFilterOpen(false)}>
+              <button type="button" className="filter-clear" onClick={clearFilters}>Clear all filters</button>
+              <button type="button" className="btn primary wide" onClick={() => setFilterOpen(false)}>
                 Show {shown.length} {shown.length === 1 ? 'result' : 'results'}
               </button>
             </div>
@@ -496,7 +496,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
 }
 
 /* ---------- One business card (used in both Featured and All sections) ---------- */
-function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpen, onOpenOwner, onMessage, onDelete, onTogglePromote, onUpdated }) {
+function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpenOwner, onMessage, onDelete, onTogglePromote, onUpdated }) {
   const isMine = b.owner_id === session.user.id
 
   if (editingId === b.id) {
@@ -522,14 +522,12 @@ function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpen, on
           <StarIcon filled={b.promoted} />
         </button>
       )}
-      <div
-        className="job-card-main job-card-clickable business-card-main"
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
-        aria-label={`Open details for ${b.name}`}
-      >
+      {/* Stretched link rather than a clickable div — see the note on the
+          same pattern in Directory.jsx. */}
+      <Link className="stretched-link" to={`/businesses/${b.id}`}>
+        <span className="sr-only">{`Open details for ${b.name}`}</span>
+      </Link>
+      <div className="job-card-main business-card-main">
         {b.cover_image_url && (
           <div className="business-card-cover">
             <img src={b.cover_image_url} alt="" loading="lazy" />
@@ -546,8 +544,8 @@ function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpen, on
             <p className="job-meta">
               {[b.city, b.country].filter(Boolean).join(', ') || 'Location not set'}
             </p>
-            <div className="job-poster-row" onClick={(e) => e.stopPropagation()}>
-              <button className="job-poster" onClick={onOpenOwner}>
+            <div className="job-poster-row">
+              <button type="button" className="job-poster" onClick={onOpenOwner}>
                 <Avatar url={b.profiles?.avatar_url} name={b.profiles?.full_name} size={22} />
                 <span>Run by {b.profiles?.full_name || 'a member'} · {timeAgo(b.created_at)}</span>
               </button>
@@ -556,29 +554,27 @@ function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpen, on
             {excerpt && (
               <p className="business-desc-excerpt">
                 {excerpt}{' '}
-                <button
-                  type="button"
-                  className="business-read-more"
-                  onClick={(e) => { e.stopPropagation(); onOpen() }}
-                >
-                  Read more
-                </button>
+                {/* Now that the whole card is a link to the same place, this
+                    is a visual affordance rather than a second control —
+                    keeping it focusable would just give screen readers a
+                    duplicate "Read more" link next to the card's own. */}
+                <span className="business-read-more" aria-hidden="true">Read more</span>
               </p>
             )}
-          <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+          <div className="business-card-actions" style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {b.website && (
               <a className="btn primary small" href={/^https?:\/\//.test(b.website) ? b.website : `https://${b.website}`} target="_blank" rel="noopener noreferrer">
                 Visit website
               </a>
             )}
             {!isMine && (
-              <button className="btn ghost small" onClick={onMessage}>Message about this business</button>
+              <button type="button" className="btn ghost small" onClick={onMessage}>Message about this business</button>
             )}
             {!isMine && (
               <ReportButton session={session} entityType="business" entityId={b.id} className="btn ghost small" />
             )}
             {isMine && (
-              <button className="btn ghost small" onClick={() => setEditingId(b.id)}>Edit</button>
+              <button type="button" className="btn ghost small" onClick={() => setEditingId(b.id)}>Edit</button>
             )}
             {(isMine || isAdmin) && (
               <DeleteButton
@@ -680,10 +676,33 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
   }, [form, isEdit])
 
   function handleCancel() {
+    if (busy) return
     if (isEdit) { onCancel(); return }
     setIsClosing(true)
     setTimeout(onCancel, 200)
   }
+
+  // See the fuller note on the same pattern in Jobs.jsx: a backdrop click
+  // used to discard a part-written listing outright, with no warning and no
+  // undo, even though deleting a saved listing has always asked first.
+  const pristineRef = useRef(JSON.stringify(form))
+  const dirty = JSON.stringify(form) !== pristineRef.current || !!logoFile || !!coverFile
+
+  const { requestClose, discardDialog } = useDiscardGuard({
+    dirty: dirty && !busy,
+    onDiscard: handleCancel,
+    title: isEdit ? 'Discard your changes?' : 'Discard this listing?',
+    message: "Anything you've entered here will be lost.",
+    confirmLabel: 'Discard',
+  })
+
+  const panelRef = useModal({
+    enabled: !isEdit,
+    onClose: requestClose,
+    closeOnEscape: !busy,
+    // This form already locks body scroll itself, just above.
+    lockScroll: false,
+  })
 
   function pickLogo(e) {
     const f = e.target.files?.[0]
@@ -792,8 +811,20 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
   const coverPreview = coverFile ? URL.createObjectURL(coverFile) : coverUrl
 
   return (
-    <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
-      <div className={isEdit ? 'create-panel inline' : `create-panel business-form-panel ${isClosing ? 'closing' : ''}`}>
+    <div
+      className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`}
+      onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && requestClose()}
+      role={isEdit ? undefined : 'dialog'}
+      aria-modal={isEdit ? undefined : 'true'}
+      aria-label={isEdit ? undefined : 'List your business'}
+    >
+      {/* A real <form> so Enter submits — see the note in Jobs.jsx. */}
+      <form
+        className={isEdit ? 'create-panel inline' : `create-panel business-form-panel ${isClosing ? 'closing' : ''}`}
+        ref={panelRef}
+        onSubmit={(e) => { e.preventDefault(); if (!busy) submit() }}
+        noValidate
+      >
         <h3>{isEdit ? 'Edit business' : 'List your business'}</h3>
         <div className="create-panel-content">
           <p className="form-hint">Takes about two minutes — fellow Eendragters love supporting their own.</p>
@@ -913,12 +944,21 @@ export function BusinessForm({ session, onCancel, onCreated, initial = null }) {
           {error && <p className="form-error">{error}</p>}
         </div>
         <div className="btn-row">
-          <button className="btn ghost" onClick={handleCancel} disabled={isClosing}>Cancel</button>
-          <button className="btn primary" onClick={submit} disabled={busy}>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={requestClose}
+            disabled={isClosing || busy}
+            title={busy ? 'Wait for the save to finish' : undefined}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="btn primary" disabled={busy} title={busy ? 'Saving…' : undefined}>
             {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'List business')}
           </button>
         </div>
-      </div>
+      </form>
+      {discardDialog}
     </div>
   )
 }
@@ -941,7 +981,7 @@ function FilterSection({ title, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className={open ? 'filter-section open' : 'filter-section'}>
-      <button className="filter-section-header" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <button type="button" className="filter-section-header" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span>{title}</span>
         <span className="chev" aria-hidden="true">▸</span>
       </button>

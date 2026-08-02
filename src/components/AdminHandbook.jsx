@@ -30,7 +30,7 @@ function Section({ id, title, summary, children, openByDefault = false }) {
   const [open, setOpen] = useState(openByDefault)
   return (
     <section className={open ? 'hb-section open' : 'hb-section'} id={id}>
-      <button className="hb-section-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <button type="button" className="hb-section-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="hb-section-title">{title}</span>
         <span className="hb-section-summary">{summary}</span>
         <span className="hb-chevron" aria-hidden="true">{open ? '−' : '+'}</span>

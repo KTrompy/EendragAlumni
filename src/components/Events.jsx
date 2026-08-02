@@ -435,14 +435,14 @@ export default function Events({ session, profile, onMessage }) {
         </div>
         <div className="events-header-actions">
           <div className="view-switch" role="tablist" aria-label="Events view">
-            <button role="tab" aria-selected={viewMode === 'list'} className={viewMode === 'list' ? 'on' : ''} onClick={() => setViewMode('list')}>
+            <button type="button" role="tab" aria-selected={viewMode === 'list'} className={viewMode === 'list' ? 'on' : ''} onClick={() => setViewMode('list')}>
               <ListIcon /> List
             </button>
-            <button role="tab" aria-selected={viewMode === 'calendar'} className={viewMode === 'calendar' ? 'on' : ''} onClick={() => setViewMode('calendar')}>
+            <button type="button" role="tab" aria-selected={viewMode === 'calendar'} className={viewMode === 'calendar' ? 'on' : ''} onClick={() => setViewMode('calendar')}>
               <CalendarViewIcon /> Calendar
             </button>
           </div>
-          <button
+          <button type="button"
             className={savedOnly ? 'filters-toggle-btn on' : 'filters-toggle-btn'}
             onClick={() => setSavedOnly((s) => !s)}
             aria-pressed={savedOnly}
@@ -473,7 +473,7 @@ export default function Events({ session, profile, onMessage }) {
                 placeholder="Search events…"
               />
               {query && (
-                <button className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+                <button type="button" className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
               )}
             </div>
           )}
@@ -494,7 +494,7 @@ export default function Events({ session, profile, onMessage }) {
               <span>
                 Showing events on {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
               </span>
-              <button onClick={() => setSelectedDay(null)}>Clear</button>
+              <button type="button" onClick={() => setSelectedDay(null)}>Clear</button>
             </div>
           )}
 
@@ -550,12 +550,12 @@ export default function Events({ session, profile, onMessage }) {
               {viewMode === 'list' && !needle && !savedOnly && !selectedDay && (hasMoreUpcoming || hasMorePast) && (
                 <div className="load-more-row events-load-more-row">
                   {hasMoreUpcoming && (
-                    <button className="btn ghost" onClick={loadMoreUpcoming} disabled={loadingMoreUpcoming}>
+                    <button type="button" className="btn ghost" onClick={loadMoreUpcoming} disabled={loadingMoreUpcoming}>
                       {loadingMoreUpcoming ? 'Loading…' : 'Load more upcoming'}
                     </button>
                   )}
                   {hasMorePast && (
-                    <button className="btn ghost" onClick={loadMorePast} disabled={loadingMorePast}>
+                    <button type="button" className="btn ghost" onClick={loadMorePast} disabled={loadingMorePast}>
                       {loadingMorePast ? 'Loading…' : 'Load more past events'}
                     </button>
                   )}
@@ -567,7 +567,7 @@ export default function Events({ session, profile, onMessage }) {
 
         <aside className="events-sidebar">
           {canPost && (
-            <button className="btn primary wide events-post-btn" onClick={() => setShowForm(true)}>Post event</button>
+            <button type="button" className="btn primary wide events-post-btn" onClick={() => setShowForm(true)}>Post event</button>
           )}
 
           <div className="feed-widget events-calendar-widget">
@@ -601,7 +601,7 @@ export default function Events({ session, profile, onMessage }) {
               <ul className="events-map-list">
                 {mapMatches.map((e) => (
                   <li key={e.id}>
-                    <button className="events-map-list-item" onClick={() => focusEvent(e.id)}>
+                    <button type="button" className="events-map-list-item" onClick={() => focusEvent(e.id)}>
                       <CalendarDotIcon />
                       <span>
                         <strong>{e.title}</strong>
@@ -735,7 +735,7 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
         <p className="event-meta">Posted by {e.profiles?.full_name || 'a member'}</p>
 
         <div className="event-actions">
-          <button
+          <button type="button"
             className={iAmGoing ? 'post-action liked' : 'post-action'}
             onClick={onToggleRsvp}
             disabled={!canInteract}
@@ -743,20 +743,20 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
           >
             <CheckIcon /> {iAmGoing ? "You're going" : "I'm going"}
           </button>
-          <button className="post-action" onClick={() => setShowAttendees((s) => !s)}>
+          <button type="button" className="post-action" onClick={() => setShowAttendees((s) => !s)}>
             <PeopleIcon /> {rsvpCount} going
           </button>
-          <button className="post-action" onClick={() => setShowComments((s) => !s)}>
+          <button type="button" className="post-action" onClick={() => setShowComments((s) => !s)}>
             <CommentIcon /> {commentCount}
           </button>
-          <button className="post-action" onClick={copyLink} title="Copy a link to this event">
+          <button type="button" className="post-action" onClick={copyLink} title="Copy a link to this event">
             <LinkIcon /> {copied ? 'Copied!' : 'Share'}
           </button>
-          <button className="post-action" onClick={addToCalendar} title="Download an .ics file for Google/Apple/Outlook calendar">
+          <button type="button" className="post-action" onClick={addToCalendar} title="Download an .ics file for Google/Apple/Outlook calendar">
             <CalendarIcon /> Add to calendar
           </button>
           {isMine && (
-            <button className="post-action" onClick={() => setEditing(true)} title="Edit event">
+            <button type="button" className="post-action" onClick={() => setEditing(true)} title="Edit event">
               <EditIcon /> Edit
             </button>
           )}
@@ -844,7 +844,7 @@ function AttendeeList({ eventId, eventTitle, session, profile, iAmGoing, onMessa
                 <Avatar url={a.profiles?.avatar_url} name={a.profiles?.full_name} size={26} />
                 <span>{isMe ? 'You' : (a.profiles?.full_name || 'Alumnus')}</span>
                 {!isMe && onMessage && (
-                  <button
+                  <button type="button"
                     className="attendee-message"
                     onClick={() => onMessage(
                       { id: a.user_id, full_name: a.profiles?.full_name },
@@ -935,16 +935,25 @@ function EventComments({ eventId, session, profile }) {
           </li>
         ))}
       </ul>
+      {/* isComposing guard on Enter — see the note on the identical comment
+          box in Feed.jsx. */}
       <div className="comment-form">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) send() }}
           placeholder={canPost ? 'Write a comment…' : 'Commenting unlocks after approval'}
           disabled={!canPost}
+          title={canPost ? undefined : 'Commenting unlocks once your membership is approved'}
           maxLength={2000}
         />
-        <button className="btn primary small" onClick={send} disabled={!canPost || !draft.trim()}>
+        <button
+          type="button"
+          className="btn primary small"
+          onClick={send}
+          disabled={!canPost || !draft.trim()}
+          title={!canPost ? 'Commenting unlocks once your membership is approved' : (!draft.trim() ? 'Write something first' : undefined)}
+        >
           Reply
         </button>
       </div>
@@ -990,12 +999,12 @@ function MiniCalendar({ events, cursorMonth, setCursorMonth, selectedDay, setSel
   return (
     <div className="mini-calendar">
       <div className="mini-calendar-header">
-        <button className="mini-calendar-month-btn" onClick={jumpToToday} title="Jump to current month">
+        <button type="button" className="mini-calendar-month-btn" onClick={jumpToToday} title="Jump to current month">
           {MONTHS[month]} {year} <ChevronDownIcon />
         </button>
         <div className="mini-calendar-nav">
-          <button onClick={prevMonth} aria-label="Previous month">‹</button>
-          <button onClick={nextMonth} aria-label="Next month">›</button>
+          <button type="button" onClick={prevMonth} aria-label="Previous month">‹</button>
+          <button type="button" onClick={nextMonth} aria-label="Next month">›</button>
         </div>
       </div>
 
@@ -1010,7 +1019,7 @@ function MiniCalendar({ events, cursorMonth, setCursorMonth, selectedDay, setSel
           const isToday = sameDay(date, today)
           const isSelected = selectedDay && sameDay(date, selectedDay)
           return (
-            <button
+            <button type="button"
               key={i}
               className={[
                 'mini-calendar-cell',
@@ -1073,9 +1082,9 @@ function MonthCalendar({ events, cursorMonth, setCursorMonth, selectedDay, setSe
       <div className="month-calendar-header">
         <h3>{MONTHS[month]} {year}</h3>
         <div className="month-calendar-nav">
-          <button className="btn ghost small" onClick={jumpToToday}>Today</button>
-          <button onClick={prevMonth} aria-label="Previous month">‹</button>
-          <button onClick={nextMonth} aria-label="Next month">›</button>
+          <button type="button" className="btn ghost small" onClick={jumpToToday}>Today</button>
+          <button type="button" onClick={prevMonth} aria-label="Previous month">‹</button>
+          <button type="button" onClick={nextMonth} aria-label="Next month">›</button>
         </div>
       </div>
 

@@ -96,7 +96,7 @@ export default function JobApplications({ jobId, session }) {
         return (
           <div key={app.id} className="job-application-card">
             <div className="job-application-header">
-              <button className="job-poster" onClick={() => p?.id && navigate(`/people/${p.id}`)}>
+              <button type="button" className="job-poster" onClick={() => p?.id && navigate(`/people/${p.id}`)}>
                 <Avatar url={p?.avatar_url} name={p?.full_name} size={36} />
                 <span className="job-application-person">
                   <strong>{p?.full_name || 'Applicant'}</strong>
@@ -116,12 +116,12 @@ export default function JobApplications({ jobId, session }) {
 
             <div className="job-application-files">
               {app.cv_url && (
-                <button className="btn ghost small" onClick={() => downloadFile(app.cv_url, app.cv_name)}>
+                <button type="button" className="btn ghost small" onClick={() => downloadFile(app.cv_url, app.cv_name)}>
                   <PdfIcon /> {app.cv_name || 'CV'}
                 </button>
               )}
               {app.cover_letter_url && (
-                <button className="btn ghost small" onClick={() => downloadFile(app.cover_letter_url, app.cover_letter_name)}>
+                <button type="button" className="btn ghost small" onClick={() => downloadFile(app.cover_letter_url, app.cover_letter_name)}>
                   <PdfIcon /> {app.cover_letter_name || 'Cover letter'}
                 </button>
               )}

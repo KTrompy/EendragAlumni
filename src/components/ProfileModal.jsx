@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
+import useModal from '../useModal.js'
 import { normalizeExpertise, safeUrl } from '../utils.js'
 
 const dash = '—'
@@ -39,50 +40,12 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
   // respect that person's Settings → Privacy choices first, so we wait for
   // this to resolve rather than flashing the unfiltered values from `p`.
   const [contact, setContact] = useState(null)
-  const modalRef = useRef(null)
-
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key === 'Escape') { onClose(); return }
-      // Focus trap: Tab/Shift+Tab cycle through this modal's own focusable
-      // elements instead of escaping out to whatever's behind it (the
-      // sidebar, other cards, etc.) — without this, keyboard-only
-      // navigation could tab straight out of an open modal into the page
-      // underneath it.
-      if (e.key !== 'Tab') return
-      const root = modalRef.current
-      if (!root) return
-      const focusable = root.querySelectorAll(
-        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-      )
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault(); last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault(); first.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    // Move focus into the modal on open, and give it back to whatever
-    // triggered it on close, so keyboard/screen-reader users don't lose
-    // their place in the page.
-    const previouslyFocused = document.activeElement
-    const firstFocusable = modalRef.current?.querySelector(
-      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-    )
-    firstFocusable?.focus()
-
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-      previouslyFocused?.focus?.()
-    }
-  }, [onClose])
+  // The focus trap, focus restore, Escape handling, scroll lock and
+  // Back-button behaviour that used to be written out longhand here now
+  // live in useModal — this component was the only modal in the app that
+  // did the full job, so the rest of them were inheriting a worse version
+  // of the same interaction. See src/useModal.js.
+  const modalRef = useModal({ onClose })
 
   useEffect(() => {
     setContact(null)
@@ -123,7 +86,7 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
       <div className="modal profile-modal" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 id="modal-title">{p.full_name || 'Alumnus'}{isMe && <span className="person-name-you">You</span>}</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className="modal-body">
           <div className="profile-card-header">
@@ -233,9 +196,9 @@ export default function ProfileModal({ person: p, isMe, onClose, onMessage }) {
               <LinkedInIconSmall /> LinkedIn
             </a>
           )}
-          <button className="btn ghost" onClick={onClose}>Close</button>
+          <button type="button" className="btn ghost" onClick={onClose}>Close</button>
           {!isMe && (
-            <button className="btn primary" onClick={onMessage}>
+            <button type="button" className="btn primary" onClick={onMessage}>
               Send a message
             </button>
           )}

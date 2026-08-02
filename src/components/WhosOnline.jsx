@@ -14,10 +14,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
+import useModal from '../useModal.js'
 
 export function WhosOnline({ session, onOpenProfile }) {
   const [members, setMembers] = useState([])
   const [showAll, setShowAll] = useState(false)
+  // Escape, focus trap and Back-button close for the "Live members" list —
+  // it was closable by backdrop click only.
+  const liveMembersRef = useModal({ enabled: showAll, onClose: () => setShowAll(false) })
 
   useEffect(() => {
     let cancelled = false
@@ -82,12 +86,12 @@ export function WhosOnline({ session, onOpenProfile }) {
           <span className="whos-online-dot" /> Here now
         </span>
         {members.length > shown.length && (
-          <button className="whos-online-seeall" onClick={() => setShowAll(true)}>See all live members ›</button>
+          <button type="button" className="whos-online-seeall" onClick={() => setShowAll(true)}>See all live members ›</button>
         )}
       </div>
       <div className="whos-online-strip">
         {shown.map((m) => (
-          <button
+          <button type="button"
             key={m.id}
             className="whos-online-avatar"
             onClick={() => onOpenProfile?.(m.id)}
@@ -101,16 +105,16 @@ export function WhosOnline({ session, onOpenProfile }) {
 
       {showAll && (
         <div className="modal-backdrop" onClick={() => setShowAll(false)} role="dialog" aria-modal="true" aria-label="Live members">
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+          <div className="modal" ref={liveMembersRef} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="modal-header">
               <h2>Live members ({members.length})</h2>
-              <button className="modal-close" onClick={() => setShowAll(false)} aria-label="Close">×</button>
+              <button type="button" className="modal-close" onClick={() => setShowAll(false)} aria-label="Close">×</button>
             </div>
             <div className="modal-body">
               <ul className="whos-online-list">
                 {members.map((m) => (
                   <li key={m.id}>
-                    <button className="whos-online-list-row" onClick={() => { setShowAll(false); onOpenProfile?.(m.id) }}>
+                    <button type="button" className="whos-online-list-row" onClick={() => { setShowAll(false); onOpenProfile?.(m.id) }}>
                       <Avatar url={m.avatar_url} name={m.full_name} size={36} />
                       <span>{m.full_name}{m.id === session.user.id ? ' (you)' : ''}</span>
                     </button>

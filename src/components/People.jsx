@@ -34,10 +34,10 @@ export default function People({ session, onMessage, onGoToProfile, refetchTrigg
           </p>
         </div>
         <div className="view-switch" role="tablist" aria-label="Eendragters view">
-          <button role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>
+          <button type="button" role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>
             <ListViewIcon /> List
           </button>
-          <button role="tab" aria-selected={view === 'map'} className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>
+          <button type="button" role="tab" aria-selected={view === 'map'} className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>
             <MapViewIcon /> Map
           </button>
         </div>

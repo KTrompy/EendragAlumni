@@ -113,18 +113,12 @@ export default function JobDetail({ session, profile, onMessage }) {
     navigate('/jobs')
   }
 
+  // Copies a link, matching Events and the job board list — see the fuller
+  // note on shareJob() in Jobs.jsx.
   async function shareJob() {
-    const applyLine = job.apply_url || job.contact_email
-      ? `Apply: ${job.apply_url || job.contact_email}`
-      : null
-    const lines = [
-      `${job.title} @ ${job.company}`,
-      [job.employment_type, job.location].filter(Boolean).join(' · '),
-      applyLine,
-      '(via the Eendrag Alumni job board)',
-    ].filter(Boolean)
+    const url = `${window.location.origin}/jobs/${job.id}`
     try {
-      await navigator.clipboard.writeText(lines.join('\n'))
+      await navigator.clipboard.writeText(`${job.title} @ ${job.company}\n${url}`)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -137,7 +131,7 @@ export default function JobDetail({ session, profile, onMessage }) {
   if (!job) {
     return (
       <section className="panel">
-        <button className="profile-back-btn" onClick={() => navigate('/jobs')}>‹ Career &amp; Volunteer Opportunities</button>
+        <button type="button" className="profile-back-btn" onClick={() => navigate('/jobs')}>‹ Career &amp; Volunteer Opportunities</button>
         <EmptyState icon="jobs" message="Listing not found." subMessage="It may have been removed." actionLabel="Back to job board" onAction={() => navigate('/jobs')} />
       </section>
     )
@@ -164,7 +158,7 @@ export default function JobDetail({ session, profile, onMessage }) {
   if (editing) {
     return (
       <section className="panel job-detail-page">
-        <button className="profile-back-btn" onClick={() => setEditing(false)}>‹ Cancel edit</button>
+        <button type="button" className="profile-back-btn" onClick={() => setEditing(false)}>‹ Cancel edit</button>
         <JobForm
           session={session}
           initial={job}
@@ -177,7 +171,7 @@ export default function JobDetail({ session, profile, onMessage }) {
 
   return (
     <section className="panel job-detail-page">
-      <button className="profile-back-btn" onClick={() => navigate('/jobs')}>‹ Career &amp; Volunteer Opportunities</button>
+      <button type="button" className="profile-back-btn" onClick={() => navigate('/jobs')}>‹ Career &amp; Volunteer Opportunities</button>
 
       <div className="job-detail-layout">
         <div className="job-detail-main">
@@ -245,7 +239,7 @@ export default function JobDetail({ session, profile, onMessage }) {
             )}
 
             <div className="job-poster-row" onClick={(e) => e.stopPropagation()}>
-              <button className="job-poster" onClick={() => poster?.id && navigate(`/people/${poster.id}`)}>
+              <button type="button" className="job-poster" onClick={() => poster?.id && navigate(`/people/${poster.id}`)}>
                 <Avatar url={poster?.avatar_url} name={poster?.full_name} size={22} />
                 <span>Posted by {poster?.full_name || 'a member'} · {timeAgo(job.created_at)}</span>
               </button>
@@ -274,7 +268,7 @@ export default function JobDetail({ session, profile, onMessage }) {
                 {isSaved ? 'Saved' : 'Save'}
               </button>
               {!isMine && (
-                <button
+                <button type="button"
                   className="btn primary small"
                   onClick={() => !hasApplied && !closed && setShowApply(true)}
                   disabled={hasApplied || closed}
@@ -284,7 +278,7 @@ export default function JobDetail({ session, profile, onMessage }) {
                 </button>
               )}
               {!isMine && (
-                <button
+                <button type="button"
                   className="btn ghost small"
                   onClick={() => onMessage(
                     { id: job.posted_by, full_name: poster?.full_name },
@@ -294,11 +288,11 @@ export default function JobDetail({ session, profile, onMessage }) {
                   Message about this role
                 </button>
               )}
-              <button className="btn ghost small" onClick={shareJob}>
-                {copied ? 'Copied!' : 'Share'}
+              <button type="button" className="btn ghost small" onClick={shareJob}>
+                {copied ? 'Link copied!' : 'Share'}
               </button>
               {isMine && (
-                <button className="btn ghost small" onClick={() => setEditing(true)}>
+                <button type="button" className="btn ghost small" onClick={() => setEditing(true)}>
                   Edit
                 </button>
               )}
@@ -319,7 +313,7 @@ export default function JobDetail({ session, profile, onMessage }) {
         <aside className="job-detail-sidebar">
           <div className="feed-widget job-detail-poster-card">
             <p className="job-detail-poster-label">Added by</p>
-            <button className="business-detail-poster" onClick={() => poster?.id && navigate(`/people/${poster.id}`)}>
+            <button type="button" className="business-detail-poster" onClick={() => poster?.id && navigate(`/people/${poster.id}`)}>
               <Avatar url={poster?.avatar_url} name={poster?.full_name} size={44} />
               <span className="business-detail-poster-text">
                 <strong>{poster?.full_name || 'a member'}</strong>
@@ -329,7 +323,7 @@ export default function JobDetail({ session, profile, onMessage }) {
 
           <div className="feed-widget business-promote-card">
             <p>Know of an opening a fellow Eendragter should hear about?</p>
-            <button className="btn primary wide" onClick={() => navigate('/jobs')}>Post a role</button>
+            <button type="button" className="btn primary wide" onClick={() => navigate('/jobs')}>Post a role</button>
           </div>
         </aside>
       </div>

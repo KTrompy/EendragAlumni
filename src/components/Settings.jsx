@@ -47,7 +47,7 @@ export default function Settings({ session, profile, onSaved }) {
 
       <div className="settings-tabs" role="tablist">
         {SETTINGS_TABS.map((t) => (
-          <button
+          <button type="button"
             key={t.id}
             role="tab"
             aria-selected={tab === t.id}
@@ -360,7 +360,13 @@ function AccountTab({ session, profile, onSaved }) {
         <h3>Login options</h3>
 
         <label className="field settings-field"><span>Email</span>
-          <input type="email" value={session.user.email || ''} readOnly disabled />
+          <input
+            type="email"
+            value={session.user.email || ''}
+            readOnly
+            disabled
+            title="Your registered address can only be changed by an admin"
+          />
         </label>
         <p className="hint">
           This is the address you registered with and the one your membership
@@ -370,8 +376,16 @@ function AccountTab({ session, profile, onSaved }) {
 
         <div className="settings-divider" />
 
+        {/* A real <form> — Enter in any of these fields now submits, and
+            password managers get a proper current/new grouping to offer a
+            save against. This was three loose inputs and an onClick button,
+            which is exactly the shape browsers are worst at helping with. */}
         {hasPassword ? (
-          <>
+          <form
+            className="settings-password-form"
+            onSubmit={(e) => { e.preventDefault(); if (!busy) savePassword() }}
+            noValidate
+          >
             <label className="field settings-field"><span>Current password</span>
               <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
             </label>
@@ -393,12 +407,27 @@ function AccountTab({ session, profile, onSaved }) {
             />
             {/* passwordConfirm belongs in this check too — leaving it out let
                 the button look ready while the form still failed validation. */}
-            <button className="btn ghost" disabled={busy || !password || !passwordConfirm || !currentPassword} onClick={savePassword}>
+            <button
+              type="submit"
+              className="btn ghost"
+              disabled={busy || !password || !passwordConfirm || !currentPassword}
+              title={
+                busy ? 'Saving…'
+                  : !currentPassword ? 'Enter your current password first'
+                  : !password ? 'Choose a new password'
+                  : !passwordConfirm ? 'Confirm your new password'
+                  : undefined
+              }
+            >
               {busy ? 'Saving…' : 'Change password'}
             </button>
-          </>
+          </form>
         ) : (
-          <>
+          <form
+            className="settings-password-form"
+            onSubmit={(e) => { e.preventDefault(); if (!busy) setNewPassword() }}
+            noValidate
+          >
             <p className="hint">
               You signed up with Google and don&rsquo;t have a password yet.
               Set one to also be able to sign in with your email address.
@@ -413,10 +442,20 @@ function AccountTab({ session, profile, onSaved }) {
             {/* No captcha here: this path calls updateUser() on an existing
                 session and never re-authenticates, so there's no sign-in
                 request for GoTrue to challenge. */}
-            <button className="btn ghost" disabled={busy || !password || !passwordConfirm} onClick={setNewPassword}>
+            <button
+              type="submit"
+              className="btn ghost"
+              disabled={busy || !password || !passwordConfirm}
+              title={
+                busy ? 'Saving…'
+                  : !password ? 'Choose a password'
+                  : !passwordConfirm ? 'Confirm your password'
+                  : undefined
+              }
+            >
               {busy ? 'Saving…' : 'Set password'}
             </button>
-          </>
+          </form>
         )}
         {passwordMsg && <p className="hint" role="status">{passwordMsg}</p>}
 
@@ -427,7 +466,7 @@ function AccountTab({ session, profile, onSaved }) {
           old phone? This signs you out of every device, including this one.
           Changing your password on its own doesn&rsquo;t do that.
         </p>
-        <button className="btn ghost" onClick={signOutEverywhere} disabled={signingOutEverywhere}>
+        <button type="button" className="btn ghost" onClick={signOutEverywhere} disabled={signingOutEverywhere}>
           {signingOutEverywhere ? 'Signing out…' : 'Sign out of all devices'}
         </button>
       </div>
@@ -435,7 +474,7 @@ function AccountTab({ session, profile, onSaved }) {
       <div className="settings-section settings-danger">
         <h3>Delete account</h3>
         <p className="hint">Permanently deletes your account, profile, posts, photos, messages and mentoring data. This can't be undone.</p>
-        <button className="btn danger" onClick={() => setConfirmingDelete(true)}>Delete account</button>
+        <button type="button" className="btn danger" onClick={() => setConfirmingDelete(true)}>Delete account</button>
       </div>
 
       {confirmingDelete && (
@@ -513,13 +552,16 @@ function NotificationsTab({ session }) {
   )
 }
 
-function Toggle({ checked, onChange, disabled }) {
+// `disabled` here only ever means "a save for this toggle is in flight",
+// so say that rather than leaving a greyed-out switch with no explanation.
+function Toggle({ checked, onChange, disabled, disabledReason = 'Saving…' }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       disabled={disabled}
+      title={disabled ? disabledReason : undefined}
       className={checked ? 'settings-toggle on' : 'settings-toggle'}
       onClick={onChange}
     >

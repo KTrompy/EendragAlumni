@@ -32,7 +32,7 @@ export default class ErrorBoundary extends Component {
             <p className="panel-sub">
               This page hit an unexpected error. Reloading usually fixes it — your data is safe.
             </p>
-            <button className="btn primary" onClick={this.handleReload} style={{ marginTop: 16 }}>
+            <button type="button" className="btn primary" onClick={this.handleReload} style={{ marginTop: 16 }}>
               Reload
             </button>
           </div>

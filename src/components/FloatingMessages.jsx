@@ -104,7 +104,7 @@ export default function FloatingMessages({
   return (
     <>
       {!open && (
-        <button className="chat-fab" onClick={() => onOpenChange(true)} aria-label="Open messages">
+        <button type="button" className="chat-fab" onClick={() => onOpenChange(true)} aria-label="Open messages">
           <ChatIcon />
           {unread > 0 && (
             <span className="chat-fab-badge">{unread > 99 ? '99+' : unread}</span>
@@ -116,7 +116,7 @@ export default function FloatingMessages({
         <div className="chat-panel" role="dialog" aria-label="Messages" ref={panelRef}>
           <div className="chat-panel-header">
             <span>Messages</span>
-            <button className="modal-close" onClick={() => onOpenChange(false)} aria-label="Close messages">×</button>
+            <button type="button" className="modal-close" onClick={() => onOpenChange(false)} aria-label="Close messages">×</button>
           </div>
           <div className="chat-panel-body">
             <Messages

@@ -3,6 +3,8 @@ import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { geocodeCity } from '../geocode.js'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
+import useDiscardGuard from './useDiscardGuard.jsx'
+import useModal from '../useModal.js'
 import DateTimePicker from './DateTimePicker.jsx'
 import RichTextToolbarExtended from './RichTextToolbarExtended.jsx'
 import { isSafeHttpUrl } from '../utils.js'
@@ -53,6 +55,46 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
     setIsClosing(true)
     setTimeout(onCancel, 200)
   }
+
+  // See the fuller note on the same pattern in Jobs.jsx — a backdrop click
+  // used to bin a part-written event with no warning. Unlike the job and
+  // business forms this one has no localStorage draft to fall back on, so
+  // the prompt is the only thing standing between a stray click and losing
+  // the lot.
+  const pristineRef = useRef(JSON.stringify({
+    title: initial?.title || '',
+    location: initial?.location || '',
+    eventUrl: initial?.event_url || '',
+    description: initial?.description || '',
+    start: initial?.event_start_time || null,
+    end: initial?.event_end_time || null,
+    limit: initial?.max_registrations ?? null,
+  }))
+  const dirty = JSON.stringify({
+    title,
+    location,
+    eventUrl,
+    description,
+    start: startDate ? startDate.toISOString() : null,
+    end: endDate ? endDate.toISOString() : null,
+    limit: registrationLimit === 'unlimited' ? null : (parseInt(registrationCount) || null),
+  }) !== pristineRef.current || !!imageFile
+
+  const { requestClose, discardDialog } = useDiscardGuard({
+    dirty: dirty && !busy,
+    onDiscard: handleCancel,
+    title: isEdit ? 'Discard your changes?' : 'Discard this event?',
+    message: "Anything you've entered here will be lost.",
+    confirmLabel: 'Discard',
+  })
+
+  const panelRef = useModal({
+    enabled: !isEdit,
+    onClose: requestClose,
+    closeOnEscape: !busy,
+    // This form already locks body scroll itself, just above.
+    lockScroll: false,
+  })
 
   function handleLocationCoords(payload) {
     if (!payload) { setPickedCoords(null); setPickedLabel(''); return }
@@ -218,9 +260,18 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
   return (
     <div
       className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`}
-      onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}
+      onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && requestClose()}
+      role={isEdit ? undefined : 'dialog'}
+      aria-modal={isEdit ? undefined : 'true'}
+      aria-label={isEdit ? undefined : 'Add an event'}
     >
-      <div className={isEdit ? 'create-panel inline' : `create-panel ${isClosing ? 'closing' : ''}`}>
+      {/* A real <form> so Enter submits — see the note in Jobs.jsx. */}
+      <form
+        className={isEdit ? 'create-panel inline' : `create-panel ${isClosing ? 'closing' : ''}`}
+        ref={panelRef}
+        onSubmit={(e) => { e.preventDefault(); if (!busy) submit() }}
+        noValidate
+      >
         <h3>{isEdit ? 'Edit event' : 'Add an event'}</h3>
         <div className="create-panel-content event-form-enhanced">
           {/* Basic info */}
@@ -359,6 +410,7 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
                   onChange={(e) => setRegistrationCount(e.target.value)}
                   placeholder="50"
                   disabled={registrationLimit === 'unlimited'}
+                  title={registrationLimit === 'unlimited' ? 'Choose "Limit to" to set a number' : undefined}
                   className="registration-input"
                 />
                 <span>people</span>
@@ -370,15 +422,22 @@ export default function EventFormEnhanced({ session, onCancel, onCreated, initia
         </div>
 
         <div className="btn-row">
-          <button className="btn ghost" onClick={handleCancel} disabled={isClosing || busy}>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={requestClose}
+            disabled={isClosing || busy}
+            title={busy ? 'Wait for the save to finish' : undefined}
+          >
             Cancel
           </button>
-          <button className="btn primary" onClick={submit} disabled={busy}>
+          <button type="submit" className="btn primary" disabled={busy} title={busy ? 'Saving…' : undefined}>
             {busy ? 'Saving…' : isEdit ? 'Save changes' : 'Post event'}
           </button>
         </div>
 
-      </div>
+      </form>
+      {discardDialog}
     </div>
   )
 }

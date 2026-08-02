@@ -139,7 +139,7 @@ export default function AlumniMap({ session, people, loading, onGoToProfile, hid
                       <ul className="map-popup-list">
                         {c.people.map((p) => (
                           <li key={p.id}>
-                            <button className="map-popup-person" onClick={() => navigate(`/people/${p.id}`)}>
+                            <button type="button" className="map-popup-person" onClick={() => navigate(`/people/${p.id}`)}>
                               <span className="map-popup-photo-wrap">
                                 <PhotoBlock url={p.avatar_url} name={p.full_name} className="map-popup-photo" />
                                 <OnlineDot lastSeen={p.last_seen} />

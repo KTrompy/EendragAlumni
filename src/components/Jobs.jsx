@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import RichTextEditor from './RichTextEditor.jsx'
 import EmptyState from './EmptyState.jsx'
@@ -11,6 +11,8 @@ import ListAutocomplete from './ListAutocomplete.jsx'
 import MultiSelectAutocomplete from './MultiSelectAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import { useToast } from './Toast.jsx'
+import useDiscardGuard from './useDiscardGuard.jsx'
+import useModal from '../useModal.js'
 import { matchReason } from '../icebreaker.js'
 import { sanitizeHtml, trimTrailingHtml } from '../sanitizeHtml.js'
 import ApplyModal from './ApplyModal.jsx'
@@ -255,21 +257,18 @@ export default function Jobs({ session, profile, onMessage }) {
     showToast('Listing deleted')
   }
 
-  // Copies a plain-text summary so a listing can be forwarded on WhatsApp/
-  // email — sharing outside the app is still a way of engaging with it, and
-  // the person you send it to might apply even before they'd log in.
+  // Share copies a link to the listing, the way Share does everywhere else
+  // on the web — and the way the Share button two tabs over on Events
+  // already does. This used to copy a plain-text summary instead, which
+  // meant pasting it gave the recipient prose they couldn't click, with no
+  // way back to the listing even though /jobs/:id is a real route. A short
+  // headline stays above the URL so the paste still reads as something,
+  // but the link is what's actually being shared.
   async function shareJob(j) {
-    const applyLine = j.apply_url || j.contact_email
-      ? `Apply: ${j.apply_url || j.contact_email}`
-      : null
-    const lines = [
-      `${j.title} @ ${j.company}`,
-      [j.employment_type, j.location].filter(Boolean).join(' · '),
-      applyLine,
-      '(via the Eendrag Alumni job board)',
-    ].filter(Boolean)
+    const url = `${window.location.origin}/jobs/${j.id}`
+    const text = `${j.title} @ ${j.company}\n${url}`
     try {
-      await navigator.clipboard.writeText(lines.join('\n'))
+      await navigator.clipboard.writeText(text)
       setCopiedId(j.id)
       setTimeout(() => setCopiedId((id) => (id === j.id ? null : id)), 1500)
     } catch {
@@ -345,9 +344,9 @@ export default function Jobs({ session, profile, onMessage }) {
       <div className="filter-section filter-section-primary">
         <div className="filter-section-body">
           <div className="filter-radio-row">
-            <button className={filters.type === '' ? 'on' : ''} onClick={() => set('type', '')}>All</button>
+            <button type="button" className={filters.type === '' ? 'on' : ''} onClick={() => set('type', '')}>All</button>
             {TYPES.map((t) => (
-              <button key={t} className={filters.type === t ? 'on' : ''} onClick={() => set('type', t)}>{t}</button>
+              <button type="button" key={t} className={filters.type === t ? 'on' : ''} onClick={() => set('type', t)}>{t}</button>
             ))}
           </div>
         </div>
@@ -355,8 +354,8 @@ export default function Jobs({ session, profile, onMessage }) {
 
       <FilterSection title="Remote">
         <div className="filter-radio-row">
-          <button className={!filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', false)}>All</button>
-          <button className={filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', true)}>🌍 Remote-friendly</button>
+          <button type="button" className={!filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', false)}>All</button>
+          <button type="button" className={filters.remoteOnly ? 'on' : ''} onClick={() => set('remoteOnly', true)}>🌍 Remote-friendly</button>
         </div>
       </FilterSection>
 
@@ -434,7 +433,7 @@ export default function Jobs({ session, profile, onMessage }) {
             🎓 {jobs.length} {jobs.length === 1 ? 'role has' : 'roles have'} been shared by fellow Eendragters. Know of an opening? Add yours — it takes about two minutes.
           </span>
           {canPost && (
-            <button className="btn primary small" onClick={() => setShowForm(true)}>Post one</button>
+            <button type="button" className="btn primary small" onClick={() => setShowForm(true)}>Post one</button>
           )}
         </div>
       )}
@@ -450,10 +449,10 @@ export default function Jobs({ session, profile, onMessage }) {
             placeholder="Search by title, company, location…"
           />
           {q && (
-            <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>
+            <button type="button" className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>
           )}
         </div>
-        <button
+        <button type="button"
           className={savedOnly ? 'filters-toggle-btn on' : 'filters-toggle-btn'}
           onClick={() => setSavedOnly((s) => !s)}
           aria-pressed={savedOnly}
@@ -463,7 +462,7 @@ export default function Jobs({ session, profile, onMessage }) {
           {savedIds.size > 0 && <span className="filters-toggle-badge">{savedIds.size}</span>}
         </button>
         {!isWide && (
-          <button className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
+          <button type="button" className="filters-toggle-btn" onClick={() => setFilterOpen(true)}>
             <FilterIcon />
             Filters
             {activeFilterCount > 0 && <span className="filters-toggle-badge">{activeFilterCount}</span>}
@@ -525,21 +524,15 @@ export default function Jobs({ session, profile, onMessage }) {
               >
                 <BookmarkIcon filled={savedIds.has(j.id)} />
               </button>
-              {/* This is the actual click surface, not the <li> — keeps the
-                  save button (an absolutely-positioned sibling) outside of
-                  it entirely, and matches the pattern Directory's
-                  PersonCard uses for the same "click card to open a modal,
-                  except its own buttons" behaviour. */}
-              <div
-                className="job-card-main job-card-clickable"
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/jobs/${j.id}`)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/jobs/${j.id}`) }
-                }}
-                aria-label={`Open details for ${j.title} at ${j.company}`}
-              >
+              {/* A real link stretched over the card rather than a
+                  clickable div, so Cmd/middle-click opens the listing in a
+                  tab — see the note on the same pattern in Directory.jsx.
+                  Everything that's its own control (save, poster, apply,
+                  message, share, edit, delete) is lifted above it in CSS. */}
+              <Link className="stretched-link" to={`/jobs/${j.id}`}>
+                <span className="sr-only">{`Open details for ${j.title} at ${j.company}`}</span>
+              </Link>
+              <div className="job-card-main">
                 <JobLogo url={j.logo_url} company={j.company} />
                 <div className="job-card-content">
                   <h3 className="job-title">
@@ -553,8 +546,8 @@ export default function Jobs({ session, profile, onMessage }) {
                     <strong>{j.company}</strong>
                     {j.location && ` · ${j.location}`}
                   </p>
-                <div className="job-poster-row" onClick={(e) => e.stopPropagation()}>
-                  <button className="job-poster" onClick={() => goToProfile(j.profiles)}>
+                <div className="job-poster-row">
+                  <button type="button" className="job-poster" onClick={() => goToProfile(j.profiles)}>
                     <Avatar url={j.profiles?.avatar_url} name={j.profiles?.full_name} size={22} />
                     <span>Posted by {j.profiles?.full_name || 'a member'} · {timeAgo(j.created_at)}</span>
                   </button>
@@ -569,20 +562,23 @@ export default function Jobs({ session, profile, onMessage }) {
                   dangerouslySetInnerHTML={{ __html: trimTrailingHtml(sanitizeHtml(j.description)) }}
                 />
                 <div
+                  className="job-card-actions"
                   style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}
-                  onClick={(e) => e.stopPropagation()}
                 >
                   {!isMine && !closed && (
                     <button
+                      type="button"
                       className="btn primary small"
                       onClick={() => appliedIds.has(j.id) ? null : setApplyJob(j)}
                       disabled={appliedIds.has(j.id)}
+                      title={appliedIds.has(j.id) ? "You've already applied to this listing" : undefined}
                     >
                       {appliedIds.has(j.id) ? 'Applied' : 'Apply'}
                     </button>
                   )}
                   {!isMine && (
                     <button
+                      type="button"
                       className="btn ghost small"
                       onClick={() => onMessage(
                         { id: j.posted_by, full_name: j.profiles?.full_name },
@@ -592,14 +588,14 @@ export default function Jobs({ session, profile, onMessage }) {
                       Message about this role
                     </button>
                   )}
-                  <button className="btn ghost small" onClick={() => shareJob(j)}>
-                    {copiedId === j.id ? 'Copied!' : 'Share'}
+                  <button type="button" className="btn ghost small" onClick={() => shareJob(j)}>
+                    {copiedId === j.id ? 'Link copied!' : 'Share'}
                   </button>
                   {!isMine && (
                     <ReportButton session={session} entityType="job" entityId={j.id} className="btn ghost small" />
                   )}
                   {isMine && (
-                    <button className="btn ghost small" onClick={() => setEditingId(j.id)}>
+                    <button type="button" className="btn ghost small" onClick={() => setEditingId(j.id)}>
                       Edit
                     </button>
                   )}
@@ -626,7 +622,7 @@ export default function Jobs({ session, profile, onMessage }) {
           "load more" would surface additional matches. */}
       {!needle && activeFilterCount === 0 && hasMore && (
         <div className="load-more-row">
-          <button className="btn ghost" onClick={loadMore} disabled={loadingMore}>
+          <button type="button" className="btn ghost" onClick={loadMore} disabled={loadingMore}>
             {loadingMore ? 'Loading…' : 'Load more'}
           </button>
         </div>
@@ -640,7 +636,7 @@ export default function Jobs({ session, profile, onMessage }) {
         <p className="jobs-end-nudge">
           That's every open role right now.{' '}
           {canPost
-            ? <button className="link-btn" onClick={() => setShowForm(true)}>Post one</button>
+            ? <button type="button" className="link-btn" onClick={() => setShowForm(true)}>Post one</button>
             : 'Check back soon for more.'}
         </p>
       )}
@@ -651,11 +647,11 @@ export default function Jobs({ session, profile, onMessage }) {
           <div className="filter-panel-header"><h3><FilterIcon /> Filter by</h3></div>
           {filterFields}
           <div className="filter-panel-footer static">
-            <button className="filter-clear" onClick={clearFilters}>Reset</button>
+            <button type="button" className="filter-clear" onClick={clearFilters}>Reset</button>
           </div>
           {canPost && (
             <div className="jobs-panel-post-cta">
-              <button className="btn primary wide" onClick={() => setShowForm(true)}>Post a job</button>
+              <button type="button" className="btn primary wide" onClick={() => setShowForm(true)}>Post a job</button>
             </div>
           )}
         </aside>
@@ -668,12 +664,12 @@ export default function Jobs({ session, profile, onMessage }) {
           <aside className="filter-panel open" aria-label="Filter roles">
             <div className="filter-panel-header">
               <h3>Filter · {activeFilterCount || 'none'}</h3>
-              <button className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
+              <button type="button" className="modal-close" onClick={() => setFilterOpen(false)} aria-label="Close filters">×</button>
             </div>
             {filterFields}
             <div className="filter-panel-footer">
-              <button className="filter-clear" onClick={clearFilters}>Clear all filters</button>
-              <button className="btn primary wide" onClick={() => setFilterOpen(false)}>
+              <button type="button" className="filter-clear" onClick={clearFilters}>Clear all filters</button>
+              <button type="button" className="btn primary wide" onClick={() => setFilterOpen(false)}>
                 Show {shown.length} {shown.length === 1 ? 'result' : 'results'}
               </button>
             </div>
@@ -712,7 +708,7 @@ function FilterSection({ title, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className={open ? 'filter-section open' : 'filter-section'}>
-      <button
+      <button type="button"
         className="filter-section-header"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -889,6 +885,36 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
     setTimeout(onCancel, 200)
   }
 
+  // "Would closing now throw anything away?" — measured against the form as
+  // it was when this panel opened, so it works for an edit (has anything
+  // changed?) as well as a new listing (has anything been entered?). Files
+  // are counted separately: they're not part of `form` and, unlike the text
+  // fields, they aren't autosaved to localStorage either.
+  const pristineRef = useRef(JSON.stringify(form))
+  const dirty = JSON.stringify(form) !== pristineRef.current || !!logoFile || !!attachmentFile
+
+  // Clicking the backdrop used to bin a part-written listing outright. Now
+  // it asks first, and only when there's something to lose.
+  const { requestClose, discardDialog } = useDiscardGuard({
+    dirty: dirty && !busy,
+    onDiscard: handleCancel,
+    title: isEdit ? 'Discard your changes?' : 'Discard this listing?',
+    message: "Anything you've entered here will be lost.",
+    confirmLabel: 'Discard',
+  })
+
+  // Escape closes the panel — the app's small dialogs already honoured it,
+  // so the largest form in the app being the one that ignored it was the
+  // odd one out. Inline edits opt out: they're not an overlay, and there's
+  // no backdrop or scroll lock to undo.
+  const panelRef = useModal({
+    enabled: !isEdit,
+    onClose: requestClose,
+    closeOnEscape: !busy,
+    // This panel does its own (mobile-Safari-safe) scroll lock above.
+    lockScroll: false,
+  })
+
   function pickLogo(e) {
     const f = e.target.files?.[0]
     if (!f) return
@@ -1018,8 +1044,24 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
   const attachmentPreviewName = attachmentFile ? attachmentFile.name : attachmentName
 
   return (
-    <div className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`} onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && handleCancel()}>
-      <div className={isEdit ? 'create-panel inline' : `create-panel job-form-panel ${isClosing ? 'closing' : ''}`}>
+    <div
+      className={isEdit ? '' : `create-panel-backdrop ${isClosing ? 'closing' : ''}`}
+      onClick={isEdit ? undefined : (e) => e.target === e.currentTarget && requestClose()}
+      role={isEdit ? undefined : 'dialog'}
+      aria-modal={isEdit ? undefined : 'true'}
+      aria-label={isEdit ? undefined : 'Post a role'}
+    >
+      {/* A real <form>, so Enter in any text field submits the way it does
+          in every other form on the web, and the browser can group the
+          fields for autofill. Most of the app's inputs used to be bare
+          labels + an onClick button, which is why "I pressed Enter and
+          nothing happened" was the recurring complaint. */}
+      <form
+        className={isEdit ? 'create-panel inline' : `create-panel job-form-panel ${isClosing ? 'closing' : ''}`}
+        ref={panelRef}
+        onSubmit={(e) => { e.preventDefault(); if (!busy) submit() }}
+        noValidate
+      >
         <h3>{isEdit ? 'Edit role' : 'Post a role'}</h3>
         <div className="create-panel-content">
           <p className="form-hint">
@@ -1152,12 +1194,21 @@ export function JobForm({ session, onCancel, onCreated, initial = null }) {
           {error && <p className="form-error">{error}</p>}
         </div>
         <div className="btn-row">
-          <button className="btn ghost" onClick={handleCancel} disabled={isClosing || busy}>Cancel</button>
-          <button className="btn primary" onClick={submit} disabled={busy}>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={requestClose}
+            disabled={isClosing || busy}
+            title={busy ? 'Wait for the save to finish' : undefined}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="btn primary" disabled={busy} title={busy ? 'Saving…' : undefined}>
             {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'Post job')}
           </button>
         </div>
-      </div>
+      </form>
+      {discardDialog}
     </div>
   )
 }

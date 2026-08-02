@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
 // Imported from their own modules, not from Feed.jsx / BusinessDirectory.jsx.
@@ -10,6 +10,7 @@ import { Avatar } from './Directory.jsx'
 import { WhosOnline } from './WhosOnline.jsx'
 import { BusinessLogo } from './BusinessLogo.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
+import useModal from '../useModal.js'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
 
@@ -88,6 +89,9 @@ export default function Home({ session, profile, onMessage }) {
   const [community, setCommunity] = useState([])
   const [nearbyBusinesses, setNearbyBusinesses] = useState([])
   const [showBadges, setShowBadges] = useState(false)
+  // Escape, focus trap and Back-button close for the badges modal — it was
+  // closable by backdrop click only.
+  const badgesRef = useModal({ enabled: showBadges, onClose: () => setShowBadges(false) })
   const [loading, setLoading] = useState(true)
   // The widget batch below never looked at `error` on any of its results, so
   // a failed query (RLS hiccup, dropped connection) was indistinguishable
@@ -456,7 +460,7 @@ export default function Home({ session, profile, onMessage }) {
               {badges.length > 0 && (
                 <>
                   <span className="home-banner-sub-dot">·</span>
-                  <button className="home-banner-textlink" onClick={() => setShowBadges(true)}>
+                  <button type="button" className="home-banner-textlink" onClick={() => setShowBadges(true)}>
                     <ShieldIcon /> {earnedCount}/{badges.length} badges
                   </button>
                 </>
@@ -466,14 +470,14 @@ export default function Home({ session, profile, onMessage }) {
         </div>
         <div className="home-banner-cta">
           {pct < 100 ? (
-            <button
+            <button type="button"
               className="btn primary"
               onClick={() => navigate('/profile', { state: { highlightMissing: true, focusFirst: true } })}
             >
               <RefreshIcon /> Complete your profile
             </button>
           ) : (
-            <button className="btn primary" onClick={() => navigate('/feed', { state: { openComposer: true } })}>
+            <button type="button" className="btn primary" onClick={() => navigate('/feed', { state: { openComposer: true } })}>
               <ShareIcon /> Share something
             </button>
           )}
@@ -499,7 +503,7 @@ export default function Home({ session, profile, onMessage }) {
             <div className="feed-widget home-feed-widget">
               <div className="home-section-head">
                 <h3 className="feed-section-label">Recent feed posts</h3>
-                <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/feed')}>More posts</button>
+                <button type="button" className="feed-widget-viewall home-more-link" onClick={() => navigate('/feed')}>More posts</button>
               </div>
 
               {recentPosts.length === 0 ? (
@@ -510,14 +514,16 @@ export default function Home({ session, profile, onMessage }) {
                     const text = p.content && p.content !== '(no text)' ? truncate(plainText(p.content)) : ''
                     const thumb = p.image_urls?.[0] || null
                     return (
-                      <li
-                        key={p.id}
-                        className="home-post-preview"
-                        onClick={() => navigate(`/feed/${p.id}`)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/feed/${p.id}`) }}
-                      >
+                      <li key={p.id} className="home-post-preview">
+                        {/* Stretched link rather than a clickable <li> — see
+                            the note on the same pattern in Directory.jsx.
+                            This one also previously ignored Space, so it was
+                            only half-operable by keyboard. */}
+                        <Link className="stretched-link" to={`/feed/${p.id}`}>
+                          <span className="sr-only">
+                            {`Open post by ${p.profiles?.full_name || 'an alumnus'}`}
+                          </span>
+                        </Link>
                         <Avatar url={p.profiles?.avatar_url} name={p.profiles?.full_name} size={54} />
                         <div className="home-post-preview-body">
                           <div className="home-post-preview-header">
@@ -577,7 +583,10 @@ export default function Home({ session, profile, onMessage }) {
               ) : (
                 <div className="home-business-grid" ref={businessesScrollRef} onScroll={updateBusinessIndex}>
                   {nearbyBusinesses.map((b) => (
-                    <button key={b.id} className="home-business-card" onClick={() => navigate(`/businesses/${b.id}`)}>
+                    <div key={b.id} className="home-business-card">
+                      <Link className="stretched-link" to={`/businesses/${b.id}`}>
+                        <span className="sr-only">{`Open ${b.name}`}</span>
+                      </Link>
                       <div className="home-business-card-head">
                         <BusinessLogo url={b.logo_url} name={b.name} />
                         <strong>{b.name}</strong>
@@ -586,7 +595,7 @@ export default function Home({ session, profile, onMessage }) {
                       <p className="home-business-location">
                         <LocationDotIcon /> {[b.city, b.country].filter(Boolean).join(', ') || 'Location not set'}
                       </p>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -607,7 +616,7 @@ export default function Home({ session, profile, onMessage }) {
                 </div>
               )}
 
-              <button className="feed-widget-viewall home-more-link home-business-viewall" onClick={() => navigate('/businesses')}>More businesses</button>
+              <button type="button" className="feed-widget-viewall home-more-link home-business-viewall" onClick={() => navigate('/businesses')}>More businesses</button>
             </div>
           </div>
         </div>
@@ -617,7 +626,7 @@ export default function Home({ session, profile, onMessage }) {
             <div className="feed-widget home-community-widget">
               <div className="home-section-head" style={{ marginBottom: 4 }}>
                 <h3 className="feed-section-label" style={{ margin: 0 }}>My Community</h3>
-                <button className="feed-widget-viewall home-more-link" onClick={() => navigate('/directory')}>All members</button>
+                <button type="button" className="feed-widget-viewall home-more-link" onClick={() => navigate('/directory')}>All members</button>
               </div>
               <p className="home-community-sub">Strengthen Your Network</p>
               {community.length === 0 ? (
@@ -637,12 +646,21 @@ export default function Home({ session, profile, onMessage }) {
                       <div
                         key={m.id}
                         className="home-community-card"
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => handleCommunityCardClick(e, () => navigate(`/people/${m.id}`))}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) navigate(`/people/${m.id}`) }}
                         title={[m.occupation, m.company].filter(Boolean).join(' @ ')}
                       >
+                        {/* Stretched link, so these open in a tab like any
+                            other result card. handleCommunityCardClick still
+                            runs on it — it calls preventDefault() when the
+                            pointer was dragging the carousel, which suppresses
+                            an accidental navigation exactly as it used to
+                            suppress an accidental click. */}
+                        <Link
+                          className="stretched-link"
+                          to={`/people/${m.id}`}
+                          onClick={(e) => handleCommunityCardClick(e, () => {})}
+                        >
+                          <span className="sr-only">{`Open profile for ${m.full_name || 'alumnus'}`}</span>
+                        </Link>
                         <div className="home-community-card-identity">
                           <Avatar url={m.avatar_url} name={m.full_name} size={54} />
                           <span>{(m.full_name || 'Alumnus').split(' ')[0]}</span>
@@ -651,11 +669,9 @@ export default function Home({ session, profile, onMessage }) {
                           <p className="home-community-industry">{m.industry}</p>
                         )}
                         <button
+                          type="button"
                           className="home-community-message-btn"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleCommunityCardClick(e, () => onMessage?.(m, buildIcebreaker(profile, m)))
-                          }}
+                          onClick={(e) => handleCommunityCardClick(e, () => onMessage?.(m, buildIcebreaker(profile, m)))}
                         >
                           Message
                         </button>
@@ -693,7 +709,13 @@ export default function Home({ session, profile, onMessage }) {
 
           <div className="home-tabsection" id="home-section-events">
             {upcomingEvent && (
-              <div className="feed-widget home-event-widget" onClick={() => navigate('/events')} role="button" tabIndex={0}>
+              <div className="feed-widget home-event-widget">
+                {/* Was focusable but had no key handler at all, so keyboard
+                    users could land on it and never open it. A link fixes
+                    both that and the missing open-in-new-tab. */}
+                <Link className="stretched-link" to={`/events/${upcomingEvent.id}`}>
+                  <span className="sr-only">{`Open event: ${upcomingEvent.title}`}</span>
+                </Link>
                 <div className="home-event-date">
                   <span>{formatEventDate(upcomingEvent.event_date).month}</span>
                   <strong>{formatEventDate(upcomingEvent.event_date).day}</strong>
@@ -710,17 +732,17 @@ export default function Home({ session, profile, onMessage }) {
           <div className="feed-widget home-donate-card">
             <h3>Support the house</h3>
             <p>Every gift, big or small, helps keep the house standing for the Eendragters who come after us. Give to whichever cause resonates with you most.</p>
-            <button className="btn primary wide" onClick={() => navigate('/donate')}>Give now</button>
+            <button type="button" className="btn primary wide" onClick={() => navigate('/donate')}>Give now</button>
           </div>
         </aside>
       </div>
 
       {showBadges && (
         <div className="modal-backdrop" onClick={() => setShowBadges(false)} role="dialog" aria-modal="true" aria-labelledby="badges-modal-title">
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" ref={badgesRef} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 id="badges-modal-title">Your badges — {earnedCount}/{badges.length} achieved</h2>
-              <button className="modal-close" onClick={() => setShowBadges(false)} aria-label="Close">×</button>
+              <button type="button" className="modal-close" onClick={() => setShowBadges(false)} aria-label="Close">×</button>
             </div>
             <div className="modal-body">
               <ul className="badges-grid">

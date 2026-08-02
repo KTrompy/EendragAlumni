@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../supabaseClient'
 import { useToast } from './Toast.jsx'
+import useDiscardGuard from './useDiscardGuard.jsx'
+import useModal from '../useModal.js'
 import { PdfIcon, isJobClosed } from './Jobs.jsx'
 
 const MAX_COVER_LETTER = 300
@@ -33,16 +35,20 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
   const cvRef = useRef(null)
   const coverRef = useRef(null)
 
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
-    }
-  }, [onClose])
+  // An application in progress is worth protecting: a cover message plus
+  // two file pickers is real work, and this modal used to close on any
+  // backdrop click without asking.
+  const dirty = !!coverLetter.trim() || !!cvFile || !!coverFile
+
+  const { requestClose, discardDialog } = useDiscardGuard({
+    dirty: dirty && !busy,
+    onDiscard: onClose,
+    title: 'Discard this application?',
+    message: "Your cover message and any files you've attached will be lost.",
+    confirmLabel: 'Discard',
+  })
+
+  const modalRef = useModal({ onClose: requestClose, closeOnEscape: !busy })
 
   function pickFile(e, setter) {
     const f = e.target.files?.[0]
@@ -136,11 +142,20 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
   }
 
   return createPortal(
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="apply-modal-title">
-      <div className="modal modal-apply" onClick={(e) => e.stopPropagation()}>
+    <>
+    <div className="modal-backdrop" onClick={requestClose} role="dialog" aria-modal="true" aria-labelledby="apply-modal-title">
+      {/* A real <form> so Enter in the cover message submits — see the note
+          in Jobs.jsx. */}
+      <form
+        className="modal modal-apply"
+        ref={modalRef}
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={(e) => { e.preventDefault(); if (!busy) submit() }}
+        noValidate
+      >
         <div className="modal-header">
           <h2 id="apply-modal-title">Apply for {job.title}</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="modal-close" onClick={requestClose} aria-label="Close">×</button>
         </div>
 
         <div className="modal-body">
@@ -173,7 +188,7 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
               {cvFile && (
                 <span className="apply-modal-file-chip">
                   <PdfIcon /> {cvFile.name}
-                  <button className="apply-modal-file-remove" onClick={() => setCvFile(null)} aria-label="Remove CV">×</button>
+                  <button type="button" className="apply-modal-file-remove" onClick={() => setCvFile(null)} aria-label="Remove CV">×</button>
                 </span>
               )}
               <input ref={cvRef} type="file" accept={ACCEPTED_EXT} style={{ display: 'none' }} onChange={(e) => pickFile(e, setCvFile)} />
@@ -186,7 +201,7 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
               {coverFile && (
                 <span className="apply-modal-file-chip">
                   <PdfIcon /> {coverFile.name}
-                  <button className="apply-modal-file-remove" onClick={() => setCoverFile(null)} aria-label="Remove cover letter">×</button>
+                  <button type="button" className="apply-modal-file-remove" onClick={() => setCoverFile(null)} aria-label="Remove cover letter">×</button>
                 </span>
               )}
               <input ref={coverRef} type="file" accept={ACCEPTED_EXT} style={{ display: 'none' }} onChange={(e) => pickFile(e, setCoverFile)} />
@@ -197,13 +212,23 @@ export default function ApplyModal({ job, session, profile, onClose, onApplied }
         </div>
 
         <div className="modal-footer">
-          <button className="btn ghost" onClick={onClose} disabled={busy}>Cancel</button>
-          <button className="btn primary" onClick={submit} disabled={busy}>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={requestClose}
+            disabled={busy}
+            title={busy ? 'Wait for the application to finish sending' : undefined}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="btn primary" disabled={busy} title={busy ? 'Sending…' : undefined}>
             {busy ? 'Sending…' : 'Apply'}
           </button>
         </div>
-      </div>
-    </div>,
+      </form>
+    </div>
+    {discardDialog}
+    </>,
     document.body
   )
 }

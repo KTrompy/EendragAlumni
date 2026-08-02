@@ -182,10 +182,10 @@ export function DirectoryToolbar({ f }) {
             onChange={(e) => f.setQ(e.target.value)}
             placeholder="Search by name, company, city…"
           />
-          {f.q && <button className="search-clear" onClick={() => f.setQ('')} aria-label="Clear search">×</button>}
+          {f.q && <button type="button" className="search-clear" onClick={() => f.setQ('')} aria-label="Clear search">×</button>}
         </div>
         {!f.isWide && (
-          <button className="filters-toggle-btn" onClick={f.openFilterPanel}>
+          <button type="button" className="filters-toggle-btn" onClick={f.openFilterPanel}>
             <FilterIcon />
             Filters
             {f.activeFilterCount > 0 && <span className="filters-toggle-badge">{f.activeFilterCount}</span>}
@@ -195,7 +195,7 @@ export function DirectoryToolbar({ f }) {
 
       <div className="quick-tabs" role="tablist" aria-label="Quick filters">
         {QUICK_TABS.map((t) => (
-          <button
+          <button type="button"
             key={t.id}
             role="tab"
             aria-selected={f.quickTab === t.id}
@@ -250,7 +250,7 @@ export function DirectoryFilterPanel({ f }) {
           <div className="filter-radio-row decade-row">
             {f.decadeOptions.map((d) => {
               const active = Number(f.draftFilters.yearFrom) === d && Number(f.draftFilters.yearTo) === d + 9
-              return <button key={d} className={active ? 'on' : ''} onClick={() => f.toggleDecade(d)}>{decadeLabel(d)}</button>
+              return <button type="button" key={d} className={active ? 'on' : ''} onClick={() => f.toggleDecade(d)}>{decadeLabel(d)}</button>
             })}
           </div>
         )}
@@ -286,9 +286,9 @@ export function DirectoryFilterPanel({ f }) {
 
       <FilterSection title="Affiliation" defaultOpen={false}>
         <div className="filter-radio-row">
-          <button className={f.draftFilters.status === STATUS.ALL ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALL)}>All</button>
-          <button className={f.draftFilters.status === STATUS.CURRENT ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.CURRENT)}>In house</button>
-          <button className={f.draftFilters.status === STATUS.ALUMNI ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALUMNI)}>Alumni</button>
+          <button type="button" className={f.draftFilters.status === STATUS.ALL ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALL)}>All</button>
+          <button type="button" className={f.draftFilters.status === STATUS.CURRENT ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.CURRENT)}>In house</button>
+          <button type="button" className={f.draftFilters.status === STATUS.ALUMNI ? 'on' : ''} onClick={() => f.setDraft('status', STATUS.ALUMNI)}>Alumni</button>
         </div>
       </FilterSection>
     </>
@@ -300,7 +300,7 @@ export function DirectoryFilterPanel({ f }) {
         <div className="filter-panel-header"><h3><FilterIcon /> Filter by</h3></div>
         {fields}
         <div className="filter-panel-footer static">
-          <button className="filter-clear" onClick={f.clearAllFilters}>Reset</button>
+          <button type="button" className="filter-clear" onClick={f.clearAllFilters}>Reset</button>
         </div>
       </aside>
     )
@@ -313,12 +313,12 @@ export function DirectoryFilterPanel({ f }) {
       <aside className="filter-panel open" aria-label="Filter alumni">
         <div className="filter-panel-header">
           <h3>Filter · {f.draftActiveFilterCount || 'none'}</h3>
-          <button className="modal-close" onClick={() => f.setFilterOpen(false)} aria-label="Close filters">×</button>
+          <button type="button" className="modal-close" onClick={() => f.setFilterOpen(false)} aria-label="Close filters">×</button>
         </div>
         {fields}
         <div className="filter-panel-footer">
-          <button className="filter-clear" onClick={f.clearDraftFilters}>Clear all filters</button>
-          <button className="btn primary wide" onClick={f.applyDraftFilters}>
+          <button type="button" className="filter-clear" onClick={f.clearDraftFilters}>Clear all filters</button>
+          <button type="button" className="btn primary wide" onClick={f.applyDraftFilters}>
             Show {f.previewCount} {f.previewCount === 1 ? 'result' : 'results'}
           </button>
         </div>
@@ -331,7 +331,7 @@ function FilterSection({ title, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className={open ? 'filter-section open' : 'filter-section'}>
-      <button className="filter-section-header" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <button type="button" className="filter-section-header" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span>{title}</span>
         <span className="chev" aria-hidden="true">▸</span>
       </button>
