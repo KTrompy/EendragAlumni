@@ -111,7 +111,10 @@ export default function App() {
   // nothing there" used to be indistinguishable — both were just
   // `profile === null`, and the render gates further down read that as
   // "skip the checks", dropping people into the full app. See the gates.
-  const [profileStatus, setProfileStatus] = useState('loading') // 'loading' | 'ready' | 'error'
+  // 'deleted' is its own state rather than a flavour of 'error': the account
+  // is gone, so "Try again" is not an option and saying "your account is fine"
+  // is a lie. See the profile-load effect and AccountRemoved below.
+  const [profileStatus, setProfileStatus] = useState('loading') // 'loading' | 'ready' | 'error' | 'deleted'
   // Bumped by the error screen's "Try again" to re-run the fetch effect.
   const [profileReloadKey, setProfileReloadKey] = useState(0)
 
@@ -349,17 +352,40 @@ export default function App() {
   // no explanation. Read it once, show it, and scrub it from the URL so a
   // refresh doesn't resurrect the message.
   const [authRedirectError, setAuthRedirectError] = useState(null)
+  // Which view <Auth> should open on. Only set for an expired reset link, where
+  // landing on the sign-in form would be actively unhelpful.
+  const [authStartMode, setAuthStartMode] = useState(null)
   useEffect(() => {
     const query = new URLSearchParams(window.location.search)
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
     const code = query.get('error') || hash.get('error')
     if (!code) return
     const description = query.get('error_description') || hash.get('error_description')
+    // error_code matters as much as error here, and used to be ignored.
+    //
+    // An expired or already-used password-reset link comes back as
+    // `error=access_denied&error_code=otp_expired`, which is the SAME `error`
+    // value Google sends when someone dismisses the consent screen. Reading
+    // only `error` meant every dead reset link was reported as "that sign-in
+    // was cancelled" — which implies the person cancelled something they
+    // didn't, and points them at the password they're trying to reset.
+    //
+    // It's also the most common failure in the whole reset flow: links expire
+    // after an hour, and corporate email scanners routinely follow (and so
+    // burn) single-use links before the human ever clicks.
+    const errorCode = query.get('error_code') || hash.get('error_code')
+    const isExpiredLink = errorCode === 'otp_expired' ||
+      /expired|invalid/i.test(description || '')
     setAuthRedirectError(
-      code === 'access_denied'
-        ? 'That sign-in was cancelled before it finished. You can try again, or use your email and password.'
-        : (description ? description.replace(/\+/g, ' ') : "That sign-in didn't complete. Please try again.")
+      isExpiredLink
+        ? 'That link has expired or has already been used. Request a new password-reset email below and use the newest link — they only work once.'
+        : code === 'access_denied'
+          ? 'That sign-in was cancelled before it finished. You can try again, or use your email and password.'
+          : (description ? description.replace(/\+/g, ' ') : "That sign-in didn't complete. Please try again.")
     )
+    // Drops them straight onto the "Forgot password?" form with the message
+    // above already showing, rather than onto a sign-in form they can't use.
+    if (isExpiredLink) setAuthStartMode('forgot')
     for (const key of ['error', 'error_code', 'error_description']) query.delete(key)
     const search = query.toString()
     window.history.replaceState(
@@ -398,11 +424,18 @@ export default function App() {
     async function load(isRetry = false) {
       await supabase.auth.getSession()
       if (cancelled) return
+      // maybeSingle, not single. `.single()` turns "no rows" into a PostgREST
+      // error (PGRST116), which made a genuinely missing profile row
+      // indistinguishable from a network failure — so an account an admin had
+      // just deleted showed the reassuring "Your account is fine, we just
+      // couldn't reach it" screen and an infinite Try-again loop. With
+      // maybeSingle, missing is `data === null` with no error, and the two
+      // cases can be told apart and handled differently below.
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', sessionUserId)
-        .single()
+        .maybeSingle()
       if (cancelled) return
       if (error && !isRetry) {
         await new Promise((r) => setTimeout(r, 600))
@@ -420,12 +453,38 @@ export default function App() {
         await supabase.auth.signOut()
         return
       }
-      // Still failing, or the row genuinely isn't there (handle_new_user
-      // can now warn-and-continue rather than take the whole signup down
-      // with it, so a session with no profile row is a real possibility).
-      // Flagging it as an error rather than leaving `profile` null is what
-      // keeps the approval gates below from being skipped entirely.
-      if (error || !data) {
+      // No error, but no row either. Two very different causes, and they need
+      // different answers:
+      //
+      //  (a) The account was deleted by an admin while this person was signed
+      //      in. Their session is still valid, so nothing else notices.
+      //  (b) handle_new_user warned instead of inserting (it swallows its own
+      //      errors by design, so a signup can complete without a profile row)
+      //      and the account has never had one.
+      //
+      // (b) is recoverable and (a) isn't, so try the recovery first:
+      // ensure_profile() (schema-update-53) creates the row if and only if
+      // it's missing, with approved/is_admin left at their defaults — so a
+      // self-healed account still goes through FinishSignup and admin approval
+      // like everyone else. If it comes back with a row, this was (b) and
+      // they're now unstuck. If it doesn't, treat it as (a).
+      if (!error && !data) {
+        const { data: healed, error: healErr } = await supabase.rpc('ensure_profile')
+        if (cancelled) return
+        if (!healErr && healed) {
+          setProfile(healed)
+          setProfileStatus('ready')
+          return
+        }
+        setProfile(null)
+        setProfileStatus('deleted')
+        return
+      }
+      // Still failing after the retry, for some reason that isn't auth and
+      // isn't a missing row. Flagging it as an error rather than leaving
+      // `profile` null is what keeps the approval gates below from being
+      // skipped entirely.
+      if (error) {
         setProfile(null)
         setProfileStatus('error')
         return
@@ -514,7 +573,7 @@ export default function App() {
       />
     )
   }
-  if (!session) return <Auth initialError={authRedirectError} />
+  if (!session) return <Auth initialError={authRedirectError} initialMode={authStartMode} />
 
   // Everything below this point assumes a loaded profile. These three
   // checks used to read `if (profile && …)`, which meant a null profile —
@@ -522,6 +581,12 @@ export default function App() {
   // the row is missing — sailed past *both* approval gates and rendered the
   // entire app. Now an unresolved profile is its own state and stops here.
   if (profileStatus === 'loading') return <div className="center-page">Loading…</div>
+  // Account removed while they were signed in. PendingVerification has always
+  // handled this properly on its own screen; this is the same treatment for
+  // everyone else.
+  if (profileStatus === 'deleted') {
+    return <AccountRemoved onSignOut={() => supabase.auth.signOut()} />
+  }
   if (profileStatus === 'error' || !profile) {
     return (
       <ProfileLoadError
@@ -912,6 +977,34 @@ function ProfileLoadError({ onRetry, onSignOut }) {
         </p>
         <button className="btn primary wide" onClick={onRetry}>Try again</button>
         <button className="link-btn" onClick={onSignOut}>Sign out</button>
+      </div>
+    </div>
+  )
+}
+
+// Shown when the session is valid but the profile row is definitively gone —
+// i.e. an admin deleted the account while this person was signed in, and
+// ensure_profile() didn't recreate it.
+//
+// Deliberately not the ProfileLoadError screen. That one says "Your account is
+// fine — we just couldn't reach it this time" and offers Try again, which for
+// a deleted account is both untrue and an infinite loop. Saying plainly what
+// happened, and giving them a way to query it, is the difference between "the
+// site is broken" and "something happened to my account".
+function AccountRemoved({ onSignOut }) {
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <img src="/eendrag-logo.png" alt="Eendrag logo" className="auth-logo" />
+        <h1 className="auth-title">This account is no longer registered</h1>
+        <p className="auth-verify-note">
+          It looks like it was removed by an administrator. If you think that&rsquo;s
+          a mistake, get in touch and we&rsquo;ll sort it out &mdash;{' '}
+          <a className="footer-link" href="mailto:kyletrompeter0@gmail.com?subject=Eendrag%20Alumni%20%E2%80%94%20my%20account%20was%20removed">
+            email an admin
+          </a>.
+        </p>
+        <button className="btn primary wide" onClick={onSignOut}>Sign out</button>
       </div>
     </div>
   )

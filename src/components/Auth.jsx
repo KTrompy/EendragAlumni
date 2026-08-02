@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import ClearableInput from './ClearableInput.jsx'
+import PasswordInput from './PasswordInput.jsx'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import { PASSWORD_MIN, passwordProblem, PasswordStrengthMeter } from '../passwordRules.jsx'
 import { authRedirectTo } from '../authRedirect.js'
+import { friendlyAuthError } from '../authErrors.js'
 import { MAX_RESIDENCE_YEARS } from '../constants.js'
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
@@ -69,8 +71,14 @@ function ProviderIcon() {
 // `initialError` carries a message App.jsx pulled off the OAuth redirect —
 // most often a cancelled Google consent screen, which otherwise dumped
 // people back here with no explanation at all.
-export default function Auth({ initialError = null }) {
-  const [mode, setMode] = useState('signin') // 'signin' | 'signup' | 'forgot'
+// `initialMode` lets App.jsx open a specific view — currently only used to
+// land someone who clicked an expired password-reset link straight on the
+// "Forgot password?" form, since the sign-in form is no use to them.
+export default function Auth({ initialError = null, initialMode = null }) {
+  const [mode, setMode] = useState(initialMode || 'signin') // 'signin' | 'signup' | 'forgot'
+  // Same reason the initialError effect below exists: App.jsx resolves this in
+  // an effect, which can land after this component has already mounted.
+  useEffect(() => { if (initialMode) setMode(initialMode) }, [initialMode])
   const [signupStep, setSignupStep] = useState(1) // 1 details, 2 years, 3 consent
 
   // Sign-in fields
@@ -100,7 +108,16 @@ export default function Auth({ initialError = null }) {
   const [country, setCountry] = useState('South Africa')
   const [newsOptIn, setNewsOptIn] = useState(null) // null until they choose
   const [dataConsent, setDataConsent] = useState(false)
-  const [signupDone, setSignupDone] = useState(false)
+  // 'confirm'  — account created, Supabase has emailed a confirmation link and
+  //              they must click it before they can sign in ("Confirm email" is
+  //              on in the dashboard).
+  // 'pending'  — account created and already signed in; nothing to click. The
+  //              auth listener in App.jsx normally swaps this screen out for
+  //              PendingVerification before it's even seen.
+  const [signupDone, setSignupDone] = useState(null) // null | 'confirm' | 'pending'
+  // Resend state for the confirmation email, used only on the 'confirm' screen.
+  const [resendBusy, setResendBusy] = useState(false)
+  const [resendMsg, setResendMsg] = useState(null)
   // Set when signUp succeeded but the follow-up sign-in didn't: the account
   // exists, so the only useful next step is signing in, not signing up
   // again. Drives the "Go to sign in" button under the error.
@@ -202,6 +219,10 @@ export default function Auth({ initialError = null }) {
   // so they only have to type the password.
   function goToSignIn() {
     setEmail(signupEmail.trim())
+    // Carry the password across too. They chose it thirty seconds ago and it's
+    // still in state — making them retype it (and risk a typo) to recover from
+    // a failure that wasn't theirs is a pointless last hurdle.
+    if (signupPassword) setPassword(signupPassword)
     switchMode('signin')
     setNotice('Your account is ready — sign in with the password you just chose.')
   }
@@ -247,12 +268,39 @@ export default function Auth({ initialError = null }) {
         if (error) throw error
       }
     } catch (e2) {
-      setError(e2.message)
+      // friendlyAuthError rewrites the handful of GoTrue strings members
+      // actually hit ("Invalid login credentials", the rate-limit countdown,
+      // "Email not confirmed") and passes anything unrecognised through
+      // untouched, so a novel error is never swallowed.
+      setError(friendlyAuthError(e2))
     } finally {
       setBusy(false)
       // Turnstile tokens are single-use — reset after every attempt.
       resetCaptcha()
     }
+  }
+
+  // Re-sends the confirmation link, for the 'confirm' screen below. Only
+  // reachable when "Confirm email" is on in the dashboard — without a resend
+  // path, anyone whose confirmation email was eaten by a spam filter had no
+  // way forward at all, because signing up again just fails.
+  async function resendConfirmation() {
+    setResendBusy(true)
+    setResendMsg(null)
+    const { error: err } = await supabase.auth.resend({
+      type: 'signup',
+      email: signupEmail.trim(),
+      options: { emailRedirectTo: authRedirectTo() },
+    })
+    setResendBusy(false)
+    setResendMsg(
+      err
+        // The rate-limit message ("you can only request this after N seconds")
+        // is the expected outcome of an impatient double-click, so it needs to
+        // read as information rather than as a failure.
+        ? { type: 'error', text: friendlyAuthError(err) }
+        : { type: 'ok', text: 'Sent — check your inbox again in a minute or two.' }
+    )
   }
 
   /* ---------- Signup wizard ---------- */
@@ -347,7 +395,48 @@ export default function Auth({ initialError = null }) {
       })
       if (error) throw error
 
+      // Duplicate signup, the quiet way.
+      //
+      // With "Confirm email" OFF, signUp on an existing address errors with
+      // "User already registered" and the catch below handles it. With it ON,
+      // Supabase deliberately returns a *fake success* instead — an obfuscated
+      // user with an empty `identities` array — so an attacker can't use the
+      // signup form to test whether an address is registered.
+      //
+      // Nothing checked for that, so a real member re-running signup got
+      // "Your account was created, but we couldn't sign you in just now",
+      // which is both wrong and alarming. The wording below is deliberately
+      // symmetrical with the genuine case: it doesn't confirm or deny that the
+      // address exists, so the anti-enumeration property is preserved.
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setAccountExists(true)
+        setError(
+          'If that email address is already registered, we’ve emailed you about it — ' +
+          'otherwise check your inbox for a confirmation link. You can also sign in below, ' +
+          'or reset your password if you’ve forgotten it.'
+        )
+        resetCaptcha()
+        return
+      }
+
       let session = data?.session
+      if (!session && data?.user && !data.user.email_confirmed_at) {
+        // Supabase withholds a session at signup for exactly one reason: the
+        // address has to be confirmed first. That's readable straight off the
+        // signUp response, so ask it here rather than probing with a second
+        // sign-in call and reading the failure.
+        //
+        // The probe below used to be the only way this was detected, and it
+        // had a hole: it sends no captchaToken (the signUp one is single-use
+        // and already spent), so with CAPTCHA enforced GoTrue rejected it for
+        // the captcha *before* it ever got as far as "Email not confirmed".
+        // The /confirm/i branch then never matched, and someone who'd just
+        // signed up perfectly successfully was told their account couldn't be
+        // signed into — with a confirmation email sitting unmentioned in their
+        // inbox. Checking the response instead can't miss.
+        setSignupDone('confirm')
+        return
+      }
       if (!session) {
         // Turnstile tokens are single-use — can't reuse the signUp one.
         resetCaptcha()
@@ -364,7 +453,7 @@ export default function Auth({ initialError = null }) {
             // "Confirm email" is on in the project. Their details are
             // already saved by the handle_new_user trigger, so there's
             // nothing left to do but confirm and come back.
-            setSignupDone(true)
+            setSignupDone('confirm')
             return
           }
           setAccountExists(true)
@@ -409,9 +498,16 @@ export default function Auth({ initialError = null }) {
           .eq('id', session.user.id)
         // Non-fatal: FinishSignup in App.jsx will catch anything missed.
         if (profErr) console.warn('Profile update after signup failed:', profErr.message)
+        // App.jsx's auth listener picks the session up and swaps in the
+        // pending-verification screen (accounts start unapproved). That's
+        // usually instant — but on a slow connection the "Join our community"
+        // button used to just un-grey with nothing else happening, which reads
+        // as "my click didn't register" and gets clicked again. Showing a
+        // confirmation state means there's never a moment where the wizard is
+        // sitting there looking untouched after a successful submit.
+        setSignupDone('pending')
+        return
       }
-      // App.jsx's auth listener picks the session up and shows the
-      // pending-verification screen (accounts start unapproved).
     } catch (e2) {
       // Someone re-running a signup they thought had failed lands here.
       // Point them at sign-in rather than leaving them to work out that
@@ -420,7 +516,7 @@ export default function Auth({ initialError = null }) {
         setAccountExists(true)
         setError('There’s already an account with that email address. Try signing in instead — or reset your password if you’ve forgotten it.')
       } else {
-        setError(e2.message)
+        setError(friendlyAuthError(e2))
       }
       resetCaptcha()
     } finally {
@@ -431,18 +527,54 @@ export default function Auth({ initialError = null }) {
   /* ---------- Render ---------- */
 
   if (signupDone) {
+    // Two very different situations that used to share one screen and one
+    // message. The old copy talked only about committee verification, so
+    // someone who actually needed to click a link in their inbox was told to
+    // sit and wait — then hit "Email not confirmed" at sign-in with no idea
+    // why. Getting a person to check their email needs to be the whole point
+    // of the screen when that's what's required, and absent when it isn't.
+    const needsConfirm = signupDone === 'confirm'
     return (
       <div className="auth-page">
         <div className="auth-card">
           <img src="/eendrag-logo.png" alt="Eendrag logo" className="auth-logo" />
-          <h1 className="auth-title">Almost there</h1>
+          <h1 className="auth-title">{needsConfirm ? 'Check your email' : 'Almost there'}</h1>
           <p className="auth-sub">Thanks for joining, {preferredName.trim() || firstName}!</p>
-          <p className="auth-verify-note">
-            Your details will be verified against Eendrag residence records. Once
-            you&rsquo;re confirmed as an Eendragter, you&rsquo;ll receive an email at{' '}
-            <strong>{signupEmail}</strong> and can sign in.
-          </p>
-          <button className="link-btn" onClick={() => { setSignupDone(false); switchMode('signin') }}>
+
+          {needsConfirm ? (
+            <>
+              <p className="auth-verify-note">
+                We&rsquo;ve sent a confirmation link to <strong>{signupEmail}</strong>.
+                Click it to confirm the address is yours &mdash; you won&rsquo;t be
+                able to sign in until you do.
+              </p>
+              <p className="auth-verify-note">
+                After that, your details go to the alumni committee to be checked
+                against Eendrag residence records, and we&rsquo;ll email you again
+                once you&rsquo;re confirmed as an Eendragter.
+              </p>
+              <p className="hint">
+                No email after a few minutes? Check your spam or junk folder first
+                &mdash; it&rsquo;s almost always there.
+              </p>
+              {resendMsg && (
+                <p className={resendMsg.type === 'ok' ? 'form-notice' : 'form-error'} role="status">
+                  {resendMsg.text}
+                </p>
+              )}
+              <button className="btn ghost wide" onClick={resendConfirmation} disabled={resendBusy}>
+                {resendBusy ? 'Sending…' : 'Resend the confirmation email'}
+              </button>
+            </>
+          ) : (
+            <p className="auth-verify-note">
+              Your details will be verified against Eendrag residence records. Once
+              you&rsquo;re confirmed as an Eendragter, you&rsquo;ll receive an email at{' '}
+              <strong>{signupEmail}</strong> and can sign in.
+            </p>
+          )}
+
+          <button className="link-btn" onClick={() => { setSignupDone(null); setResendMsg(null); switchMode('signin') }}>
             Back to sign in
           </button>
         </div>
@@ -458,18 +590,25 @@ export default function Auth({ initialError = null }) {
         <p className="auth-sub">Character · Style · Pride · Since 1961</p>
 
         {mode !== 'forgot' && (
-          <div className="auth-tabs" role="tablist">
+          // Deliberately NOT role="tablist"/"tab". That markup promises a
+          // matching role="tabpanel" and arrow-key navigation between tabs;
+          // neither existed here, and ARIA that lies about the structure is
+          // worse for a screen-reader user than no ARIA at all (they're told
+          // to arrow between panels that aren't there). These are two buttons
+          // that swap the form, so that's what they now announce as, with
+          // aria-pressed carrying the on/off state.
+          <div className="auth-tabs">
             <button
-              role="tab"
-              aria-selected={mode === 'signin'}
+              type="button"
+              aria-pressed={mode === 'signin'}
               className={mode === 'signin' ? 'auth-tab on' : 'auth-tab'}
               onClick={() => switchMode('signin')}
             >
               Sign in
             </button>
             <button
-              role="tab"
-              aria-selected={mode === 'signup'}
+              type="button"
+              aria-pressed={mode === 'signup'}
               className={mode === 'signup' ? 'auth-tab on' : 'auth-tab'}
               onClick={() => switchMode('signup')}
             >
@@ -501,11 +640,9 @@ export default function Auth({ initialError = null }) {
               <>
                 <label className="field">
                   <span>Password</span>
-                  <ClearableInput
-                    type="password"
+                  <PasswordInput
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onClear={() => setPassword('')}
                     placeholder="Your password"
                     autoComplete="current-password"
                   />
@@ -522,7 +659,7 @@ export default function Auth({ initialError = null }) {
 
             {captchaVisible && <div ref={turnstileRef} className="auth-captcha" />}
             {captchaVisible && captchaError && (
-              <p className="form-error">
+              <p className="form-error" role="alert">
                 Security check failed to load. Disable any ad/privacy blocker for this
                 site and{' '}
                 <button type="button" className="link-btn" onClick={() => window.location.reload()}>
@@ -531,8 +668,11 @@ export default function Auth({ initialError = null }) {
               </p>
             )}
 
-            {error && <p className="form-error">{error}</p>}
-            {notice && <p className="form-notice">{notice}</p>}
+            {/* role="alert" so a validation failure is announced. Without it a
+                screen-reader user submitting this form got silence — the error
+                appeared visually and nothing else happened. */}
+            {error && <p className="form-error" role="alert">{error}</p>}
+            {notice && <p className="form-notice" role="status">{notice}</p>}
 
             <button type="submit" className="btn primary wide" disabled={busy}>
               {busy ? 'One moment…' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
@@ -558,13 +698,20 @@ export default function Auth({ initialError = null }) {
             <div className="auth-divider"><span>or complete the form</span></div>
 
             <form onSubmit={handleSignupSubmit} noValidate>
-            <div className="auth-steps">
+            {/* The dots are decoration — three bare numerals read aloud tell
+                you nothing. The real progress statement lives in the live
+                region beside them, so moving between steps is announced. */}
+            <div className="auth-steps" aria-hidden="true">
               {[1, 2, 3].map((n) => (
                 <span key={n} className={`auth-step-dot ${signupStep === n ? 'on' : ''} ${signupStep > n ? 'done' : ''}`}>
                   {signupStep > n ? '✓' : n}
                 </span>
               ))}
             </div>
+            <p className="sr-only" role="status">
+              Step {signupStep} of 3
+              {signupStep === 1 ? ': your details' : signupStep === 2 ? ': your years in Eendrag' : ': consent'}
+            </p>
 
             {signupStep === 1 && (
               <>
@@ -596,8 +743,7 @@ export default function Auth({ initialError = null }) {
                 </label>
                 <label className="field">
                   <span>Password *</span>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     placeholder={`At least ${PASSWORD_MIN} characters`}
@@ -607,8 +753,7 @@ export default function Auth({ initialError = null }) {
                 <PasswordStrengthMeter password={signupPassword} />
                 <label className="field">
                   <span>Confirm password *</span>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     autoComplete="new-password"
@@ -645,6 +790,15 @@ export default function Auth({ initialError = null }) {
                   </label>
                 </div>
 
+                {/* See the matching note in FinishSignup.jsx — an unexplained
+                    home-address block mid-signup is a well-known drop-off
+                    point, and the answer ("map + posted invitations, not shown
+                    on your profile") is one sentence. */}
+                <p className="hint" style={{ marginTop: 14 }}>
+                  Your address is optional. It&rsquo;s used to place you on the alumni
+                  map and to post you reunion invitations, and it isn&rsquo;t
+                  displayed on your profile.
+                </p>
                 <label className="field" style={{ marginTop: 10 }}>
                   <span>Address line 1</span>
                   <input value={address1} onChange={(e) => setAddress1(e.target.value)} autoComplete="address-line1" />
@@ -736,7 +890,7 @@ export default function Auth({ initialError = null }) {
 
                 {captchaVisible && <div ref={turnstileRef} className="auth-captcha" />}
                 {captchaVisible && captchaError && (
-                  <p className="form-error">
+                  <p className="form-error" role="alert">
                     Security check failed to load. Disable any ad/privacy blocker for
                     this site and{' '}
                     <button type="button" className="link-btn" onClick={() => window.location.reload()}>
@@ -747,7 +901,10 @@ export default function Auth({ initialError = null }) {
               </>
             )}
 
-            {error && <p className="form-error">{error}</p>}
+            {/* Same reasoning as the sign-in form: without a live region, a
+                failed "Continue" on the wizard is silent to a screen reader —
+                the step simply doesn't advance and nothing says why. */}
+            {error && <p className="form-error" role="alert">{error}</p>}
 
             {accountExists ? (
               // The account is already there — retrying the wizard can only

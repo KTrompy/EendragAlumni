@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 
 // Full-screen gate shown to signed-in members who haven't been approved
@@ -51,6 +51,37 @@ export default function PendingVerification({ session, profile, onProfileChange 
     }
     setResult({ type: 'pending', text: 'Not verified yet — the committee still has your details to review. We’ll email you the moment it’s done.' })
   }
+
+  // Quiet background poll, on top of the manual button.
+  //
+  // The approval email says "you can sign in now", and the overwhelmingly
+  // common thing to do is click through to a tab that's already sitting on
+  // this screen — which then keeps saying "pending" until you notice the
+  // button. Checking every 60 seconds means the gate usually lifts on its own
+  // while they're reading it.
+  //
+  // Deliberately silent: it only ever acts on success (handing the fresh row
+  // up to App.jsx, which swaps this screen out). A failed poll writes nothing,
+  // so a brief network blip can't replace the explanatory text on screen with
+  // an error the person didn't ask for. The button stays as the manual
+  // override, and is the only path that reports failures.
+  const onProfileChangeRef = useRef(onProfileChange)
+  onProfileChangeRef.current = onProfileChange
+  useEffect(() => {
+    let cancelled = false
+    const interval = setInterval(async () => {
+      // Don't race the manual check, and don't poll a backgrounded tab.
+      if (document.visibilityState !== 'visible') return
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle()
+      if (cancelled) return
+      if (data?.approved) onProfileChangeRef.current?.(data)
+    }, 60 * 1000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [session.user.id])
 
   return (
     <div className="auth-page">

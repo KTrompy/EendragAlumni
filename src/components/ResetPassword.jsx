@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
-import ClearableInput from './ClearableInput.jsx'
+import PasswordInput from './PasswordInput.jsx'
 import { PASSWORD_MIN, passwordProblem, PasswordStrengthMeter } from '../passwordRules.jsx'
+import { friendlyAuthError } from '../authErrors.js'
 
 // Shown instead of the normal app when App.jsx detects a PASSWORD_RECOVERY
 // auth event — i.e. someone arrived via the "reset your password" link
@@ -51,7 +52,7 @@ export default function ResetPassword({ onDone, onCancel }) {
         setError("This reset link can't set a password right now — the server is asking for your current one. Please contact an admin.")
         return
       }
-      setError(err.message)
+      setError(friendlyAuthError(err))
       return
     }
     setDone(true)
@@ -75,11 +76,9 @@ export default function ResetPassword({ onDone, onCancel }) {
           <form onSubmit={submit}>
             <label className="field">
               <span>New password</span>
-              <ClearableInput
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onClear={() => setPassword('')}
                 placeholder={`At least ${PASSWORD_MIN} characters`}
                 autoComplete="new-password"
               />
@@ -87,17 +86,15 @@ export default function ResetPassword({ onDone, onCancel }) {
             <PasswordStrengthMeter password={password} />
             <label className="field">
               <span>Confirm new password</span>
-              <ClearableInput
-                type="password"
+              <PasswordInput
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                onClear={() => setConfirm('')}
                 placeholder="Type it again"
                 autoComplete="new-password"
               />
             </label>
 
-            {error && <p className="form-error">{error}</p>}
+            {error && <p className="form-error" role="alert">{error}</p>}
 
             <button className="btn primary wide" type="submit" disabled={busy}>
               {busy ? 'Saving…' : 'Save new password'}

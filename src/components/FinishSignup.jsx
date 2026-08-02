@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import CountryAutocomplete from './CountryAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import { MAX_RESIDENCE_YEARS } from '../constants.js'
+import { friendlyAuthError } from '../authErrors.js'
 
 // Shown (full-screen, before anything else) to anyone signed in whose
 // profile has no consented_at yet — in practice that's people who joined
@@ -28,10 +29,25 @@ const DRAFT_FIELDS = [
   'address1', 'address2', 'address3', 'province', 'city', 'postCode', 'country',
 ]
 
+// Drafts expire. Without this they were kept forever: a half-typed home
+// address sitting in localStorage on a shared or family computer indefinitely,
+// and — more confusingly — a stale draft from months ago silently overriding
+// the name a social provider hands back today. A week is comfortably longer
+// than "I'll finish this tonight" and shorter than "why is this filled in?".
+const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
 function readDraft(key) {
   try {
     const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    // Drafts written before this change have no savedAt — treat them as
+    // expired rather than trusting an unknown age.
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > DRAFT_MAX_AGE_MS) {
+      localStorage.removeItem(key)
+      return null
+    }
+    return parsed.values || null
   } catch {
     return null
   }
@@ -77,9 +93,10 @@ export default function FinishSignup({ session, profile, onDone }) {
   }
   useEffect(() => {
     try {
-      localStorage.setItem(draftKey, JSON.stringify(
-        Object.fromEntries(DRAFT_FIELDS.map((k) => [k, values[k]]))
-      ))
+      localStorage.setItem(draftKey, JSON.stringify({
+        savedAt: Date.now(),
+        values: Object.fromEntries(DRAFT_FIELDS.map((k) => [k, values[k]])),
+      }))
     } catch { /* private mode / quota — the form still works, just not resumable */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, DRAFT_FIELDS.map((k) => values[k]))
@@ -128,7 +145,7 @@ export default function FinishSignup({ session, profile, onDone }) {
       .select()
       .single()
     setBusy(false)
-    if (err) { setError(err.message); return }
+    if (err) { setError(friendlyAuthError(err, "Couldn't save your details — please try again.")); return }
     try { localStorage.removeItem(draftKey) } catch { /* ignore */ }
     onDone(data)
   }
@@ -181,6 +198,15 @@ export default function FinishSignup({ session, profile, onDone }) {
             </label>
           </div>
 
+          {/* Says why before it asks. An unexplained "give us your home
+              address" block in the middle of a signup form is the single
+              biggest reason people abandon one — especially optional fields,
+              where the natural read is "why do they want this?" */}
+          <p className="hint" style={{ marginTop: 14 }}>
+            Your address is optional. It&rsquo;s used to place you on the alumni map
+            and to post you reunion invitations, and it isn&rsquo;t displayed on your
+            profile.
+          </p>
           <label className="field">
             <span>Address line 1</span>
             <input value={address1} onChange={(e) => setAddress1(e.target.value)} autoComplete="address-line1" />
@@ -249,7 +275,10 @@ export default function FinishSignup({ session, profile, onDone }) {
             </span>
           </label>
 
-          {error && <p className="form-error">{error}</p>}
+          {/* Live region: this form is eleven fields long and validate()
+              returns one message at a time, so without an announcement a
+              screen-reader user submitting it gets no feedback at all. */}
+          {error && <p className="form-error" role="alert">{error}</p>}
 
           <button type="submit" className="btn primary wide" disabled={busy}>
             {busy ? 'Saving…' : 'Finish joining'}

@@ -1396,6 +1396,54 @@ button.delete-danger svg { flex-shrink: 0; }
 .pw-strength-fill.s4 { background: var(--ok, #2c6e49); }
 .pw-strength-label { font-size: 12px; color: var(--ink-soft); min-width: 64px; text-align: right; }
 
+/* Visually hidden, still read by screen readers. Used for live-region status
+   text that would be redundant (or just noise) on screen — e.g. the signup
+   wizard's "Step 2 of 3", which is already conveyed visually by the dots. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Password field: show/hide toggle (PasswordInput.jsx) ---------- */
+.pw-input-wrap { position: relative; display: block; }
+/* Padding, not a shorter input: the field keeps its full width so it lines up
+   with every other field in the form, and the text just stops short of the
+   eye. 42px clears the 18px icon plus its tap target. */
+.pw-input-wrap input { width: 100%; padding-right: 42px; }
+.pw-reveal {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.pw-reveal:hover { color: var(--ink); background: rgba(0, 0, 0, 0.05); }
+.pw-reveal:focus-visible { outline: 2px solid var(--brand, #5A1A2B); outline-offset: 1px; }
+/* Chromium and Safari add their own reveal control inside password inputs,
+   which would sit underneath ours. Hide theirs and keep the one that works
+   the same way in every browser. */
+.pw-input-wrap input::-ms-reveal,
+.pw-input-wrap input::-ms-clear { display: none; }
+.pw-input-wrap input::-webkit-credentials-auto-fill-button { margin-right: 28px; }
+
 /* ---------- Auth: consent step ---------- */
 .auth-consent-group {
   border: 1px solid rgba(0, 0, 0, 0.12);
@@ -9368,6 +9416,9 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--maroon);
 }
 .settings-section + .settings-section { margin-top: 26px; }
+/* The Turnstile iframe is a fixed 300px wide and would otherwise sit centred
+   under a 360px column of left-aligned fields, looking unrelated to them. */
+.settings-captcha { justify-content: flex-start; max-width: 360px; margin: 2px 0 14px; }
 .settings-field { max-width: 360px; }
 .settings-field select,
 .settings-field input { width: 100%; }

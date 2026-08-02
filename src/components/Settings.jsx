@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { supabase, deleteOwnAccount, isNetworkError } from '../supabaseClient'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import LoadingState from './LoadingState.jsx'
+import PasswordInput from './PasswordInput.jsx'
+import Turnstile, { TURNSTILE_SITE_KEY } from './Turnstile.jsx'
 import { useToast } from './Toast.jsx'
 import { PASSWORD_MIN, passwordProblem, PasswordStrengthMeter } from '../passwordRules.jsx'
+import { friendlyAuthError } from '../authErrors.js'
 
 const SETTINGS_TABS = [
   { id: 'account', label: 'Account' },
@@ -77,6 +80,25 @@ function AccountTab({ session, profile, onSaved }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [signingOutEverywhere, setSigningOutEverywhere] = useState(false)
+
+  // Captcha token for the re-authentication in savePassword().
+  //
+  // This page had no captcha at all, and savePassword() re-authenticates by
+  // calling signInWithPassword() — which GoTrue rejects outright when CAPTCHA
+  // protection is enabled in the dashboard, because no token was attached.
+  // The error handler below then maps every non-network failure to "Current
+  // password is incorrect", so the result was that every member who tried to
+  // change their password was told their correct password was wrong, with no
+  // way to get past it and nothing in the logs to suggest why.
+  //
+  // Passing a token when captcha ISN'T enabled is harmless — GoTrue ignores
+  // it — so this is safe either way, and stays correct if the dashboard
+  // setting is ever turned on later.
+  const [captchaToken, setCaptchaToken] = useState(null)
+  // Bumped after each attempt: Turnstile tokens are single-use, so reusing one
+  // fails exactly like a wrong password.
+  const [captchaNonce, setCaptchaNonce] = useState(0)
 
   // Accounts created via Google (or any social provider) never get an
   // 'email' identity — there's no password to re-authenticate against, so
@@ -155,6 +177,12 @@ function AccountTab({ session, profile, onSaved }) {
       setPasswordMsg('That’s already your current password — pick a different one.')
       return
     }
+    // Only enforced when a site key is configured — locally, where there's no
+    // key, there's no widget to complete and this correctly does nothing.
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setPasswordMsg('Please complete the security check below first.')
+      return
+    }
     setBusy(true)
 
     // Two independent checks of the current password, deliberately.
@@ -181,7 +209,11 @@ function AccountTab({ session, profile, onSaved }) {
     const { error: reauthError } = await supabase.auth.signInWithPassword({
       email: session.user.email,
       password: currentPassword,
+      options: { captchaToken },
     })
+    // Single-use — spent whether the call succeeded or failed.
+    setCaptchaToken(null)
+    setCaptchaNonce((n) => n + 1)
     if (reauthError) {
       setBusy(false)
       // "Current password is incorrect" was reported for *every* failure
@@ -189,10 +221,19 @@ function AccountTab({ session, profile, onSaved }) {
       // reached Supabase at all — telling someone their correct password is
       // wrong, which is how people end up resetting a password that was
       // fine. isNetworkError separates "no response" from "server said no".
+      // "Current password is incorrect" must NOT be the catch-all here. It was,
+      // and it meant any failure that wasn't a network error — a spent or
+      // missing captcha token, a rate limit — was reported as a wrong password,
+      // which is how people end up resetting a password that was fine all
+      // along. Each of those now says what actually happened.
       setPasswordMsg(
         isNetworkError(reauthError)
           ? "Couldn't reach the server — check your connection and try again."
-          : 'Current password is incorrect.'
+          : /captcha/i.test(reauthError.message || '')
+            ? 'The security check didn’t go through — please tick it again and retry.'
+            : /invalid login credentials|invalid_credentials/i.test(reauthError.message || '')
+              ? 'Current password is incorrect.'
+              : friendlyAuthError(reauthError)
       )
       return
     }
@@ -212,7 +253,7 @@ function AccountTab({ session, profile, onSaved }) {
         setPasswordMsg("Couldn't verify your current password just now — try again in a moment.")
         return
       }
-      setPasswordMsg(error.message)
+      setPasswordMsg(friendlyAuthError(error))
       return
     }
     setCurrentPassword('')
@@ -252,7 +293,7 @@ function AccountTab({ session, profile, onSaved }) {
         setPasswordMsg("Your account doesn't have a password to verify against, and the server asked for one. Let an admin know — this needs a settings change, not something you can fix here.")
         return
       }
-      setPasswordMsg(error.message)
+      setPasswordMsg(friendlyAuthError(error))
       return
     }
     setPassword('')
@@ -262,6 +303,23 @@ function AccountTab({ session, profile, onSaved }) {
     // state, and this component re-renders with hasPassword true. That's
     // what makes it survive a reload — see the hasPassword comment above.
     setPasswordMsg('Password set. You can now sign in with your email and this password, as well as Google.')
+  }
+
+  // Revokes every refresh token for this user, on every device, not just this
+  // browser's session. The standard companion to a password change: changing
+  // your password does NOT by itself sign out a session someone else already
+  // has open, so without this there was no way for a member to boot a borrowed
+  // or stolen session — the exact scenario the re-auth above exists to guard.
+  async function signOutEverywhere() {
+    setSigningOutEverywhere(true)
+    const { error } = await supabase.auth.signOut({ scope: 'global' })
+    if (error) {
+      setSigningOutEverywhere(false)
+      showToast(friendlyAuthError(error, "Couldn't sign out everywhere — try again."), { type: 'error' })
+      return
+    }
+    // No local cleanup needed: signOut fires SIGNED_OUT, App.jsx's listener
+    // drops the session, and this component unmounts with it.
   }
 
   async function deleteAccount() {
@@ -315,15 +373,24 @@ function AccountTab({ session, profile, onSaved }) {
         {hasPassword ? (
           <>
             <label className="field settings-field"><span>Current password</span>
-              <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+              <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
             </label>
             <label className="field settings-field"><span>New password</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} autoComplete="new-password" />
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} autoComplete="new-password" />
             </label>
             <PasswordStrengthMeter password={password} />
             <label className="field settings-field"><span>Confirm new password</span>
-              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} autoComplete="new-password" />
+              <PasswordInput value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} autoComplete="new-password" />
             </label>
+            {/* Required because changing a password re-authenticates first, and
+                that call is subject to the same CAPTCHA rule as the sign-in
+                form. Without a widget here there was no way to produce a token
+                and the re-auth could never succeed. */}
+            <Turnstile
+              onToken={setCaptchaToken}
+              resetSignal={captchaNonce}
+              className="auth-captcha settings-captcha"
+            />
             {/* passwordConfirm belongs in this check too — leaving it out let
                 the button look ready while the form still failed validation. */}
             <button className="btn ghost" disabled={busy || !password || !passwordConfirm || !currentPassword} onClick={savePassword}>
@@ -337,18 +404,32 @@ function AccountTab({ session, profile, onSaved }) {
               Set one to also be able to sign in with your email address.
             </p>
             <label className="field settings-field"><span>New password</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} autoComplete="new-password" />
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${PASSWORD_MIN} characters`} autoComplete="new-password" />
             </label>
             <PasswordStrengthMeter password={password} />
             <label className="field settings-field"><span>Confirm new password</span>
-              <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} autoComplete="new-password" />
+              <PasswordInput value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} autoComplete="new-password" />
             </label>
+            {/* No captcha here: this path calls updateUser() on an existing
+                session and never re-authenticates, so there's no sign-in
+                request for GoTrue to challenge. */}
             <button className="btn ghost" disabled={busy || !password || !passwordConfirm} onClick={setNewPassword}>
               {busy ? 'Saving…' : 'Set password'}
             </button>
           </>
         )}
-        {passwordMsg && <p className="hint">{passwordMsg}</p>}
+        {passwordMsg && <p className="hint" role="status">{passwordMsg}</p>}
+
+        <div className="settings-divider" />
+
+        <p className="hint">
+          Signed in somewhere you shouldn&rsquo;t be &mdash; a shared computer, an
+          old phone? This signs you out of every device, including this one.
+          Changing your password on its own doesn&rsquo;t do that.
+        </p>
+        <button className="btn ghost" onClick={signOutEverywhere} disabled={signingOutEverywhere}>
+          {signingOutEverywhere ? 'Signing out…' : 'Sign out of all devices'}
+        </button>
       </div>
 
       <div className="settings-section settings-danger">
