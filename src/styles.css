@@ -9875,3 +9875,320 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .toast-dismiss:hover { opacity: 1; }
 .toast-dismiss:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* ==========================================================================
+   Eendrag legends — the home-page hall of fame
+   ==========================================================================
+
+   Deliberately unlike every other block on Home. The rest of the page is
+   white feed-widget cards; this is full-bleed photography with white type
+   burned into it, because it's the one section about the house's history
+   rather than its live network, and it should read as an editorial insert
+   rather than another widget.
+   ========================================================================== */
+
+.legends-band {
+  margin: 0 0 18px;
+}
+
+.legends-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.legends-head-text { min-width: 0; }
+.legends-title {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink);
+}
+.legends-sub {
+  margin: 1px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.legends-more {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--orange-dark);
+  border-radius: var(--radius-sm);
+}
+.legends-more:hover { text-decoration: underline; }
+.legends-more:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* Hero on the left, two stacked beside it. The hero is given the larger
+   fraction rather than a fixed width so the whole thing still works inside
+   the narrower column Home hands it on a small laptop. */
+.legends-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 8px;
+}
+/* With only one legend curated there's nothing to stack, so the hero takes
+   the full width instead of leaving a gap where the column would be. */
+.legends-grid-single { grid-template-columns: 1fr; }
+.legends-stack {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+}
+.legends-stack-one { grid-template-rows: 1fr; }
+
+.legend-tile {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  min-height: 168px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  /* Sits under the photo while it loads, and shows through anything with
+     transparency — a white flash here would be jarring against the type. */
+  background: var(--maroon-dark);
+  isolation: isolate;
+}
+.legend-tile-hero { min-height: 344px; }
+
+.legend-tile-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Bias the crop upward: these are portraits, and a centre crop on a
+     standing figure cuts off the head first. */
+  object-position: center 30%;
+  transition: transform 0.5s var(--ease);
+}
+.legend-tile:hover .legend-tile-photo { transform: scale(1.04); }
+
+/* The scrim is what makes white type legible over an unknown photograph.
+   It has to be strong at the bottom (where the text is) and clear at the
+   top (where the face usually is), which is why it's a gradient rather
+   than a flat overlay — a flat one dark enough for the text would mute the
+   whole picture. */
+.legend-tile-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.86) 0%,
+    rgba(0, 0, 0, 0.55) 30%,
+    rgba(0, 0, 0, 0.18) 62%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+}
+
+.legend-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  /* Square, like the reference — a pill shape would read as a filter chip,
+     which is what rounded pills mean everywhere else in this app. */
+  border-radius: 2px;
+  background: var(--orange);
+  color: var(--maroon-dark);
+}
+/* Fixed per category so the same field is always the same colour. Palette
+   stays inside the brand: orange, maroon, cream, ink. */
+.legend-pill-sport     { background: var(--orange);      color: var(--maroon-dark); }
+.legend-pill-business  { background: var(--orange-soft); color: var(--orange-dark); }
+.legend-pill-politics  { background: var(--maroon);      color: var(--orange-soft); }
+.legend-pill-service   { background: var(--maroon);      color: var(--orange-soft); }
+.legend-pill-arts      { background: #F3E4C8;            color: #6B4A12; }
+.legend-pill-media     { background: #F3E4C8;            color: #6B4A12; }
+.legend-pill-academia  { background: var(--paper);       color: var(--maroon); }
+.legend-pill-medicine  { background: var(--paper);       color: var(--maroon); }
+.legend-pill-military  { background: var(--maroon-dark); color: var(--orange-soft); }
+.legend-pill-other     { background: var(--paper);       color: var(--ink); }
+
+.legend-tile-body {
+  position: relative;
+  padding: 13px;
+  z-index: 1;
+}
+.legend-tile-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.2;
+  margin: 0 0 5px;
+  color: #fff;
+}
+.legend-tile-headline {
+  margin: 0 0 7px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+  /* Two lines on the small tiles, three on the hero — enough to say
+     something, short enough that the photo still carries the tile. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.legend-tile-meta {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.legend-tile-hero .legend-tile-body { padding: 16px; }
+.legend-tile-hero .legend-tile-name { font-size: 26px; margin-bottom: 7px; }
+.legend-tile-hero .legend-tile-headline { font-size: 14px; line-height: 1.5; -webkit-line-clamp: 3; margin-bottom: 10px; }
+.legend-tile-hero .legend-tile-meta { font-size: 12px; }
+
+/* ---------- The modal ---------- */
+
+.legend-modal-photo {
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 14px;
+  background: var(--maroon-dark);
+  aspect-ratio: 16 / 9;
+}
+.legend-modal-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+.legend-modal-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+/* The pill is absolutely positioned on a tile; in here it's just inline. */
+.legend-modal-meta .legend-pill { position: static; }
+.legend-modal-years {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.legend-modal-headline {
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: 1.4;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+.legend-modal-story {
+  margin: 0 0 11px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+.legend-modal-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--orange-dark);
+  text-decoration: none;
+}
+.legend-modal-link:hover { text-decoration: underline; }
+
+/* ---------- Admin ---------- */
+
+.admin-legend-thumb {
+  width: 54px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  margin-right: 10px;
+  background: var(--line);
+}
+.admin-legend-move { min-width: 34px; padding-left: 8px; padding-right: 8px; }
+.admin-legend-form { max-width: 620px; }
+.admin-legend-preview {
+  width: 140px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--line);
+}
+.admin-legend-preview-empty {
+  border: 1px dashed var(--line-strong);
+  background: var(--paper);
+}
+
+/* ---------- Mobile ----------
+
+   The mosaic doesn't survive a phone screen: three tiles side by side means
+   three unreadable tiles. It becomes a hero plus a two-across row of short
+   tiles instead — same three people, roughly a third of the height, and the
+   claim-to-fame line drops off the two small ones because at that width it
+   would be one clipped line saying nothing. Name, face and category still
+   read, which is enough to earn a tap. */
+@media (max-width: 760px) {
+  .legends-band { margin-bottom: 14px; }
+  .legends-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .legends-stack {
+    grid-template-rows: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .legends-stack-one { grid-template-columns: 1fr; }
+  .legend-tile-hero { min-height: 210px; }
+  .legends-stack .legend-tile { min-height: 118px; }
+  .legends-stack .legend-tile-headline { display: none; }
+  .legends-stack .legend-tile-name { font-size: 15px; margin-bottom: 3px; }
+  .legends-stack .legend-tile-body { padding: 10px; }
+  .legends-stack .legend-pill { top: 8px; left: 8px; font-size: 9px; padding: 3px 7px; }
+  .legend-tile-hero .legend-tile-name { font-size: 21px; }
+  .legend-tile-hero .legend-tile-headline { font-size: 13px; -webkit-line-clamp: 2; }
+  .legends-title { font-size: 16px; }
+  .admin-legend-form { max-width: none; }
+}
+
+/* Reduced-motion users get the tile without the slow photo zoom on hover —
+   the rest of the app honours the same preference. */
+@media (prefers-reduced-motion: reduce) {
+  .legend-tile-photo { transition: none; }
+  .legend-tile:hover .legend-tile-photo { transform: none; }
+}
+
+/* .stretched-link was written for <a>. The legends tiles use a <button>,
+   because they open a modal rather than navigate, and a button brings its
+   own background, border and padding — which would paint a grey slab over
+   the whole tile. Reset those without touching the positioning above. */
+button.stretched-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-legend-form .btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}

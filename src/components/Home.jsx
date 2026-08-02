@@ -9,6 +9,7 @@ import { Avatar } from './Directory.jsx'
 // exactly this at build time.
 import { WhosOnline } from './WhosOnline.jsx'
 import { BusinessLogo } from './BusinessLogo.jsx'
+import LegendsBand from './Legends.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import useModal from '../useModal.js'
 import LoadingState from './LoadingState.jsx'
@@ -496,6 +497,13 @@ export default function Home({ session, profile, onMessage }) {
           </button>
         ))}
       </nav>
+
+      {/* Sits below the jump-nav pills rather than above them: the pills are
+          the fastest route to the things people actually came for, and the
+          legends band is editorial. It renders nothing at all until an admin
+          has curated at least one entry (see LegendsBand), so this costs a
+          fresh install no vertical space. */}
+      <LegendsBand />
 
       <div className="feed-layout home-feed-layout">
         <div className="feed-main">

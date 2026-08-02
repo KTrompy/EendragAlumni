@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase, adminDeleteAccount } from '../supabaseClient'
+import { supabase, adminDeleteAccount, deleteStorageFilesFromUrls } from '../supabaseClient'
+import { LEGEND_CATEGORIES } from './Legends.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
 import DeleteButton from './DeleteButton.jsx'
@@ -49,6 +50,11 @@ const SUBTABS = [
     id: 'businesses',
     label: 'Businesses',
     help: "Alumni businesses. Feature pins one to the top of the directory — harmless and reversible, but worth agreeing a rule for so it doesn't become a favour.",
+  },
+  {
+    id: 'legends',
+    label: 'Legends',
+    help: "The old boys featured on the home page. Three show at a time and the set rotates every Monday, so the more you write up the longer it stays fresh. Hide is the reversible one — it pulls someone off the home page but keeps the write-up.",
   },
   {
     id: 'activity',
@@ -306,6 +312,7 @@ export default function Admin({ session }) {
       {subtab === 'jobs' && <JobsModeration />}
       {subtab === 'events' && <EventsModeration />}
       {subtab === 'businesses' && <BusinessesModeration />}
+      {subtab === 'legends' && <LegendsAdmin session={session} />}
       {subtab === 'activity' && <ActivityLog />}
       {subtab === 'handbook' && <AdminHandbook />}
     </section>
@@ -1121,3 +1128,319 @@ function BusinessesModeration() {
 }
 
 
+
+/* ---------- Eendrag legends ---------- */
+
+const MAX_LEGEND_PHOTO_SIZE = 5 * 1024 * 1024 // 5 MB, matches the bucket limit in schema-update-54.sql
+const LEGEND_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+const EMPTY_LEGEND = {
+  name: '', years: '', degree: '', category: 'sport',
+  headline: '', story: '', photo_url: '', link_url: '', link_label: '', active: true,
+}
+
+// The home-page hall of fame. Unlike every other tab on this page, this one
+// creates content rather than moderating it — nobody else can add a legend, so
+// there's nothing to review.
+function LegendsAdmin({ session }) {
+  const [legends, setLegends] = useState([])
+  const [loading, setLoading] = useState(true)
+  // null = list view. Otherwise the row being edited, or EMPTY_LEGEND for a new
+  // one. Kept as one piece of state rather than an `adding` boolean plus an
+  // `editing` row, so the two can't both be true.
+  const [editing, setEditing] = useState(null)
+  const showToast = useToast()
+
+  async function load() {
+    // No `active` filter — admins need to see hidden entries, that's the whole
+    // point of hiding rather than deleting. The RLS policy allows it.
+    const { data, error } = await supabase
+      .from('legends')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+    if (error) showToast("Couldn't load legends.", { type: 'error' })
+    setLegends(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  async function toggleActive(l) {
+    const { error } = await supabase.from('legends').update({ active: !l.active }).eq('id', l.id)
+    if (error) { showToast("Couldn't update that.", { type: 'error' }); return }
+    setLegends((prev) => prev.map((x) => (x.id === l.id ? { ...x, active: !x.active } : x)))
+  }
+
+  async function remove(l) {
+    const { error } = await supabase.from('legends').delete().eq('id', l.id)
+    if (error) { showToast("Couldn't delete that.", { type: 'error' }); return }
+    // Best-effort, and only after the row is gone: an orphaned photo in the
+    // bucket is untidy, but a deleted photo with the row still pointing at it
+    // is a broken tile on the home page.
+    if (l.photo_url) deleteStorageFilesFromUrls('legend-photos', l.photo_url)
+    setLegends((prev) => prev.filter((x) => x.id !== l.id))
+  }
+
+  // Reordering rewrites sort_order for the whole list rather than swapping the
+  // two rows involved. Swapping only works if the existing values are already
+  // distinct and sane — which they aren't for anything created before someone
+  // first dragged something, since they all default to 0. Renumbering from the
+  // array index is idempotent and self-healing.
+  async function move(index, delta) {
+    const target = index + delta
+    if (target < 0 || target >= legends.length) return
+    const next = [...legends]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setLegends(next)
+    // One UPDATE per row rather than a single upsert. An upsert would be
+    // fewer round trips, but PostgREST sends it as INSERT ... ON CONFLICT DO
+    // UPDATE, and Postgres checks NOT NULL while building the tuple — before
+    // it ever gets to the conflict — so a payload of just {id, sort_order}
+    // fails on `name` and `headline` every time.
+    const results = await Promise.all(
+      next.map((l, i) => supabase.from('legends').update({ sort_order: i }).eq('id', l.id))
+    )
+    if (results.some((r) => r.error)) { showToast("Couldn't save the new order.", { type: 'error' }); load() }
+  }
+
+  if (editing) {
+    return (
+      <LegendForm
+        session={session}
+        initial={editing}
+        onCancel={() => setEditing(null)}
+        onSaved={() => { setEditing(null); load() }}
+      />
+    )
+  }
+
+  if (loading) return <LoadingState message="Loading legends…" />
+
+  return (
+    <>
+      <p className="admin-tab-footnote" style={{ marginTop: 0, marginBottom: 12 }}>
+        Three legends show on the home page at a time, chosen by the week so everyone sees the
+        same set. Add at least six before it stops repeating. Order here decides which trio comes up first.
+      </p>
+      <button type="button" className="btn primary small" style={{ marginBottom: 14 }} onClick={() => setEditing(EMPTY_LEGEND)}>
+        Add a legend
+      </button>
+
+      {legends.length === 0 ? (
+        <EmptyState
+          icon="people"
+          message="No legends yet."
+          subMessage="Old boys worth remembering — Springboks, founders, cabinet ministers, anyone whose name still comes up. Until you add one, the home page shows nothing here at all."
+        />
+      ) : (
+        <ul className="admin-list">
+          {legends.map((l, i) => (
+            <li className="admin-row" key={l.id}>
+              {l.photo_url && <img className="admin-legend-thumb" src={l.photo_url} alt="" />}
+              <div className="admin-row-info">
+                <span className="admin-row-name">
+                  {l.name}
+                  {!l.active && <span className="admin-badge" style={{ marginLeft: 8 }}>Hidden</span>}
+                </span>
+                <span className="admin-row-meta">
+                  {(LEGEND_CATEGORIES.find((c) => c.key === l.category)?.label) || l.category}
+                  {l.years ? ` · ${l.years}` : ''} · {truncate(l.headline, 70)}
+                </span>
+              </div>
+              <div className="admin-row-actions">
+                <button type="button" className="btn ghost small admin-legend-move" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${l.name} up`} title="Move up">↑</button>
+                <button type="button" className="btn ghost small admin-legend-move" onClick={() => move(i, 1)} disabled={i === legends.length - 1} aria-label={`Move ${l.name} down`} title="Move down">↓</button>
+                <button type="button" className="btn ghost small" onClick={() => toggleActive(l)}>
+                  {l.active ? 'Hide' : 'Show'}
+                </button>
+                <button type="button" className="btn ghost small" onClick={() => setEditing(l)}>Edit</button>
+                <DeleteButton
+                  onConfirm={() => remove(l)}
+                  label="Delete legend"
+                  message="This removes the write-up and the photo for good. Hide is the reversible option."
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  )
+}
+
+function LegendForm({ session, initial, onCancel, onSaved }) {
+  const [form, setForm] = useState({ ...EMPTY_LEGEND, ...initial })
+  const [photoFile, setPhotoFile] = useState(null)
+  const [preview, setPreview] = useState(initial.photo_url || '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const fileRef = useRef(null)
+  const showToast = useToast()
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+
+  // Object URLs are revoked on replacement and unmount — without this every
+  // photo the admin previews before settling on one leaks for the life of the
+  // page.
+  useEffect(() => {
+    if (!photoFile) return
+    const url = URL.createObjectURL(photoFile)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [photoFile])
+
+  function pickPhoto(e) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    // Checked here as well as by the bucket: the bucket rejects it either way,
+    // but only after a full upload, and only with a raw storage error.
+    if (!LEGEND_PHOTO_TYPES.includes(f.type)) { setError('Photo must be a JPG, PNG or WebP.'); return }
+    if (f.size > MAX_LEGEND_PHOTO_SIZE) { setError('Photo is over 5MB.'); return }
+    setError(null)
+    setPhotoFile(f)
+  }
+
+  async function uploadPhoto() {
+    const ext = photoFile.name.split('.').pop().toLowerCase()
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('legend-photos')
+      .upload(path, photoFile, { upsert: false, contentType: photoFile.type })
+    if (upErr) throw upErr
+    const { data } = supabase.storage.from('legend-photos').getPublicUrl(path)
+    return data.publicUrl
+  }
+
+  async function save(e) {
+    e.preventDefault()
+    if (!form.name.trim()) { setError('Give the person a name.'); return }
+    if (!form.headline.trim()) { setError('Add the one-line claim to fame — it’s what the tile shows.'); return }
+    if (!photoFile && !form.photo_url) { setError('A photo is required — the tile is built around it.'); return }
+
+    setSaving(true)
+    setError(null)
+    try {
+      let photoUrl = form.photo_url
+      if (photoFile) {
+        photoUrl = await uploadPhoto()
+        // Only after the new upload succeeded, so a failed replacement leaves
+        // the old photo in place rather than none at all.
+        if (form.photo_url) deleteStorageFilesFromUrls('legend-photos', form.photo_url)
+      }
+
+      const payload = {
+        name: form.name.trim(),
+        years: form.years.trim() || null,
+        degree: form.degree.trim() || null,
+        category: form.category,
+        headline: form.headline.trim(),
+        story: form.story.trim() || null,
+        photo_url: photoUrl,
+        link_url: form.link_url.trim() || null,
+        link_label: form.link_label.trim() || null,
+        active: form.active,
+      }
+
+      const { error: dbErr } = initial.id
+        ? await supabase.from('legends').update(payload).eq('id', initial.id)
+        : await supabase.from('legends').insert({ ...payload, created_by: session.user.id })
+      if (dbErr) throw dbErr
+
+      showToast(initial.id ? 'Legend updated.' : 'Legend added.')
+      onSaved()
+    } catch (err) {
+      setError(err.message || 'Something went wrong saving that.')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form className="admin-legend-form" onSubmit={save}>
+      <div className="field-row">
+        <label className="field"><span>Full name *</span>
+          <input value={form.name} onChange={(e) => set('name', e.target.value)} maxLength={80} placeholder="Jan van der Merwe" />
+        </label>
+        <label className="field"><span>Category *</span>
+          <div className="select-wrap">
+            <select value={form.category} onChange={(e) => set('category', e.target.value)}>
+              {LEGEND_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+          </div>
+        </label>
+      </div>
+
+      <div className="field-row">
+        <label className="field"><span>Years in Eendrag</span>
+          <input value={form.years} onChange={(e) => set('years', e.target.value)} maxLength={40} placeholder="1962–1966" />
+        </label>
+        <label className="field"><span>Degree</span>
+          <input value={form.degree} onChange={(e) => set('degree', e.target.value)} maxLength={60} placeholder="BSc Ingenieurswese" />
+        </label>
+      </div>
+
+      <label className="field"><span>Claim to fame *</span>
+        <input
+          value={form.headline}
+          onChange={(e) => set('headline', e.target.value)}
+          maxLength={160}
+          placeholder="Springbok lock with 34 caps who captained the side in 1971"
+        />
+      </label>
+      <p className="form-hint" style={{ marginTop: -6 }}>
+        One sentence, shown on the tile under the name. The featured tile has room for about
+        twice what the two smaller ones do, so keep it tight.
+      </p>
+
+      <label className="field"><span>Photo *</span></label>
+      <p className="form-hint" style={{ marginTop: -8 }}>
+        Landscape works best — the tile crops to fill, and a portrait-shaped photo loses the top of
+        the head. JPG, PNG or WebP, up to 5MB.
+      </p>
+      <div className="job-logo-picker">
+        {preview
+          ? <img className="admin-legend-preview" src={preview} alt="Photo preview" />
+          : <div className="admin-legend-preview admin-legend-preview-empty" aria-hidden="true" />}
+        <div className="job-logo-picker-actions">
+          <button type="button" className="btn ghost small" onClick={() => fileRef.current?.click()}>
+            {preview ? 'Replace photo' : 'Upload photo'}
+          </button>
+        </div>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={pickPhoto} />
+      </div>
+
+      <label className="field" style={{ marginTop: 14 }}><span>The story</span>
+        <textarea
+          rows={8}
+          value={form.story}
+          onChange={(e) => set('story', e.target.value)}
+          placeholder={'Shown when someone opens the tile. Leave a blank line between paragraphs.'}
+        />
+      </label>
+
+      <div className="field-row">
+        <label className="field"><span>Read-more link</span>
+          <input value={form.link_url} onChange={(e) => set('link_url', e.target.value)} placeholder="https://en.wikipedia.org/wiki/…" />
+        </label>
+        <label className="field"><span>Link wording</span>
+          <input value={form.link_label} onChange={(e) => set('link_label', e.target.value)} maxLength={40} placeholder="Read his obituary" />
+        </label>
+      </div>
+
+      <label className="checkbox-row">
+        <input type="checkbox" checked={form.active} onChange={(e) => set('active', e.target.checked)} />
+        <span>Show on the home page</span>
+      </label>
+
+      {error && <p className="form-error">{error}</p>}
+
+      <div className="btn-row">
+        <button type="button" className="btn ghost" onClick={onCancel} disabled={saving}>Cancel</button>
+        <button type="submit" className="btn primary" disabled={saving}>
+          {saving ? 'Saving…' : (initial.id ? 'Save changes' : 'Add legend')}
+        </button>
+      </div>
+    </form>
+  )
+}
