@@ -2893,6 +2893,31 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .industry-other-row input { flex: 1; }
 
+/* ---------- Complete-your-profile nudge modal (Home) ---------- */
+.profile-nudge-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.profile-nudge-list li {
+  padding-left: 22px;
+  position: relative;
+  color: var(--text-secondary, #555);
+}
+.profile-nudge-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
 /* ---------- Global search (header search icon) ---------- */
 .global-search-backdrop { align-items: flex-start; padding-top: 90px; }
 .global-search-modal {

@@ -14,6 +14,7 @@ import LegendsBand from './Legends.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
+import CompleteProfilePrompt from './CompleteProfilePrompt.jsx'
 
 // Fields checked for the profile-completion bar — the ones that actually
 // make a profile useful to other Eendragters (who you are, what you do,
@@ -36,13 +37,28 @@ const MOBILE_TABS = [
   { id: 'events', label: 'Upcoming events' },
 ]
 
+function isFieldFilled(profile, f) {
+  const v = profile?.[f]
+  return v !== null && v !== undefined && String(v).trim() !== ''
+}
+
 function completionPercent(profile) {
   if (!profile) return 0
-  const filled = COMPLETION_FIELDS.filter((f) => {
-    const v = profile[f]
-    return v !== null && v !== undefined && String(v).trim() !== ''
-  }).length
+  const filled = COMPLETION_FIELDS.filter((f) => isFieldFilled(profile, f)).length
   return Math.round((filled / COMPLETION_FIELDS.length) * 100)
+}
+
+function missingCompletionFields(profile) {
+  if (!profile) return []
+  return COMPLETION_FIELDS.filter((f) => !isFieldFilled(profile, f))
+}
+
+// Once-a-day key for the modal nudge below — scoped per user so one
+// person dismissing it doesn't affect another on a shared device, and
+// dated (not just a boolean) so it reappears the next calendar day rather
+// than being silenced for good after the first "Not now".
+function nudgeStorageKey(userId) {
+  return `profile-nudge-seen:${userId}`
 }
 
 function greeting() {
@@ -107,6 +123,25 @@ export default function Home({ session, profile, onMessage }) {
   const navigate = useNavigate()
   const pct = completionPercent(profile)
   const firstName = (profile?.full_name || '').trim().split(' ')[0] || 'there'
+  const [showNudge, setShowNudge] = useState(false)
+
+  // The Home banner's "Complete your profile" pill is easy to scan past on
+  // the way to the feed, so anyone still below 100% also gets it surfaced
+  // as a modal — but only once per calendar day, so it nags rather than
+  // blocks. Keyed by user id + today's date in localStorage; dismissing
+  // ("Not now", Escape, or the backdrop) all just close the modal, since
+  // the storage write already happened when it was shown.
+  useEffect(() => {
+    if (loading || loadError || pct >= 100) return
+    const key = nudgeStorageKey(session.user.id)
+    const today = new Date().toISOString().slice(0, 10)
+    let lastSeen = null
+    try { lastSeen = localStorage.getItem(key) } catch { /* ignore */ }
+    if (lastSeen === today) return
+    setShowNudge(true)
+    try { localStorage.setItem(key, today) } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, loadError, pct, session.user.id])
 
   // Mobile pill row jumps to the matching section instead of switching
   // tabs — every section always renders (desktop and mobile alike), so
@@ -441,6 +476,12 @@ export default function Home({ session, profile, onMessage }) {
 
   return (
     <section className="panel">
+      {showNudge && (
+        <CompleteProfilePrompt
+          missing={missingCompletionFields(profile)}
+          onDismiss={() => setShowNudge(false)}
+        />
+      )}
       <div className="home-banner">
         <div className="home-banner-identity">
           <ProgressRing pct={pct} size={isWide ? 48 : 36}>
