@@ -9946,6 +9946,14 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .legends-stack-one { grid-template-rows: 1fr; }
 
+/* Mobile-only swipe carousel (see LegendsBand in Legends.jsx) — hidden on
+   desktop/tablet, where the hero+stack mosaic above does the job. Becomes a
+   horizontal scroll-snap strip of full-width slides under the max-width:760px
+   rule further down, same "one card, swipe, dots" treatment as Home's Recent
+   posts / Businesses near me carousels. */
+.legends-carousel { display: none; }
+.legends-carousel-dots { padding-top: 10px; }
+
 .legend-tile {
   position: relative;
   border-radius: 10px;
@@ -10107,6 +10115,60 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .legend-modal-link:hover { text-decoration: underline; }
 
+/* ---------- Hoek van Helde — the full page (LegendsHall.jsx) ---------- */
+
+.legends-hall-page { max-width: 1080px; }
+.legends-hall-head { margin: 4px 0 20px; }
+.legends-hall-title {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.legends-hall-sub {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+/* Uniform grid of the same photo tiles the Home mosaic uses — no hero here,
+   everyone gets equal billing on their own page. */
+.legends-hall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.legends-hall-grid .legend-tile { min-height: 230px; }
+
+@media (max-width: 640px) {
+  .legends-hall-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .legends-hall-grid .legend-tile { min-height: 170px; }
+  .legends-hall-title { font-size: 21px; }
+}
+
+/* ---------- One legend's own page (LegendProfile.jsx) ----------
+
+   Reuses the .legend-modal-* rules above for the photo/meta/headline/story —
+   none of them are scoped to .modal, so they carry over as-is. Only the
+   outer card, the larger photo and the name heading (an <h1> here, where the
+   modal used its dialog title instead) are new. */
+.legend-profile-card {
+  max-width: 640px;
+  margin: 0 auto;
+}
+.legend-profile-photo { aspect-ratio: 4 / 3; }
+.legend-profile-name {
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+@media (max-width: 640px) {
+  .legend-profile-name { font-size: 22px; }
+}
+
 /* ---------- Admin ---------- */
 
 .admin-legend-thumb {
@@ -10135,29 +10197,35 @@ button.delete-danger svg { flex-shrink: 0; }
 /* ---------- Mobile ----------
 
    The mosaic doesn't survive a phone screen: three tiles side by side means
-   three unreadable tiles. It becomes a hero plus a two-across row of short
-   tiles instead — same three people, roughly a third of the height, and the
-   claim-to-fame line drops off the two small ones because at that width it
-   would be one clipped line saying nothing. Name, face and category still
-   read, which is enough to earn a tap. */
+   three unreadable tiles. Rather than shrink them into a row of small crops,
+   mobile swaps the whole mosaic out for the carousel below — one full-bleed
+   person per screen, swiped or dotted between, same as Home's other
+   single-card carousels. */
 @media (max-width: 760px) {
   .legends-band { margin-bottom: 14px; }
-  .legends-grid {
-    grid-template-columns: 1fr;
-    gap: 6px;
+  .legends-grid { display: none; }
+
+  .legends-carousel {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+    scrollbar-width: none;
   }
-  .legends-stack {
-    grid-template-rows: none;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
+  .legends-carousel::-webkit-scrollbar { display: none; }
+  .legends-carousel-slide {
+    flex: 0 0 100%;
+    width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
   }
-  .legends-stack-one { grid-template-columns: 1fr; }
-  .legend-tile-hero { min-height: 210px; }
-  .legends-stack .legend-tile { min-height: 118px; }
-  .legends-stack .legend-tile-headline { display: none; }
-  .legends-stack .legend-tile-name { font-size: 15px; margin-bottom: 3px; }
-  .legends-stack .legend-tile-body { padding: 10px; }
-  .legends-stack .legend-pill { top: 8px; left: 8px; font-size: 9px; padding: 3px 7px; }
+  .legends-carousel .legend-tile-hero { min-height: 300px; }
+  /* Own visibility rule rather than relying on the shared .home-carousel-dots
+     max-width:720px override — this section's breakpoint is 760px, and a
+     window between 721-760px would otherwise show the carousel with no dots. */
+  .legends-carousel-dots { display: flex; justify-content: center; align-items: center; gap: 8px; }
   .legend-tile-hero .legend-tile-name { font-size: 21px; }
   .legend-tile-hero .legend-tile-headline { font-size: 13px; -webkit-line-clamp: 2; }
   .legends-title { font-size: 16px; }

@@ -37,6 +37,8 @@ const Jobs = lazy(() => import('./components/Jobs.jsx'))
 const JobDetail = lazy(() => import('./components/JobDetail.jsx'))
 const BusinessDirectory = lazy(() => import('./components/BusinessDirectory.jsx'))
 const BusinessDetail = lazy(() => import('./components/BusinessDetail.jsx'))
+const LegendsHall = lazy(() => import('./components/LegendsHall.jsx'))
+const LegendProfile = lazy(() => import('./components/LegendProfile.jsx'))
 const Donate = lazy(() => import('./components/Donate.jsx'))
 const Admin = lazy(() => import('./components/Admin.jsx'))
 const Settings = lazy(() => import('./components/Settings.jsx'))
@@ -795,6 +797,8 @@ export default function App() {
               <Route path="/jobs/:jobId" element={<JobDetail session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/businesses" element={<BusinessDirectory session={session} profile={profile} onMessage={openMessage} />} />
               <Route path="/businesses/:businessId" element={<BusinessDetail session={session} profile={profile} onMessage={openMessage} />} />
+              <Route path="/legends" element={<LegendsHall />} />
+              <Route path="/legends/:legendId" element={<LegendProfile />} />
               <Route path="/donate" element={<Donate />} />
               <Route
                 path="/admin"
