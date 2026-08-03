@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { LEGEND_FIELDS, LegendCard } from './Legends.jsx'
+import { LEGEND_FIELDS, LegendTile } from './Legends.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
 
@@ -48,7 +48,7 @@ export default function LegendsHall() {
         <EmptyState icon="search" message="No legends curated yet." subMessage="Check back soon." />
       ) : (
         <div className="legends-hall-grid">
-          {legends.map((l) => <LegendCard key={l.id} legend={l} />)}
+          {legends.map((l) => <LegendTile key={l.id} legend={l} />)}
         </div>
       )}
     </section>

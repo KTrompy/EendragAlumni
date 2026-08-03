@@ -9800,8 +9800,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-post-preview:has(.stretched-link:focus-visible),
 .home-business-card:has(.stretched-link:focus-visible),
 .home-community-card:has(.stretched-link:focus-visible),
-.home-event-widget:has(.stretched-link:focus-visible),
-.legend-card:has(.stretched-link:focus-visible) {
+.home-event-widget:has(.stretched-link:focus-visible) {
   border-color: var(--orange);
 }
 .home-post-preview:has(.stretched-link:hover) {
@@ -9954,81 +9953,6 @@ button.delete-danger svg { flex-shrink: 0; }
    posts / Businesses near me carousels. */
 .legends-carousel { display: none; }
 .legends-carousel-dots { padding-top: 10px; }
-
-/* ---------- LegendCard — photo on top, details in a proper text block
-   underneath ----------
-
-   Used by the Hall's grid and the Home carousel's mobile slides — anywhere
-   several of these sit side by side or get swiped through in quick
-   succession. The mosaic's LegendTile (photo-overlay, white text burned into
-   a scrim) is reserved for the Home mosaic itself, where one big hero image
-   carries it; at a smaller size or in a dense grid that same treatment reads
-   as a caption stamped on a stranger's face rather than a card. */
-.legend-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
-}
-.legend-card:hover { border-color: var(--orange); box-shadow: var(--shadow-card); }
-.legend-card-photo {
-  position: relative;
-  aspect-ratio: 4 / 5;
-  background: var(--maroon-dark);
-  overflow: hidden;
-}
-.legend-card-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* Same upward crop bias as the mosaic tiles — these are portraits, and a
-     centre crop on a standing figure cuts off the head first. */
-  object-position: center 22%;
-}
-/* The pill still sits on the photo (there's nowhere else for it that reads
-   as clearly), but as its own small badge over a plain image rather than
-   over a dark scrim — no other text shares the photo here. */
-.legend-card-photo .legend-pill { top: 10px; left: 10px; }
-.legend-card-body {
-  padding: 13px 14px 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.legend-card-name {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 1.25;
-  margin: 0;
-  color: var(--maroon);
-}
-.legend-card-meta {
-  margin: 0;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-.legend-card-headline {
-  margin: 4px 0 0;
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--ink-soft);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-/* Mobile carousel slides get a little more room to breathe than the dense
-   Hall grid — a taller photo and one more line of headline, since there's
-   only ever one card in view at a time. */
-.legends-carousel-slide .legend-card-photo { aspect-ratio: 1 / 1; }
-.legends-carousel-slide .legend-card-body { padding: 15px 16px 18px; }
-.legends-carousel-slide .legend-card-name { font-size: 19px; }
-.legends-carousel-slide .legend-card-headline { font-size: 14.5px; -webkit-line-clamp: 4; }
 
 .legend-tile {
   position: relative;
@@ -10208,21 +10132,23 @@ button.delete-danger svg { flex-shrink: 0; }
   color: var(--ink-soft);
   max-width: 62ch;
 }
-/* Uniform grid of LegendCards — no hero here, everyone gets equal billing on
-   their own page. minmax(220px, 1fr) keeps cards a sensible width at any
-   laptop size rather than stretching two or three wide cards across a
-   full-width monitor. */
+/* Uniform grid of the same photo-and-scrim tiles the Home mosaic uses — no
+   hero here, everyone gets equal billing on their own page. Wider minmax
+   than the mosaic's tiles (and a fixed landscape aspect-ratio, overriding
+   the tile's usual min-height) so each photo reads as a wide newspaper-style
+   crop rather than the mosaic's taller portrait shape. */
 .legends-hall-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 18px;
+}
+.legends-hall-grid .legend-tile {
+  aspect-ratio: 3 / 2;
+  min-height: 0;
 }
 
 @media (max-width: 640px) {
-  .legends-hall-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .legends-hall-grid .legend-card-body { padding: 10px 11px 12px; }
-  .legends-hall-grid .legend-card-name { font-size: 14.5px; }
-  .legends-hall-grid .legend-card-headline { font-size: 12.5px; -webkit-line-clamp: 2; }
+  .legends-hall-grid { grid-template-columns: 1fr; gap: 12px; }
   .legends-hall-title { font-size: 21px; }
 }
 
@@ -10308,6 +10234,9 @@ button.delete-danger svg { flex-shrink: 0; }
     scroll-snap-stop: always;
   }
   .legends-carousel-slide:last-child { margin-right: 0; }
+  .legends-carousel .legend-tile-hero { min-height: 300px; }
+  .legend-tile-hero .legend-tile-name { font-size: 21px; }
+  .legend-tile-hero .legend-tile-headline { font-size: 13px; -webkit-line-clamp: 2; }
   /* Own visibility rule rather than relying on the shared .home-carousel-dots
      max-width:720px override — this section's breakpoint is 760px, and a
      window between 721-760px would otherwise show the carousel with no dots. */

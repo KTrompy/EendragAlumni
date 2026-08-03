@@ -152,17 +152,14 @@ export default function LegendsBand() {
         )}
       </div>
 
-      {/* Mobile: one person per screen, swipe (or tap a dot) to see the
-          next — same "featured" three the mosaic above shows, just paged
-          through instead of tiled. Uses LegendCard (photo on top, details
-          in a proper text block underneath) rather than the mosaic's
-          photo-with-text-burned-in tile — that overlay treatment is built
-          for a big hero image, and reading headline/meta over a stranger's
-          face at phone width was the "clumped onto the image" problem. */}
+      {/* Mobile: one full-bleed tile per screen, swipe (or tap a dot) to see
+          the next — same "featured" three the mosaic above shows, and the
+          same photo-with-scrim newspaper look, just paged through one at a
+          time instead of tiled. */}
       <div className="legends-carousel" ref={carouselRef} onScroll={updateSlideIndex}>
         {featured.map((l) => (
           <div className="legends-carousel-slide" key={l.id}>
-            <LegendCard legend={l} />
+            <LegendTile legend={l} hero />
           </div>
         ))}
       </div>
@@ -206,36 +203,6 @@ export function LegendTile({ legend, hero = false }) {
         <h4 className="legend-tile-name">{legend.name}</h4>
         <p className="legend-tile-headline">{legend.headline}</p>
         {meta && <p className="legend-tile-meta">{meta}</p>}
-      </div>
-      <Link className="stretched-link" to={`/legends/${legend.id}`}>
-        <span className="sr-only">{`Read about ${legend.name}`}</span>
-      </Link>
-    </article>
-  )
-}
-
-// A plain card — photo on top at a fixed crop, name/category/meta/headline
-// in a proper padded text block underneath, same shape as the other card
-// grids in the app (home-business-card, person-card, etc.). Used by
-// LegendsHall's grid and the Home mosaic's mobile carousel — anywhere a lot
-// of these sit side by side or get swiped through quickly, where the
-// mosaic's photo-overlay LegendTile reads as text stamped on a face rather
-// than a card. LegendTile stays reserved for the Home mosaic itself, the one
-// place that full-bleed editorial look is the point.
-export function LegendCard({ legend }) {
-  const meta = legendMeta(legend)
-  return (
-    <article className="legend-card">
-      <div className="legend-card-photo">
-        <img src={legend.photo_url} alt="" loading="lazy" />
-        <span className={`legend-pill legend-pill-${legend.category}`}>
-          {CATEGORY_LABEL[legend.category] || 'Eendrag'}
-        </span>
-      </div>
-      <div className="legend-card-body">
-        <h4 className="legend-card-name">{legend.name}</h4>
-        {meta && <p className="legend-card-meta">{meta}</p>}
-        <p className="legend-card-headline">{legend.headline}</p>
       </div>
       <Link className="stretched-link" to={`/legends/${legend.id}`}>
         <span className="sr-only">{`Read about ${legend.name}`}</span>
