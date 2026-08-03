@@ -866,14 +866,14 @@ export default function Auth({ initialError = null, initialMode = null }) {
                       className={newsOptIn === true ? 'onboarding-choice on' : 'onboarding-choice'}
                       onClick={() => setNewsOptIn(true)}
                     >
-                      Opt in
+                      Yes, email me
                     </button>
                     <button
                       type="button"
                       className={newsOptIn === false ? 'onboarding-choice on' : 'onboarding-choice'}
                       onClick={() => setNewsOptIn(false)}
                     >
-                      Opt out
+                      No, don&rsquo;t email me
                     </button>
                   </div>
                 </fieldset>
