@@ -29,6 +29,58 @@ import { getCorsHeaders, json } from '../_shared/accountCleanup.ts'
 const SITE_URL = 'https://www.eendragalumni.org'
 const FROM_ADDRESS = 'Eendrag Alumni <no-reply@eendragalumni.org>'
 
+// Branded HTML shell — mirrors the palette in src/styles.css (orange #E8611C,
+// maroon #5A1A2B, paper #FAF7F2) so transactional mail matches the app rather
+// than reading like a bare system notice. Table-based layout + inline styles
+// for email-client compatibility (Outlook etc. ignore <style> blocks).
+function approvalEmailHtml(firstName: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0; padding:0; background:#FAF7F2; font-family:'Inter',Arial,sans-serif; color:#1A1A1A;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAF7F2; padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px; width:100%; background:#FFFFFF; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(26,26,26,0.06);">
+          <tr>
+            <td style="background:#5A1A2B; padding:20px 32px;">
+              <span style="font-family:Georgia,'Times New Roman',serif; font-size:20px; color:#FFFFFF; letter-spacing:0.02em;">Eendrag Alumni</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:36px 32px 28px;">
+              <h1 style="margin:0 0 16px; font-family:Georgia,'Times New Roman',serif; font-size:22px; color:#5A1A2B;">You're verified, ${firstName}</h1>
+              <p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#1A1A1A;">
+                An admin has reviewed and approved your Eendrag Alumni account. You're all set to sign in.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:8px; background:#E8611C;">
+                    <a href="${SITE_URL}" style="display:inline-block; padding:12px 28px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none; border-radius:8px;">Sign in to Eendrag Alumni</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:28px 0 0; font-size:13px; line-height:1.6; color:#5C5C5C;">
+                See you there.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px; border-top:1px solid #E8E1D5;">
+              <p style="margin:0; font-size:12px; line-height:1.6; color:#5C5C5C;">
+                Eendrag Alumni · <a href="${SITE_URL}" style="color:#5C5C5C;">eendragalumni.org</a><br>
+                You're receiving this because an admin approved your account request.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim()
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: getCorsHeaders(req) })
@@ -95,13 +147,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: FROM_ADDRESS,
         to: [email],
-        subject: "You're verified — welcome to Eendrag Alumni",
-        html: `
-          <p>Hi ${firstName},</p>
-          <p>Good news — your Eendrag Alumni account has been verified by an admin. You can sign in now:</p>
-          <p><a href="${SITE_URL}">${SITE_URL}</a></p>
-          <p>See you there.</p>
-        `,
+        subject: 'Your Eendrag Alumni account is verified',
+        html: approvalEmailHtml(firstName),
       }),
     })
 

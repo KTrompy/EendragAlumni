@@ -11,7 +11,6 @@ import { WhosOnline } from './WhosOnline.jsx'
 import { BusinessLogo } from './BusinessLogo.jsx'
 import LegendsBand from './Legends.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
-import useModal from '../useModal.js'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
 
@@ -85,14 +84,12 @@ function formatEventDate(iso) {
 export default function Home({ session, profile, onMessage }) {
   const [recentPosts, setRecentPosts] = useState([])
   const [upcomingEvent, setUpcomingEvent] = useState(null)
+  // `badges` itself stays: Home's load() uses a non-empty badges result as
+  // the auth-settled canary (see the comment at its retry check below). Only
+  // the badge *display* (chip + modal + earned-status tracking) is gone.
   const [badges, setBadges] = useState([])
-  const [earnedKeys, setEarnedKeys] = useState(new Set())
   const [community, setCommunity] = useState([])
   const [nearbyBusinesses, setNearbyBusinesses] = useState([])
-  const [showBadges, setShowBadges] = useState(false)
-  // Escape, focus trap and Back-button close for the badges modal — it was
-  // closable by backdrop click only.
-  const badgesRef = useModal({ enabled: showBadges, onClose: () => setShowBadges(false) })
   const [loading, setLoading] = useState(true)
   // The widget batch below never looked at `error` on any of its results, so
   // a failed query (RLS hiccup, dropped connection) was indistinguishable
@@ -290,9 +287,10 @@ export default function Home({ session, profile, onMessage }) {
           .gte('event_date', new Date().toISOString())
           .order('event_date', { ascending: true })
           .limit(1),
+        // Not shown anywhere anymore (badge display was removed from the
+        // home banner), but the query itself stays: `load()`'s retry check
+        // below uses a non-empty result here as its auth-settled canary.
         supabase.from('badges').select('id, key, name, description').order('sort_order', { ascending: true }),
-        supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', uid),
-        supabase.from('event_rsvps').select('event_id', { count: 'exact', head: true }).eq('user_id', uid),
         // Pull a wider candidate pool than we'll actually show (24, not 6) —
         // the weighting below needs enough rows to sort through, otherwise
         // "top 6" is really just "first 6 the DB happened to return".
@@ -321,8 +319,6 @@ export default function Home({ session, profile, onMessage }) {
         { data: posts },
         { data: events },
         { data: badgeDefs },
-        { count: postsCount },
-        { count: rsvpCount },
         { data: matchedCommunity },
         { data: matchedBusinesses },
       ] = results
@@ -415,13 +411,6 @@ export default function Home({ session, profile, onMessage }) {
       setBadges(badgeDefs || [])
       setCommunity(communityList)
       setNearbyBusinesses(businessList)
-
-      const earned = new Set()
-      if (pct === 100) earned.add('profile_complete')
-      if ((postsCount || 0) > 0) earned.add('first_post')
-      if ((rsvpCount || 0) > 0) earned.add('event_goer')
-      setEarnedKeys(earned)
-
       setLoading(false)
     }
     load()
@@ -445,28 +434,16 @@ export default function Home({ session, profile, onMessage }) {
     )
   }
 
-  const earnedCount = badges.filter((b) => earnedKeys.has(b.key)).length
-
   return (
     <section className="panel">
       <div className="home-banner">
         <div className="home-banner-identity">
-          <ProgressRing pct={pct} size={64}>
-            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={54} />
+          <ProgressRing pct={pct} size={48}>
+            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={40} />
           </ProgressRing>
           <div className="home-banner-body">
             <h2 className="home-banner-title">{greeting()}, {firstName}</h2>
-            <p className="home-banner-sub">
-              <span>Profile {pct}% complete</span>
-              {badges.length > 0 && (
-                <>
-                  <span className="home-banner-sub-dot">·</span>
-                  <button type="button" className="home-banner-textlink" onClick={() => setShowBadges(true)}>
-                    <ShieldIcon /> {earnedCount}/{badges.length} badges
-                  </button>
-                </>
-              )}
-            </p>
+            <p className="home-banner-sub">Profile {pct}% complete</p>
           </div>
         </div>
         <div className="home-banner-cta">
@@ -744,31 +721,6 @@ export default function Home({ session, profile, onMessage }) {
           </div>
         </aside>
       </div>
-
-      {showBadges && (
-        <div className="modal-backdrop" onClick={() => setShowBadges(false)} role="dialog" aria-modal="true" aria-labelledby="badges-modal-title">
-          <div className="modal" ref={badgesRef} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 id="badges-modal-title">Your badges — {earnedCount}/{badges.length} achieved</h2>
-              <button type="button" className="modal-close" onClick={() => setShowBadges(false)} aria-label="Close">×</button>
-            </div>
-            <div className="modal-body">
-              <ul className="badges-grid">
-                {badges.map((b) => {
-                  const earned = earnedKeys.has(b.key)
-                  return (
-                    <li key={b.id} className={earned ? 'badge-card earned' : 'badge-card'}>
-                      <BadgeIcon earned={earned} />
-                      <strong>{b.name}</strong>
-                      <span>{b.description}</span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   )
 }
@@ -805,13 +757,6 @@ function RefreshIcon() {
       <path d="M21 3v5h-5" />
       <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
       <path d="M3 21v-5h5" />
-    </svg>
-  )
-}
-function ShieldIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--orange-dark)' }}>
-      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
     </svg>
   )
 }
@@ -858,14 +803,6 @@ function ImageIcon() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--ink-soft)', flexShrink: 0 }}>
       <path d="M4 8a2 2 0 0 1 2-2h1.5l1-1.5h7l1 1.5H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z" />
       <circle cx="12" cy="13" r="3.5" />
-    </svg>
-  )
-}
-function BadgeIcon({ earned }) {
-  return (
-    <svg width="30" height="30" viewBox="0 0 24 24" fill={earned ? 'var(--orange-soft)' : 'none'} stroke={earned ? 'var(--orange-dark)' : 'var(--ink-soft)'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2l2.6 1.5 3-.3.5 3 2.4 1.8-1.3 2.8.9 2.9-2.8 1.3-1.5 2.6-3-.4-2.7 1.5-1.8-2.4-3-.5-.3-3L2.6 11l1.5-2.6L3.7 5.4l3-.5L8.5 2.3z" />
-      <circle cx="12" cy="11" r="3" />
     </svg>
   )
 }
