@@ -40,6 +40,7 @@ const BusinessDetail = lazy(() => import('./components/BusinessDetail.jsx'))
 const LegendsHall = lazy(() => import('./components/LegendsHall.jsx'))
 const LegendProfile = lazy(() => import('./components/LegendProfile.jsx'))
 const Donate = lazy(() => import('./components/Donate.jsx'))
+const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy.jsx'))
 const Admin = lazy(() => import('./components/Admin.jsx'))
 const Settings = lazy(() => import('./components/Settings.jsx'))
 const NotFound = lazy(() => import('./components/NotFound.jsx'))
@@ -704,6 +705,7 @@ export default function App() {
               <Route path="/legends" element={<LegendsHall />} />
               <Route path="/legends/:legendId" element={<LegendProfile />} />
               <Route path="/donate" element={<Donate />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route
                 path="/admin"
                 element={profile?.is_admin ? <Admin session={session} /> : <Navigate to="/home" replace />}
@@ -745,7 +747,9 @@ export default function App() {
                 Initiated and built by Kyle Trompeter —{' '}
                 <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>
                 {' · '}
-                <button type="button" className="footer-link footer-link-btn" onClick={() => goTo('/donate')}>Support the house</button>.
+                <button type="button" className="footer-link footer-link-btn" onClick={() => goTo('/donate')}>Support the house</button>
+                {' · '}
+                <button type="button" className="footer-link footer-link-btn" onClick={() => goTo('/privacy')}>Privacy Policy</button>.
               </span>
             </div>
           </footer>

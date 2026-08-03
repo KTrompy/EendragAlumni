@@ -4,6 +4,7 @@ import CountryAutocomplete from './CountryAutocomplete.jsx'
 import CityAutocomplete from './CityAutocomplete.jsx'
 import { MAX_RESIDENCE_YEARS } from '../constants.js'
 import { friendlyAuthError } from '../authErrors.js'
+import { PrivacyPolicyModal } from './PrivacyPolicy.jsx'
 
 // Shown (full-screen, before anything else) to anyone signed in whose
 // profile has no consented_at yet — in practice that's people who joined
@@ -84,6 +85,7 @@ export default function FinishSignup({ session, profile, onDone }) {
   const [postCode, setPostCode] = useState(draft.postCode ?? '')
   const [country, setCountry] = useState(draft.country ?? (profile?.country || 'South Africa'))
   const [dataConsent, setDataConsent] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
@@ -274,6 +276,12 @@ export default function FinishSignup({ session, profile, onDone }) {
               occasional system emails about my profile. *
             </span>
           </label>
+          <p className="hint auth-privacy-link">
+            <button type="button" className="link-btn" onClick={() => setPrivacyOpen(true)}>
+              Read our Privacy Policy
+            </button>
+          </p>
+          {privacyOpen && <PrivacyPolicyModal onClose={() => setPrivacyOpen(false)} />}
 
           {/* Live region: this form is eleven fields long and validate()
               returns one message at a time, so without an announcement a

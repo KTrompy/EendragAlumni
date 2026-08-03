@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase, deleteOwnAccount, isNetworkError } from '../supabaseClient'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -608,6 +609,9 @@ function PrivacyTab({ session, profile, onSaved }) {
           </div>
         ))}
       </div>
+      <p className="hint">
+        See our <Link to="/privacy">Privacy Policy</Link> for what we collect and why.
+      </p>
     </div>
   )
 }

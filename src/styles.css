@@ -5252,6 +5252,31 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 .donate-pillar span { font-size: 13.5px; color: var(--ink-soft); }
 
+/* ---------- Privacy policy (page + signup modal) ---------- */
+.privacy-policy-page {
+  max-width: 680px;
+  text-align: left;
+}
+.privacy-policy-page h2 { text-align: left; }
+.modal-privacy { max-width: 640px; }
+.privacy-policy-content h3 {
+  font-family: var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--maroon);
+  font-size: 14px;
+  margin: 20px 0 6px;
+}
+.privacy-policy-content h3:first-of-type { margin-top: 4px; }
+.privacy-policy-content p {
+  text-align: left;
+  max-width: none;
+  margin: 0 0 12px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.privacy-policy-content a { color: var(--orange); }
+
 /* ---------- Profile page avatar block ---------- */
 .avatar {
   border-radius: 50%;

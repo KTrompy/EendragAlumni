@@ -8,6 +8,7 @@ import { PASSWORD_MIN, passwordProblem, PasswordStrengthMeter } from '../passwor
 import { authRedirectTo } from '../authRedirect.js'
 import { friendlyAuthError } from '../authErrors.js'
 import { MAX_RESIDENCE_YEARS } from '../constants.js'
+import { PrivacyPolicyModal } from './PrivacyPolicy.jsx'
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
 
@@ -108,6 +109,7 @@ export default function Auth({ initialError = null, initialMode = null }) {
   const [country, setCountry] = useState('South Africa')
   const [newsOptIn, setNewsOptIn] = useState(null) // null until they choose
   const [dataConsent, setDataConsent] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
   // 'confirm'  — account created, Supabase has emailed a confirmation link and
   //              they must click it before they can sign in ("Confirm email" is
   //              on in the dashboard).
@@ -887,6 +889,12 @@ export default function Auth({ initialError = null, initialMode = null }) {
                     occasional system emails about my profile. *
                   </span>
                 </label>
+                <p className="hint auth-privacy-link">
+                  <button type="button" className="link-btn" onClick={() => setPrivacyOpen(true)}>
+                    Read our Privacy Policy
+                  </button>
+                </p>
+                {privacyOpen && <PrivacyPolicyModal onClose={() => setPrivacyOpen(false)} />}
 
                 {captchaVisible && <div ref={turnstileRef} className="auth-captcha" />}
                 {captchaVisible && captchaError && (
