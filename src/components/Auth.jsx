@@ -117,9 +117,19 @@ export default function Auth({ initialError = null, initialMode = null }) {
   //              auth listener in App.jsx normally swaps this screen out for
   //              PendingVerification before it's even seen.
   const [signupDone, setSignupDone] = useState(null) // null | 'confirm' | 'pending'
-  // Resend state for the confirmation email, used only on the 'confirm' screen.
+  // Resend state for the confirmation email. Shared between the 'confirm'
+  // screen (right after signup) and the sign-in form (someone returning
+  // later to a link that's since expired — see signinUnconfirmed below).
   const [resendBusy, setResendBusy] = useState(false)
   const [resendMsg, setResendMsg] = useState(null)
+  // Set when a sign-in attempt fails with "Email not confirmed". Confirmation
+  // links expire (Supabase default is a few hours), and someone who signed up
+  // and comes back later than that lands here with no session and no memory
+  // of the 'confirm' screen's resend button — which only ever existed in this
+  // component's local state, gone the moment they closed the tab. Without a
+  // resend option reachable from the sign-in form itself, that's a dead end:
+  // the account can never be confirmed and they can never sign in.
+  const [signinUnconfirmed, setSigninUnconfirmed] = useState(false)
   // Set when signUp succeeded but the follow-up sign-in didn't: the account
   // exists, so the only useful next step is signing in, not signing up
   // again. Drives the "Go to sign in" button under the error.
@@ -215,6 +225,8 @@ export default function Auth({ initialError = null, initialMode = null }) {
     setError(null)
     setNotice(null)
     setAccountExists(false)
+    setSigninUnconfirmed(false)
+    setResendMsg(null)
   }
 
   // "Your account exists — go sign in" recovery. Carries the email across
@@ -253,7 +265,7 @@ export default function Auth({ initialError = null, initialMode = null }) {
     // write it back so the field shows what was actually submitted.
     const cleanEmail = email.trim()
     if (cleanEmail !== email) setEmail(cleanEmail)
-    setBusy(true); setError(null); setNotice(null)
+    setBusy(true); setError(null); setNotice(null); setSigninUnconfirmed(false); setResendMsg(null)
     try {
       if (mode === 'forgot') {
         // Supabase emails a link that signs the browser into a recovery
@@ -275,6 +287,11 @@ export default function Auth({ initialError = null, initialMode = null }) {
       // "Email not confirmed") and passes anything unrecognised through
       // untouched, so a novel error is never swallowed.
       setError(friendlyAuthError(e2))
+      // Only on the actual sign-in branch — resend needs a signup to resend
+      // against, and 'forgot' can't hit this GoTrue error at all.
+      if (mode === 'signin' && /email not confirmed|email_not_confirmed/i.test(e2?.message || '')) {
+        setSigninUnconfirmed(true)
+      }
     } finally {
       setBusy(false)
       // Turnstile tokens are single-use — reset after every attempt.
@@ -282,16 +299,22 @@ export default function Auth({ initialError = null, initialMode = null }) {
     }
   }
 
-  // Re-sends the confirmation link, for the 'confirm' screen below. Only
+  // Re-sends the confirmation link. Used by the 'confirm' screen right after
+  // signup (no argument — falls back to signupEmail) and by the sign-in
+  // form's "email not confirmed" recovery, which passes the sign-in email
+  // field instead since signupEmail is empty on a fresh page load. Only
   // reachable when "Confirm email" is on in the dashboard — without a resend
-  // path, anyone whose confirmation email was eaten by a spam filter had no
-  // way forward at all, because signing up again just fails.
-  async function resendConfirmation() {
+  // path, anyone whose confirmation link expired or was eaten by a spam
+  // filter had no way forward at all, because signing up again just fails
+  // with "already registered" and signing in fails with "not confirmed".
+  async function resendConfirmation(targetEmail) {
+    const addr = (targetEmail ?? signupEmail).trim()
+    if (!addr) return
     setResendBusy(true)
     setResendMsg(null)
     const { error: err } = await supabase.auth.resend({
       type: 'signup',
-      email: signupEmail.trim(),
+      email: addr,
       options: { emailRedirectTo: authRedirectTo() },
     })
     setResendBusy(false)
@@ -675,6 +698,24 @@ export default function Auth({ initialError = null, initialMode = null }) {
                 appeared visually and nothing else happened. */}
             {error && <p className="form-error" role="alert">{error}</p>}
             {notice && <p className="form-notice" role="status">{notice}</p>}
+
+            {signinUnconfirmed && (
+              <>
+                {resendMsg && (
+                  <p className={resendMsg.type === 'ok' ? 'form-notice' : 'form-error'} role="status">
+                    {resendMsg.text}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="btn ghost wide"
+                  onClick={() => resendConfirmation(email)}
+                  disabled={resendBusy}
+                >
+                  {resendBusy ? 'Sending…' : 'Resend the confirmation email'}
+                </button>
+              </>
+            )}
 
             <button type="submit" className="btn primary wide" disabled={busy}>
               {busy ? 'One moment…' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
