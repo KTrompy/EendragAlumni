@@ -8195,7 +8195,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .home-progress-ring-inner .avatar { border: none; }
 
 .home-banner-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.home-banner-body { flex: 0 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.home-banner-body { flex: 0 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .home-banner-title {
   margin: 0;
   font-family: var(--display);
@@ -8204,12 +8204,6 @@ button.delete-danger svg { flex-shrink: 0; }
   line-height: 1.2;
   color: var(--maroon);
   word-break: break-word;
-}
-.home-banner-sub {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-soft);
 }
 /* Icons in RefreshIcon/ShareIcon are inline-styled to var(--cta-icon-color)
    for use on the light banner background; redefine that variable inside

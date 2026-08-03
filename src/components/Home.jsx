@@ -443,7 +443,6 @@ export default function Home({ session, profile, onMessage }) {
           </ProgressRing>
           <div className="home-banner-body">
             <h2 className="home-banner-title">{greeting()}, {firstName}</h2>
-            <p className="home-banner-sub">Profile {pct}% complete</p>
           </div>
         </div>
         <div className="home-banner-cta">
