@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { useIsWide } from '../utils.js'
 import { Avatar } from './Directory.jsx'
 // Imported from their own modules, not from Feed.jsx / BusinessDirectory.jsx.
 // Home is eagerly loaded (it's the default route), so a named import from
@@ -82,6 +83,10 @@ function formatEventDate(iso) {
 }
 
 export default function Home({ session, profile, onMessage }) {
+  // Greeting banner's avatar/ring shrink on mobile only (see home-banner
+  // CSS) — this is set via JS rather than CSS alone because ProgressRing's
+  // SVG dimensions come from a `size` prop, not a stylesheet value.
+  const isWide = useIsWide(721)
   const [recentPosts, setRecentPosts] = useState([])
   const [upcomingEvent, setUpcomingEvent] = useState(null)
   // `badges` itself stays: Home's load() uses a non-empty badges result as
@@ -438,8 +443,8 @@ export default function Home({ session, profile, onMessage }) {
     <section className="panel">
       <div className="home-banner">
         <div className="home-banner-identity">
-          <ProgressRing pct={pct} size={48}>
-            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={40} />
+          <ProgressRing pct={pct} size={isWide ? 48 : 36}>
+            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={isWide ? 40 : 30} />
           </ProgressRing>
           <div className="home-banner-body">
             <h2 className="home-banner-title">{greeting()}, {firstName}</h2>

@@ -6973,6 +6973,9 @@ button.delete-danger svg { flex-shrink: 0; }
   .brand { gap: 0; }
   .masthead-actions { gap: 8px; }
 
+  /* Hidden on mobile per request — kept on desktop/tablet. */
+  .masthead-actions .header-icon-btn[aria-label="Messages"] { display: none; }
+
   /* Mobile gets an avatar (→ profile) in the header plus a bottom tab bar
      for the five core sections — but Groups/Mentoring/Business
      Directory/Admin don't fit in either of those, so the hamburger (hidden
@@ -8220,12 +8223,14 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 
 @media (max-width: 720px) {
-  .home-banner { flex-direction: column; align-items: center; text-align: center; padding: 18px 20px; }
-  .home-banner-identity { flex-direction: column; text-align: center; }
+  /* Smaller/tighter banner on mobile only — desktop/tablet keeps the
+     original sizing above. */
+  .home-banner { flex-direction: column; align-items: center; text-align: center; padding: 10px 16px; gap: 12px; margin-bottom: 14px; }
+  .home-banner-identity { flex-direction: column; text-align: center; gap: 10px; }
   .home-banner-body { align-items: center; }
-  .home-banner-title { text-align: center; }
+  .home-banner-title { text-align: center; font-size: 15px; }
   .home-banner-cta { width: 100%; }
-  .home-banner-cta .btn { width: 100%; justify-content: center; }
+  .home-banner-cta .btn { width: 100%; justify-content: center; gap: 5px; padding: 6px 13px; font-size: 12px; }
 }
 
 /* Bolder, clearly-separated section headers throughout the home dashboard —
