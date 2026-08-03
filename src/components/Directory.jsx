@@ -7,6 +7,19 @@ import { normalizeExpertise, isRecentlyOnline, safeUrl } from '../utils.js'
 
 const PAGE_SIZE = 12
 
+// Deterministic-but-scrambled sort key for the default "For You" order.
+// Hashing viewerId+personId (FNV-1a) means the shuffle is stable across
+// re-renders/re-fetches for one viewer, differs from viewer to viewer, and
+// needs no stored state — it just looks random per person browsing.
+function seededScore(seed) {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
 // Round avatar used elsewhere in the app (Feed, Profile page, Messages).
 // Falls back to the initials tile if the URL 404s (deleted bucket file,
 // stale link) so the layout never renders a broken-image icon.
@@ -65,14 +78,20 @@ export function OnlineDot({ lastSeen }) {
 // the *list* itself: sort order and how many rows are revealed so far.
 export default function Directory({ session, people, loading, me, onMessage, hideHeader = false }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [sort, setSort] = useState('alpha') // alpha | recent | online
+  // Default is 'discover' rather than 'alpha' — a shuffle that's seeded off
+  // the viewer's own id (see seededScore below), so every visitor gets a
+  // different-looking order but it doesn't jump around on re-render or
+  // re-fetch, and it's not a filter of any kind, just a different sort.
+  const [sort, setSort] = useState('discover') // discover | alpha | recent | online
 
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [people])
 
+  const viewerId = session?.user?.id || ''
   const sorted = [...people].sort((a, b) => {
     if (sort === 'alpha') return (a.full_name || '').localeCompare(b.full_name || '')
     if (sort === 'online') return new Date(b.last_seen || 0) - new Date(a.last_seen || 0)
-    return new Date(b.created_at || 0) - new Date(a.created_at || 0)
+    if (sort === 'recent') return new Date(b.created_at || 0) - new Date(a.created_at || 0)
+    return seededScore(`${viewerId}:${a.id}`) - seededScore(`${viewerId}:${b.id}`)
   })
   const shown = sorted.slice(0, visibleCount)
   const hasMore = visibleCount < sorted.length
@@ -93,6 +112,7 @@ export default function Directory({ session, people, loading, me, onMessage, hid
       <div className="directory-result-row">
         <p className="result-count">{sorted.length} Registered {sorted.length === 1 ? 'User' : 'Users'}</p>
         <div className="sort-switch" role="tablist" aria-label="Sort">
+          <button type="button" role="tab" aria-selected={sort === 'discover'} className={sort === 'discover' ? 'on' : ''} onClick={() => setSort('discover')}>For You</button>
           <button type="button" role="tab" aria-selected={sort === 'alpha'} className={sort === 'alpha' ? 'on' : ''} onClick={() => setSort('alpha')}>Alphabetically</button>
           <button type="button" role="tab" aria-selected={sort === 'recent'} className={sort === 'recent' ? 'on' : ''} onClick={() => setSort('recent')}>Recently joined</button>
           <button type="button" role="tab" aria-selected={sort === 'online'} className={sort === 'online' ? 'on' : ''} onClick={() => setSort('online')}>Recently online</button>

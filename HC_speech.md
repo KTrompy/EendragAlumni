@@ -1,4 +1,4 @@
-Good afternoon, everyone.
+Do you know how many of us lose touch the moment we leave this house? Or how you'd even find out there's an old boy out there, in your exact industry, who'd help you in a heartbeat if you just knew he existed?
 
 My name is [name], and I'm asking for your vote for House Committee.
 
