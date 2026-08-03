@@ -8791,19 +8791,27 @@ button.delete-danger svg { flex-shrink: 0; }
     gap: 8px;
     padding-top: 12px;
   }
-  .home-carousel-dot {
-    width: 7px;
-    height: 7px;
-    padding: 0;
-    border-radius: 50%;
-    border: none;
-    background: var(--line-strong);
-    transition: background 0.18s ease, transform 0.18s ease;
-  }
-  .home-carousel-dot.active {
-    background: var(--orange);
-    transform: scale(1.3);
-  }
+}
+
+/* Dot circle styling itself isn't gated to the 720px query above — the
+   Legends band shows/hides its dot row at its own 760px breakpoint (see
+   further down), and a rule scoped only inside the 720px block left dots
+   with no size or colour at all between 721-760px wide. Visibility of
+   .home-carousel-dots stays per-section (each carousel hides it at
+   whatever width that section switches to a single-card layout); the dots'
+   own look is shared and unconditional. */
+.home-carousel-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--line-strong);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.home-carousel-dot.active {
+  background: var(--orange);
+  transform: scale(1.3);
 }
 
 .lightbox-close {
@@ -9953,6 +9961,13 @@ button.delete-danger svg { flex-shrink: 0; }
    posts / Businesses near me carousels. */
 .legends-carousel { display: none; }
 .legends-carousel-dots { padding-top: 10px; }
+/* Rendered on the dot(s) at either end of the visible window when there are
+   more legends past it (see dotWindow in Legends.jsx) — a quieter "there's
+   more this way" hint than a hard-edged row that just stops. */
+.legends-carousel-dot-edge:not(.active) {
+  transform: scale(0.6);
+  opacity: 0.55;
+}
 
 .legend-tile {
   position: relative;

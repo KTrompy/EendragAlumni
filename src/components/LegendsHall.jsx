@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { LEGEND_FIELDS, LegendTile } from './Legends.jsx'
+import { LEGEND_FIELDS, LegendTile, shuffled } from './Legends.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
 
@@ -22,8 +22,6 @@ export default function LegendsHall() {
         .from('legends')
         .select(LEGEND_FIELDS)
         .eq('active', true)
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true })
       if (cancelled) return
       if (error) console.error(error)
       setLegends(data || [])
@@ -32,6 +30,11 @@ export default function LegendsHall() {
     load()
     return () => { cancelled = true }
   }, [])
+
+  // Fresh shuffle every time this page loads, same as the Home band —
+  // reordered once per fetch (not on every render), so the grid doesn't
+  // reshuffle itself while you're looking at it.
+  const order = useMemo(() => shuffled(legends), [legends])
 
   return (
     <section className="panel legends-hall-page">
@@ -44,11 +47,11 @@ export default function LegendsHall() {
 
       {loading ? (
         <LoadingState message="Loading Hoek van Helde…" />
-      ) : legends.length === 0 ? (
+      ) : order.length === 0 ? (
         <EmptyState icon="search" message="No legends curated yet." subMessage="Check back soon." />
       ) : (
         <div className="legends-hall-grid">
-          {legends.map((l) => <LegendTile key={l.id} legend={l} />)}
+          {order.map((l) => <LegendTile key={l.id} legend={l} />)}
         </div>
       )}
     </section>

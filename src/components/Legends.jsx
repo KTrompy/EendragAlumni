@@ -36,23 +36,37 @@ export const CATEGORY_LABEL = Object.fromEntries(LEGEND_CATEGORIES.map((c) => [c
 // column added to one never quietly goes missing from the other.
 export const LEGEND_FIELDS = 'id, name, years, degree, category, headline, story, photo_url, link_url, link_label'
 
-// How many tiles the mosaic shows at once: one hero plus two stacked beside it.
+// How many tiles the desktop mosaic shows at once: one hero plus two stacked
+// beside it. The mobile carousel isn't bound by this — it pages through
+// everyone (see LegendsBand below).
 const TILE_COUNT = 3
 
-// Which three are featured this week.
-//
-// Deterministic from the date rather than random, so every member sees the
-// same three people at the same time — that's what makes it feel like a
-// weekly spotlight rather than a shuffle, and it means someone can mention
-// "did you see who's up this week" and be understood. This same set doubles
-// as the mobile carousel's slides (see LegendsBand below) — it's still a
-// spotlight there, just paged through one at a time instead of a mosaic.
-//
-// The epoch fell on a Thursday, so a plain week-count would roll over on
-// Thursday mornings; the 4-day offset moves the boundary to Monday, which is
-// when people actually come back to a site like this.
-function weekNumber() {
-  return Math.floor((Date.now() - 4 * 86400000) / 604800000)
+// How many dots the mobile carousel's page indicator shows at once. With a
+// few dozen legends curated, one dot per person would print a solid bar of
+// tick marks — this caps it to a small moving window centred on whichever
+// slide is active instead (same idea as Instagram/YouTube Shorts' page
+// dots), see dotWindow below.
+const DOT_WINDOW = 5
+
+// Fisher–Yates — every load of Home (and of the Hall page) gets its own
+// fresh order rather than always the same curated sort_order sequence, so
+// the spotlight/list doesn't always lead with the same few people.
+export function shuffled(list) {
+  const arr = [...list]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+// The slice of `[0, total)` the dot row should render, given which slide is
+// active. Centers the window on `active` and clamps it to the list's ends,
+// so the window only ever shrinks against an edge rather than sliding off it.
+function dotWindow(total, active, size) {
+  if (total <= size) return { start: 0, end: total - 1 }
+  const start = Math.max(0, Math.min(active - Math.floor(size / 2), total - size))
+  return { start, end: start + size - 1 }
 }
 
 export function legendMeta(l) {
@@ -63,11 +77,14 @@ export default function LegendsBand() {
   const [legends, setLegends] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Mobile-only "one person at a time" carousel — same scroll-snap-strip +
-  // dot-indicator pattern as Home's Recent posts / Businesses near me
-  // carousels (see postsScrollRef/postIndex in Home.jsx). Desktop never
-  // renders this; it keeps the hero+stack mosaic below instead (see
-  // .legends-carousel's display:none base rule in styles.css).
+  // Mobile-only "one person at a time" carousel — same scroll-snap-strip
+  // pattern as Home's Recent posts / Businesses near me carousels (see
+  // postsScrollRef/postIndex in Home.jsx), but paging through every curated
+  // legend rather than just the mosaic's three — there's no mosaic-shaped
+  // space constraint on a single-column phone layout, so there's no reason
+  // to hold most of them back. Desktop never renders this; it keeps the
+  // hero+stack mosaic below instead (see .legends-carousel's display:none
+  // base rule in styles.css).
   const carouselRef = useRef(null)
   const [slideIndex, setSlideIndex] = useState(0)
   const updateSlideIndex = () => {
@@ -91,7 +108,6 @@ export default function LegendsBand() {
         .eq('active', true)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true })
-        .limit(48)
       if (cancelled) return
       // No error state and no empty state on purpose — if this fails or there's
       // nothing curated yet, the band renders nothing at all rather than a
@@ -104,23 +120,17 @@ export default function LegendsBand() {
     return () => { cancelled = true }
   }, [])
 
-  // This week's three, wrapping rather than slicing so the mosaic/carousel is
-  // always full even when the window straddles the end of the list. With
-  // fewer than TILE_COUNT entries this yields exactly what exists (no
-  // duplicates), and both layouts collapse to match.
-  const featured = useMemo(() => {
-    if (legends.length === 0) return []
-    const start = (weekNumber() * TILE_COUNT) % legends.length
-    const out = []
-    for (let i = 0; i < Math.min(TILE_COUNT, legends.length); i++) {
-      out.push(legends[(start + i) % legends.length])
-    }
-    return out
-  }, [legends])
+  // Reshuffled once per fetch — i.e. once per visit to Home — rather than on
+  // every render, so scrolling the carousel doesn't reorder it under your
+  // thumb. The desktop mosaic takes its hero+stack from the front of this
+  // same order instead of a separate pick, so a person up in the mosaic is
+  // also wherever this order put them in the mobile carousel/Hall list.
+  const order = useMemo(() => shuffled(legends), [legends])
 
-  if (loading || featured.length === 0) return null
+  if (loading || order.length === 0) return null
 
-  const [hero, ...rest] = featured
+  const [hero, ...rest] = order.slice(0, TILE_COUNT)
+  const dots = dotWindow(order.length, slideIndex, DOT_WINDOW)
 
   return (
     <section className="legends-band" aria-labelledby="legends-heading">
@@ -153,29 +163,39 @@ export default function LegendsBand() {
       </div>
 
       {/* Mobile: one full-bleed tile per screen, swipe (or tap a dot) to see
-          the next — same "featured" three the mosaic above shows, and the
-          same photo-with-scrim newspaper look, just paged through one at a
-          time instead of tiled. */}
+          the next — everyone curated, in this visit's shuffled order, same
+          photo-with-scrim newspaper look as the mosaic. */}
       <div className="legends-carousel" ref={carouselRef} onScroll={updateSlideIndex}>
-        {featured.map((l) => (
+        {order.map((l) => (
           <div className="legends-carousel-slide" key={l.id}>
             <LegendTile legend={l} hero />
           </div>
         ))}
       </div>
-      {featured.length > 1 && (
+      {order.length > 1 && (
         <div className="home-carousel-dots legends-carousel-dots" role="tablist" aria-label="Hoek van Helde">
-          {featured.map((l, i) => (
-            <button
-              key={l.id}
-              type="button"
-              className={i === slideIndex ? 'home-carousel-dot active' : 'home-carousel-dot'}
-              role="tab"
-              aria-selected={i === slideIndex}
-              aria-label={`${l.name}, ${i + 1} of ${featured.length}`}
-              onClick={() => scrollToSlide(i)}
-            />
-          ))}
+          {order.slice(dots.start, dots.end + 1).map((l, offset) => {
+            const i = dots.start + offset
+            // The dot at whichever end of the window still has more people
+            // past it renders smaller — a quiet "there's more this way" hint
+            // instead of a hard cut-off edge.
+            const isEdge = (i === dots.start && i > 0) || (i === dots.end && i < order.length - 1)
+            return (
+              <button
+                key={l.id}
+                type="button"
+                className={
+                  'home-carousel-dot' +
+                  (i === slideIndex ? ' active' : '') +
+                  (isEdge ? ' legends-carousel-dot-edge' : '')
+                }
+                role="tab"
+                aria-selected={i === slideIndex}
+                aria-label={`${l.name}, ${i + 1} of ${order.length}`}
+                onClick={() => scrollToSlide(i)}
+              />
+            )
+          })}
         </div>
       )}
     </section>
