@@ -463,6 +463,17 @@ input, textarea, select { font: inherit; }
    to a normal centered/full-width block automatically — no separate
    breakpoint needed. */
 .panel.narrow { max-width: 620px; margin: 0 auto 0 0; }
+/* The 620px cap above reads as a wide, empty right-hand gap on laptop-size
+   screens for the two profile pages (view + edit) specifically — their
+   content (hero, fact strips, experience timeline) is wide enough to use
+   the room. Let just those two stretch to fill the column, with .content's
+   own right padding as the breathing room at the edge, instead of stopping
+   dead at a fixed width. Gated to laptop+ so phone/tablet layouts (which
+   already rely on the 620px cap having no effect below that width) are
+   untouched. */
+@media (min-width: 1024px) {
+  .panel.narrow.profile-page { max-width: none; width: 100%; }
+}
 .panel-title {
   position: relative;
   font-family: var(--display);
