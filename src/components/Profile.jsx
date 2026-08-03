@@ -43,7 +43,7 @@ const EMPTY = {
   expertise: [],
   services_offered: [],
   business_website: '',
-  is_open_to_opportunities: true,
+  is_open_to_opportunities: false,
   availability: '',
   geographic_focus: [],
   experience: [],
@@ -160,7 +160,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         expertise: normalizeExpertise(profile.expertise),
         services_offered: Array.isArray(profile.services_offered) ? profile.services_offered : [],
         business_website: profile.business_website || '',
-        is_open_to_opportunities: profile.is_open_to_opportunities !== false,
+        is_open_to_opportunities: profile.is_open_to_opportunities === true,
         availability: profile.availability || '',
         geographic_focus: Array.isArray(profile.geographic_focus) ? profile.geographic_focus : [],
         experience: (Array.isArray(profile.experience) ? profile.experience : [])
