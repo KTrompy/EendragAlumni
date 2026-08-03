@@ -103,8 +103,7 @@ export default function LegendsBand() {
     <section className="legends-band" aria-labelledby="legends-heading">
       <div className="legends-head">
         <div className="legends-head-text">
-          <h3 className="legends-title" id="legends-heading">Eendrag legends</h3>
-          <p className="legends-sub">Old boys who left a mark</p>
+          <h3 className="legends-title" id="legends-heading">Hoek van Helde</h3>
         </div>
         {legends.length > TILE_COUNT && (
           <button type="button" className="legends-more" onClick={() => setOffset((o) => o + 1)}>
