@@ -404,11 +404,6 @@ input, textarea, select { font: inherit; }
   margin: 20px 0;
   padding: 18px 12px;
   overflow-y: auto;
-  /* Shifted rightward via JS on the person-profile page only, to hug the
-     profile card's left edge wherever it lands (see the sidebarRef effect
-     in App.jsx) — the transition just smooths that shift out instead of
-     it snapping on route change / window resize. */
-  transition: transform 0.2s ease;
 }
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
 .sidebar-link {
@@ -459,17 +454,15 @@ input, textarea, select { font: inherit; }
    opted into their own "animation: fade-in" individually (profile-page
    and others below still do — harmless, just redundant with this). */
 .panel { animation: fade-in 0.3s var(--ease); max-width: 100%; }
-.panel.narrow { max-width: 620px; margin: 0 auto; }
-/* Person-profile page only: center relative to the whole page (nav +
-   content), not just the leftover content column to the right of the nav.
-   `margin: 0 auto` above only centers within that narrower column, which
-   visibly shifts the card right of the page's true center — this nudges
-   it back left by half the sidebar's 216px width + 20px gap (118px) so
-   its middle lines up with the middle of the browser window instead.
-   Reset at the same breakpoint the sidebar itself hides at (720px, see
-   .sidebar/.app-body below) since there's no nav offset to correct for
-   on mobile. */
-.panel.narrow.person-profile-page { transform: translateX(-118px); }
+/* Hug the sidebar (small gap via .content's own padding) instead of
+   centering in the leftover column, which used to leave a wide, empty gap
+   between the nav and the card with the rest of the page's width pushed
+   out to a matching gap on the right. `margin-right: auto` keeps the
+   "extra" space on the right where it's less noticeable. On mobile the
+   sidebar is gone and .content spans the viewport, so this collapses back
+   to a normal centered/full-width block automatically — no separate
+   breakpoint needed. */
+.panel.narrow { max-width: 620px; margin: 0 auto 0 0; }
 .panel-title {
   position: relative;
   font-family: var(--display);
@@ -6990,7 +6983,6 @@ button.delete-danger svg { flex-shrink: 0; }
   .sidebar { display: none; }
   .app-body { display: block; overflow-x: hidden; }
   .app-main { min-height: 0; overflow-x: hidden; }
-  .panel.narrow.person-profile-page { transform: none; }
   .masthead-inner {
     display: grid;
     grid-template-columns: 1fr auto;
