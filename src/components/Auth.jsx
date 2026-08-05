@@ -69,6 +69,66 @@ function ProviderIcon() {
   )
 }
 
+// Draft persistence for the three-step signup wizard.
+//
+// `signupStep` is React state and nothing else — no URL, no history entry — so
+// a back-gesture on step 2 or 3 (the single most common thing a thumb does on
+// a phone) left the site entirely and threw away everything typed: name,
+// email, both year dropdowns and the whole address block. A refresh or an
+// accidental tab close did the same. FinishSignup.jsx already solved exactly
+// this for its own form and explains why; the wizard, which is far higher
+// traffic, never got the same treatment.
+//
+// Deliberately NOT saved:
+//   • both passwords — never write a password to localStorage, and a restored
+//     draft therefore always reopens at step 1 so they're retyped knowingly.
+//   • the data-consent tick — an affirmation somebody has to make on purpose,
+//     not something to restore on their behalf.
+const SIGNUP_DRAFT_KEY = 'eendrag-signup-draft'
+const SIGNUP_DRAFT_FIELDS = [
+  'firstName', 'preferredName', 'lastName', 'signupEmail', 'confirmEmail',
+  'startYear', 'endYear', 'newsOptIn',
+  'address1', 'address2', 'address3', 'province', 'city', 'postCode', 'country',
+]
+// Same week-long window FinishSignup uses: comfortably longer than "I'll
+// finish this tonight", short enough that a half-typed home address isn't
+// sitting on a shared computer indefinitely.
+const SIGNUP_DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+function readSignupDraft() {
+  try {
+    const raw = localStorage.getItem(SIGNUP_DRAFT_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > SIGNUP_DRAFT_MAX_AGE_MS) {
+      localStorage.removeItem(SIGNUP_DRAFT_KEY)
+      return {}
+    }
+    const values = parsed.values
+    if (!values || typeof values !== 'object') return {}
+    // Coerce back to the types the form expects rather than trusting whatever
+    // is in storage. `??` only guards null/undefined, so a value that had
+    // become a number or an object (hand-edited storage, or a draft written by
+    // an older build with different fields) would sail through into state and
+    // then throw on `.trim()` at submit — and because the draft is re-read on
+    // every load, that crash would be permanent and unfixable from the UI.
+    const clean = {}
+    for (const key of SIGNUP_DRAFT_FIELDS) {
+      const v = values[key]
+      if (v === null || v === undefined) continue
+      // newsOptIn is a tri-state boolean; everything else is a string.
+      clean[key] = key === 'newsOptIn' ? (typeof v === 'boolean' ? v : null) : String(v)
+    }
+    return clean
+  } catch {
+    return {}
+  }
+}
+
+function clearSignupDraft() {
+  try { localStorage.removeItem(SIGNUP_DRAFT_KEY) } catch { /* private mode */ }
+}
+
 // `initialError` carries a message App.jsx pulled off the OAuth redirect —
 // most often a cancelled Google consent screen, which otherwise dumped
 // people back here with no explanation at all.
@@ -86,28 +146,39 @@ export default function Auth({ initialError = null, initialMode = null }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
-  // Signup fields
-  const [firstName, setFirstName] = useState('')
-  const [preferredName, setPreferredName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [signupEmail, setSignupEmail] = useState('')
-  const [confirmEmail, setConfirmEmail] = useState('')
+  // Signup fields. Seeded from a saved draft where there is one — see
+  // readSignupDraft above for what is and isn't kept.
+  const [draft] = useState(readSignupDraft)
+  // A form that silently fills itself in is unsettling — say where it came
+  // from, and offer a way to bin it rather than making someone clear fifteen
+  // fields by hand. Stays up for the whole wizard: it's also where the
+  // "you'll need to pick your password again" warning lives, and that's true
+  // right up until they submit.
+  const [draftRestored, setDraftRestored] = useState(() => Object.keys(readSignupDraft()).length > 0)
+  const [firstName, setFirstName] = useState(draft.firstName ?? '')
+  const [preferredName, setPreferredName] = useState(draft.preferredName ?? '')
+  const [lastName, setLastName] = useState(draft.lastName ?? '')
+  const [signupEmail, setSignupEmail] = useState(draft.signupEmail ?? '')
+  const [confirmEmail, setConfirmEmail] = useState(draft.confirmEmail ?? '')
   const [signupPassword, setSignupPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [startYear, setStartYear] = useState('')
-  const [endYear, setEndYear] = useState('')
-  const [address1, setAddress1] = useState('')
-  const [address2, setAddress2] = useState('')
-  const [address3, setAddress3] = useState('')
-  const [province, setProvince] = useState('')
-  const [city, setCity] = useState('')
+  const [startYear, setStartYear] = useState(draft.startYear ?? '')
+  const [endYear, setEndYear] = useState(draft.endYear ?? '')
+  const [address1, setAddress1] = useState(draft.address1 ?? '')
+  const [address2, setAddress2] = useState(draft.address2 ?? '')
+  const [address3, setAddress3] = useState(draft.address3 ?? '')
+  const [province, setProvince] = useState(draft.province ?? '')
+  const [city, setCity] = useState(draft.city ?? '')
   // Coordinates captured when a City suggestion is picked (see
   // CityAutocomplete) — saved alongside the profile so the new member shows
   // up on the alumni map immediately.
+  // Not drafted: coordinates are only trustworthy alongside the exact city
+  // label they came from, so a restored draft re-picks rather than reusing a
+  // stale pin. Same reasoning as FinishSignup.
   const [cityCoords, setCityCoords] = useState(null)
-  const [postCode, setPostCode] = useState('')
-  const [country, setCountry] = useState('South Africa')
-  const [newsOptIn, setNewsOptIn] = useState(null) // null until they choose
+  const [postCode, setPostCode] = useState(draft.postCode ?? '')
+  const [country, setCountry] = useState(draft.country ?? 'South Africa')
+  const [newsOptIn, setNewsOptIn] = useState(draft.newsOptIn ?? null) // null until they choose
   const [dataConsent, setDataConsent] = useState(false)
   const [privacyOpen, setPrivacyOpen] = useState(false)
   // 'confirm'  — account created, Supabase has emailed a confirmation link and
@@ -154,17 +225,46 @@ export default function Auth({ initialError = null, initialMode = null }) {
   const turnstileRef = useRef(null)
   const widgetIdRef = useRef(null)
 
-  // Whether the current view actually shows the captcha: sign-in, forgot,
-  // and the final signup (consent) step.
-  const captchaVisible = TURNSTILE_SITE_KEY && !signupDone &&
-    (mode !== 'signup' || signupStep === 3)
+  // Whether the current view actually shows the captcha: sign-in, forgot, the
+  // final signup (consent) step — and the "check your email" screen, which
+  // needs one of its own for the resend below. That last case used to be
+  // excluded (`!signupDone`), which is half of why the resend button never
+  // worked: GoTrue validates a captcha token on /resend exactly like it does
+  // on /signup, and there was no widget on that screen to produce one.
+  const captchaVisible = !!TURNSTILE_SITE_KEY && (
+    signupDone
+      ? signupDone === 'confirm'
+      : (mode !== 'signup' || signupStep === 3)
+  )
 
   useEffect(() => {
     if (!captchaVisible || !turnstileRef.current) return
 
     let cancelled = false
     let pollAttempts = 0
+    let interval = null
     const MAX_POLL_ATTEMPTS = 100 // 100 * 150ms = 15s before giving up
+
+    // ONE teardown for both paths below.
+    //
+    // There used to be two, and the polling branch's version only cleared the
+    // interval — it neither removed the widget nor cleared the token. That's
+    // the branch taken on any cold load, because index.html loads Turnstile's
+    // api.js async/defer, so window.turnstile usually isn't there yet when
+    // this first runs. Result: solve the captcha on the sign-in form, switch
+    // to Join, and the already-spent token was still sitting in state.
+    // validateStep3 saw a token and let the submit through, GoTrue rejected it
+    // for the captcha, and the person got "the security check didn't go
+    // through" while looking at a ticked box.
+    function teardown() {
+      cancelled = true
+      if (interval) clearInterval(interval)
+      if (widgetIdRef.current && window.turnstile) {
+        try { window.turnstile.remove(widgetIdRef.current) } catch { /* already gone */ }
+      }
+      widgetIdRef.current = null
+      setCaptchaToken(null)
+    }
 
     function renderWidget() {
       if (cancelled || !window.turnstile || !turnstileRef.current) return
@@ -191,33 +291,66 @@ export default function Auth({ initialError = null, initialMode = null }) {
       // ready. If it never shows up (ad/privacy blocker, or a network hiccup
       // on challenges.cloudflare.com) give up after ~15s and surface that,
       // rather than leaving a blank box that silently blocks submission.
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         pollAttempts += 1
         if (window.turnstile) {
           clearInterval(interval)
+          interval = null
           renderWidget()
         } else if (pollAttempts >= MAX_POLL_ATTEMPTS) {
           clearInterval(interval)
+          interval = null
           setCaptchaError(true)
         }
       }, 150)
-      return () => { cancelled = true; clearInterval(interval) }
     }
 
-    return () => {
-      cancelled = true
-      if (widgetIdRef.current && window.turnstile) {
-        try { window.turnstile.remove(widgetIdRef.current) } catch { /* already gone */ }
-      }
-      widgetIdRef.current = null
-      setCaptchaToken(null)
-    }
-  }, [captchaVisible, mode, signupStep])
+    return teardown
+  }, [captchaVisible, mode, signupStep, signupDone])
 
   function resetCaptcha() {
     setCaptchaToken(null)
     if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current)
   }
+
+  /* ---------- Signup draft ---------- */
+
+  const draftValues = {
+    firstName, preferredName, lastName, signupEmail, confirmEmail,
+    startYear, endYear, newsOptIn,
+    address1, address2, address3, province, city, postCode, country,
+  }
+  // Only writes once there's actually something worth restoring, so merely
+  // opening the Join tab and wandering off doesn't leave a file behind.
+  const draftHasContent = SIGNUP_DRAFT_FIELDS.some((k) => {
+    const v = draftValues[k]
+    return v !== '' && v !== null && v !== undefined && !(k === 'country' && v === 'South Africa')
+  })
+  useEffect(() => {
+    if (mode !== 'signup' || signupDone) return
+    if (!draftHasContent) return
+    try {
+      localStorage.setItem(SIGNUP_DRAFT_KEY, JSON.stringify({
+        savedAt: Date.now(),
+        values: Object.fromEntries(SIGNUP_DRAFT_FIELDS.map((k) => [k, draftValues[k]])),
+      }))
+    } catch { /* private mode / quota — the form still works, just not resumable */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, signupDone, draftHasContent, ...SIGNUP_DRAFT_FIELDS.map((k) => draftValues[k])])
+
+  // Second line of defence for the case the draft can't cover: the passwords,
+  // which are never written to storage. Closing the tab or navigating away
+  // mid-wizard now asks first, instead of silently binning the form.
+  useEffect(() => {
+    if (mode !== 'signup' || signupDone) return undefined
+    if (!draftHasContent && !signupPassword) return undefined
+    function handler(e) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [mode, signupDone, draftHasContent, signupPassword])
 
   function switchMode(next) {
     setMode(next)
@@ -307,24 +440,50 @@ export default function Auth({ initialError = null, initialMode = null }) {
   // path, anyone whose confirmation link expired or was eaten by a spam
   // filter had no way forward at all, because signing up again just fails
   // with "already registered" and signing in fails with "not confirmed".
+  // `targetEmail` is optional and MUST be a string when given. It used to be
+  // wired straight to onClick as `onClick={resendConfirmation}`, which handed
+  // it React's click event instead — and since an event object isn't null,
+  // `??` kept it and `.trim()` threw a TypeError before a single line of state
+  // was set. The button did nothing at all: no spinner, no message, no error
+  // on screen (an async handler's rejection doesn't reach the ErrorBoundary).
+  // Every call site now passes an explicit string or nothing.
   async function resendConfirmation(targetEmail) {
-    const addr = (targetEmail ?? signupEmail).trim()
-    if (!addr) return
+    const addr = String(targetEmail ?? signupEmail ?? '').trim()
+    if (!addr) {
+      setResendMsg({ type: 'error', text: 'Enter the email address you signed up with first.' })
+      return
+    }
+    if (!EMAIL_RE.test(addr)) {
+      setResendMsg({ type: 'error', text: 'That email address doesn’t look right — check it for typos.' })
+      return
+    }
+    // GoTrue validates a captcha token on /resend just as it does on /signup
+    // and /token (supabase-js sends it as gotrue_meta_security.captcha_token).
+    // Sending none meant every resend was rejected for the captcha wherever
+    // CAPTCHA protection is enabled — which is the one screen a member reaches
+    // precisely because they can't get in any other way. Passing a token when
+    // CAPTCHA is switched off is harmless: GoTrue ignores it.
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setResendMsg({ type: 'error', text: 'Please complete the security check first, then try again.' })
+      return
+    }
     setResendBusy(true)
     setResendMsg(null)
     const { error: err } = await supabase.auth.resend({
       type: 'signup',
       email: addr,
-      options: { emailRedirectTo: authRedirectTo() },
+      options: { emailRedirectTo: authRedirectTo(), captchaToken },
     })
     setResendBusy(false)
+    // Single-use, spent whether it succeeded or not.
+    resetCaptcha()
     setResendMsg(
       err
         // The rate-limit message ("you can only request this after N seconds")
         // is the expected outcome of an impatient double-click, so it needs to
         // read as information rather than as a failure.
         ? { type: 'error', text: friendlyAuthError(err) }
-        : { type: 'ok', text: 'Sent — check your inbox again in a minute or two.' }
+        : { type: 'ok', text: `Sent to ${addr} — check your inbox again in a minute or two, and look in spam.` }
     )
   }
 
@@ -416,7 +575,14 @@ export default function Auth({ initialError = null, initialMode = null }) {
         // Stashed in user_metadata too, so the details survive even if the
         // profile update below can't run (e.g. email confirmation enabled
         // → no session yet). App.jsx's FinishSignup fallback reads these.
-        options: { captchaToken, data: details },
+        //
+        // emailRedirectTo was missing here, and this was the only auth call in
+        // the app without it — OAuth, resetPasswordForEmail and resend all pass
+        // authRedirectTo(). Without it the confirmation link falls back to the
+        // project's dashboard Site URL, so a signup from a Vercel preview (or
+        // localhost) emailed a link pointing at production, and the original
+        // link and any resent one could land on different origins.
+        options: { captchaToken, data: details, emailRedirectTo: authRedirectTo() },
       })
       if (error) throw error
 
@@ -459,6 +625,9 @@ export default function Auth({ initialError = null, initialMode = null }) {
         // signed up perfectly successfully was told their account couldn't be
         // signed into — with a confirmation email sitting unmentioned in their
         // inbox. Checking the response instead can't miss.
+        clearSignupDraft()
+        // Fresh token for the resend button on the screen we're about to show.
+        resetCaptcha()
         setSignupDone('confirm')
         return
       }
@@ -478,6 +647,7 @@ export default function Auth({ initialError = null, initialMode = null }) {
             // "Confirm email" is on in the project. Their details are
             // already saved by the handle_new_user trigger, so there's
             // nothing left to do but confirm and come back.
+            clearSignupDraft()
             setSignupDone('confirm')
             return
           }
@@ -507,6 +677,15 @@ export default function Auth({ initialError = null, initialMode = null }) {
           .from('profiles')
           .update({
             full_name: details.full_name,
+            // The three name parts have their own columns as of
+            // schema-update-57. Before that they existed only inside
+            // auth.users.raw_user_meta_data, where nothing in the app could
+            // read them — so an admin verifying someone against residence
+            // records couldn't see the legal first name whenever a preferred
+            // name had been given, which is exactly when they'd need it.
+            first_name: details.first_name,
+            preferred_name: details.preferred_name,
+            last_name: details.last_name,
             start_year: details.start_year,
             grad_year: details.grad_year,
             email_news_opt_in: details.email_news_opt_in,
@@ -523,6 +702,22 @@ export default function Auth({ initialError = null, initialMode = null }) {
           .eq('id', session.user.id)
         // Non-fatal: FinishSignup in App.jsx will catch anything missed.
         if (profErr) console.warn('Profile update after signup failed:', profErr.message)
+        // "We've got your details" email. Fire-and-forget, and deliberately
+        // not awaited: a mail failure must never turn a successful signup into
+        // a visible error. Only reachable on the branch where a session
+        // exists — with email confirmation on there's no session here, and the
+        // confirmation email already explains what happens next.
+        clearSignupDraft()
+        // Note the .then, not .catch: supabase-js's functions.invoke swallows
+        // everything internally and RESOLVES with { data, error } — an
+        // undeployed function, a CORS rejection and a network failure all come
+        // back as a fulfilled promise. A .catch() here can never fire, so it
+        // would look like error handling while guaranteeing silence.
+        supabase.functions
+          .invoke('send-member-email', { body: { kind: 'received' } })
+          .then(({ error: mailErr }) => {
+            if (mailErr) console.error('send-member-email (received) failed:', mailErr)
+          })
         // App.jsx's auth listener picks the session up and swaps in the
         // pending-verification screen (accounts start unapproved). That's
         // usually instant — but on a slow connection the "Join our community"
@@ -582,12 +777,26 @@ export default function Auth({ initialError = null, initialMode = null }) {
                 No email after a few minutes? Check your spam or junk folder first
                 &mdash; it&rsquo;s almost always there.
               </p>
+              {/* The widget has to be on this screen, not just on the forms —
+                  the resend is a Supabase auth call like any other and needs
+                  its own token. */}
+              {captchaVisible && <div ref={turnstileRef} className="auth-captcha" />}
+              {captchaVisible && captchaError && (
+                <p className="form-error" role="alert">
+                  Security check failed to load. Disable any ad/privacy blocker for this
+                  site and{' '}
+                  <button type="button" className="link-btn" onClick={() => window.location.reload()}>
+                    refresh the page
+                  </button>.
+                </p>
+              )}
               {resendMsg && (
                 <p className={resendMsg.type === 'ok' ? 'form-notice' : 'form-error'} role="status">
                   {resendMsg.text}
                 </p>
               )}
-              <button type="button" className="btn ghost wide" onClick={resendConfirmation} disabled={resendBusy}>
+              {/* Arrow function, not a bare reference — see resendConfirmation. */}
+              <button type="button" className="btn ghost wide" onClick={() => resendConfirmation()} disabled={resendBusy}>
                 {resendBusy ? 'Sending…' : 'Resend the confirmation email'}
               </button>
             </>
@@ -720,6 +929,36 @@ export default function Auth({ initialError = null, initialMode = null }) {
             <button type="submit" className="btn primary wide" disabled={busy}>
               {busy ? 'One moment…' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
             </button>
+
+            {/* An expired link comes back from Supabase as
+                error_code=otp_expired whether it was a password-reset link or
+                a signup-confirmation one — the two are indistinguishable, and
+                App.jsx lands both here. Resetting a password does nothing for
+                someone whose address was never confirmed, so this screen has
+                to offer the other remedy too rather than quietly assuming
+                which link they clicked. It reuses the email field and the
+                captcha that are already on this form. */}
+            {mode === 'forgot' && (
+              <>
+                <p className="hint" style={{ marginTop: 14 }}>
+                  Never confirmed your email when you joined? A reset link won&rsquo;t
+                  help with that — you need a fresh confirmation link instead.
+                </p>
+                {resendMsg && (
+                  <p className={resendMsg.type === 'ok' ? 'form-notice' : 'form-error'} role="status">
+                    {resendMsg.text}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="btn ghost wide"
+                  onClick={() => resendConfirmation(email)}
+                  disabled={resendBusy || busy}
+                >
+                  {resendBusy ? 'Sending…' : 'Resend my confirmation email'}
+                </button>
+              </>
+            )}
           </form>
         )}
 
@@ -756,8 +995,47 @@ export default function Auth({ initialError = null, initialMode = null }) {
               {signupStep === 1 ? ': your details' : signupStep === 2 ? ': your years in Eendrag' : ': consent'}
             </p>
 
-            {signupStep === 1 && (
-              <>
+            {draftRestored && (
+              <p className="form-notice" role="status">
+                We&rsquo;ve put back what you&rsquo;d already filled in. You&rsquo;ll need to
+                choose your password again &mdash; we never store that.{' '}
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    clearSignupDraft()
+                    setDraftRestored(false)
+                    setFirstName(''); setPreferredName(''); setLastName('')
+                    setSignupEmail(''); setConfirmEmail('')
+                    setStartYear(''); setEndYear('')
+                    setAddress1(''); setAddress2(''); setAddress3('')
+                    setProvince(''); setCity(''); setCityCoords(null)
+                    setPostCode(''); setCountry('South Africa')
+                    setNewsOptIn(null)
+                    setSignupStep(1)
+                  }}
+                >
+                  Start fresh instead
+                </button>
+              </p>
+            )}
+
+            {/* Hidden, not unmounted.
+
+                Chrome, Safari and every password manager decide whether to
+                offer "save this password?" by looking at the form being
+                submitted. Step 1 used to be `{signupStep === 1 && …}`, so by
+                the time anyone pressed "Join our community" on step 3 the form
+                contained no email or password field at all and nothing was
+                ever offered — people joined, were never prompted to save
+                anything, and then couldn't get back in. Keeping the fields
+                mounted (and merely display:none) means the credentials are
+                still part of the submitted form.
+
+                `hidden` plus the inline style deliberately: the bare attribute
+                relies on the UA stylesheet's `[hidden] { display: none }`,
+                which any later `div { display: … }` rule would beat. */}
+            <div hidden={signupStep !== 1} style={signupStep === 1 ? undefined : { display: 'none' }}>
                 <div className="auth-field-row">
                   <label className="field">
                     <span>First name *</span>
@@ -778,11 +1056,17 @@ export default function Auth({ initialError = null, initialMode = null }) {
                 </label>
                 <label className="field">
                   <span>Email *</span>
-                  <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} autoComplete="email" />
+                  {/* `username`, not `email`. This is the field that pairs with
+                      the new-password fields below, and `username` is what
+                      password managers look for when deciding what login they
+                      are being asked to save. */}
+                  <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} autoComplete="username" />
                 </label>
                 <label className="field">
                   <span>Confirm email *</span>
-                  <input type="email" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} autoComplete="email" />
+                  {/* Explicitly off: a second address field advertising itself
+                      as the username makes managers guess between the two. */}
+                  <input type="email" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} autoComplete="off" />
                 </label>
                 <label className="field">
                   <span>Password *</span>
@@ -802,8 +1086,7 @@ export default function Auth({ initialError = null, initialMode = null }) {
                     autoComplete="new-password"
                   />
                 </label>
-              </>
-            )}
+            </div>
 
             {signupStep === 2 && (
               <>

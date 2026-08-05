@@ -285,13 +285,24 @@ export default function App() {
       /expired|invalid/i.test(description || '')
     setAuthRedirectError(
       isExpiredLink
-        ? 'That link has expired or has already been used. Request a new password-reset email below and use the newest link — they only work once.'
+        // Deliberately does not name which kind of link it was, because we
+        // cannot tell: Supabase returns the identical
+        // error=access_denied&error_code=otp_expired for a dead password-reset
+        // link and a dead signup-confirmation link. The old copy asserted it
+        // was a reset link and told people to request a new one — useless
+        // advice for the confirmation case, where resetting a password does
+        // nothing about an address that was never confirmed. The forgot screen
+        // now carries both remedies (see Auth.jsx), so this just has to point
+        // at it honestly.
+        ? 'That link has expired or has already been used — they only work once, and mail scanners sometimes open them first. Ask for a fresh one below: a password-reset link if you’ve forgotten your password, or a new confirmation link if you never confirmed your email when you joined.'
         : code === 'access_denied'
           ? 'That sign-in was cancelled before it finished. You can try again, or use your email and password.'
           : (description ? description.replace(/\+/g, ' ') : "That sign-in didn't complete. Please try again.")
     )
     // Drops them straight onto the "Forgot password?" form with the message
     // above already showing, rather than onto a sign-in form they can't use.
+    // That screen offers a confirmation resend as well, so it's the right
+    // landing place for either flavour of expired link.
     if (isExpiredLink) setAuthStartMode('forgot')
     for (const key of ['error', 'error_code', 'error_description']) query.delete(key)
     const search = query.toString()
@@ -528,6 +539,22 @@ export default function App() {
         onSignOut={() => supabase.auth.signOut()}
       />
     )
+  }
+
+  // Checked and turned down (schema-update-57). Before this existed there was
+  // no way to say no: an admin could approve or permanently delete, so someone
+  // the committee couldn't place sat on the "we're verifying you" screen
+  // indefinitely, being promised an answer that was never coming. Says what
+  // happened and how to challenge it — and the account is left intact, so an
+  // admin can put them back to pending if it turns out to be our mistake.
+  //
+  // Checked FIRST, above the consent gate: the Admin UI only offers Decline on
+  // finished signups, but a decline applied straight from the Supabase
+  // dashboard doesn't go through that UI. Ordered the other way, such a person
+  // would be walked through the whole FinishSignup form and only told the
+  // answer afterwards.
+  if (profile.declined_at) {
+    return <AccountDeclined reason={profile.declined_reason} onSignOut={() => supabase.auth.signOut()} />
   }
 
   // Signed in but signup details/consent never captured — social-login
@@ -942,6 +969,45 @@ function AccountRemoved({ onSignOut }) {
           <a className="footer-link" href="mailto:kyletrompeter0@gmail.com?subject=Eendrag%20Alumni%20%E2%80%94%20my%20account%20was%20removed">
             email an admin
           </a>.
+        </p>
+        <button type="button" className="btn primary wide" onClick={onSignOut}>Sign out</button>
+      </div>
+    </div>
+  )
+}
+
+// Shown when an admin has checked someone against residence records and
+// couldn't place them (profiles.declined_at, schema-update-57).
+//
+// Deliberately not the PendingVerification screen with different words. That
+// one says an answer is coming; this one is the answer. It's also deliberately
+// not a dead end — the overwhelming majority of these will be older years
+// where the records are patchy or a surname has changed, so the whole point of
+// the screen is the route back to a human.
+function AccountDeclined({ reason, onSignOut }) {
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <img src="/eendrag-logo.png" alt="Eendrag logo" className="auth-logo" />
+        <h1 className="auth-title">We couldn&rsquo;t verify your account</h1>
+        <p className="auth-verify-note">
+          Every new account is checked against Eendrag residence records before
+          anyone is let in, and we weren&rsquo;t able to match yours.
+        </p>
+        {reason ? <p className="auth-verify-note"><strong>What we were told:</strong> {reason}</p> : null}
+        <p className="auth-verify-note">
+          That&rsquo;s often our records rather than you &mdash; the older years in
+          particular are patchy, and names change. If you did live in Eendrag,
+          get in touch with the years you were there and anyone who&rsquo;d vouch
+          for you, and we&rsquo;ll take another look.
+        </p>
+        <p className="auth-verify-contact">
+          <a
+            className="footer-link"
+            href={`mailto:kyletrompeter0@gmail.com?subject=${encodeURIComponent('Eendrag Alumni — please recheck my account')}`}
+          >
+            Email an admin
+          </a>
         </p>
         <button type="button" className="btn primary wide" onClick={onSignOut}>Sign out</button>
       </div>

@@ -1,18 +1,30 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import CountryAutocomplete from './CountryAutocomplete.jsx'
-import CityAutocomplete from './CityAutocomplete.jsx'
 import { MAX_RESIDENCE_YEARS } from '../constants.js'
 import { friendlyAuthError } from '../authErrors.js'
 import { PrivacyPolicyModal } from './PrivacyPolicy.jsx'
 
-// Shown (full-screen, before anything else) to anyone signed in whose
-// profile has no consented_at yet — in practice that's people who joined
-// via a social provider (Google/Facebook/LinkedIn) and so never went
-// through the signup form, plus the rare email signup whose post-signup
-// profile update failed. Collects the same essentials the form does:
-// name, years in Eendrag, and the consent choices. Once saved, App.jsx
-// falls through to the pending-verification screen.
+// Shown (full-screen, before anything else) to anyone signed in whose profile
+// has no consented_at yet — in practice that's people who joined via Google
+// and so never went through the signup form, plus the rare email signup whose
+// post-signup profile update failed.
+//
+// This screen used to ask for eleven things: three name fields, two years,
+// three address lines, province, city, post code, country, plus both consent
+// answers. Seven of the twenty-seven people who came in through the Google
+// button never finished it — they clicked a one-click sign-in and were handed
+// a form asking for their home address, and simply left. Nothing chased them:
+// notify_admins_new_signup only fires once consent is captured, so no admin
+// ever heard about them either, and their accounts sat unreachable.
+//
+// So it now asks only for what the committee actually needs to verify someone
+// against residence records — who you are and when you were in Eendrag — plus
+// the consent that legally has to be collected before anything is stored.
+// Everything else (address, city, the map pin, post code) is collected on the
+// profile page immediately after approval: App.jsx already routes first-time
+// members straight there with every empty field highlighted, so nothing is
+// lost, it's just asked for at a point where the person is already in and has
+// a reason to care.
 const FOUNDING_YEAR = 1961
 const THIS_YEAR = new Date().getFullYear()
 const START_YEARS = []
@@ -20,21 +32,18 @@ for (let y = THIS_YEAR; y >= FOUNDING_YEAR; y--) START_YEARS.push(y)
 const END_YEARS = []
 for (let y = THIS_YEAR + 7; y >= FOUNDING_YEAR; y--) END_YEARS.push(y)
 
-// Eleven fields and the only way off this screen was "Sign out" — a refresh
-// or a stray back-gesture mid-fill threw away everything typed. Same
-// localStorage draft approach JobForm uses. `dataConsent` is deliberately
-// left out: a consent tick is an affirmation someone has to make
+// A refresh or a stray back-gesture mid-fill used to throw away everything
+// typed, because "Sign out" was the only way off this screen. `dataConsent` is
+// deliberately left out: a consent tick is an affirmation someone has to make
 // deliberately, not something to silently restore on their behalf.
 const DRAFT_FIELDS = [
   'firstName', 'preferredName', 'lastName', 'startYear', 'endYear', 'newsOptIn',
-  'address1', 'address2', 'address3', 'province', 'city', 'postCode', 'country',
 ]
 
-// Drafts expire. Without this they were kept forever: a half-typed home
-// address sitting in localStorage on a shared or family computer indefinitely,
-// and — more confusingly — a stale draft from months ago silently overriding
-// the name a social provider hands back today. A week is comfortably longer
-// than "I'll finish this tonight" and shorter than "why is this filled in?".
+// Drafts expire. Without this they were kept forever: a stale draft from
+// months ago silently overriding the name a social provider hands back today.
+// A week is comfortably longer than "I'll finish this tonight" and shorter
+// than "why is this filled in?".
 const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 function readDraft(key) {
@@ -48,7 +57,19 @@ function readDraft(key) {
       localStorage.removeItem(key)
       return null
     }
-    return parsed.values || null
+    const values = parsed.values
+    if (!values || typeof values !== 'object') return null
+    // Coerce rather than trust: `??` at the state initialisers below only
+    // guards null/undefined, so a value that had somehow become a number or an
+    // object would reach state and then throw on `.trim()` in validate() —
+    // permanently, since the draft is re-read on every load.
+    const clean = {}
+    for (const key of DRAFT_FIELDS) {
+      const v = values[key]
+      if (v === null || v === undefined) continue
+      clean[key] = key === 'newsOptIn' ? (typeof v === 'boolean' ? v : null) : String(v)
+    }
+    return clean
   } catch {
     return null
   }
@@ -58,8 +79,8 @@ export default function FinishSignup({ session, profile, onDone }) {
   const meta = session.user.user_metadata || {}
   const draftKey = `eendrag-finish-signup-${session.user.id}`
   const [draft] = useState(() => readDraft(draftKey) || {})
-  // Social providers hand back given_name/family_name (Google/LinkedIn) or
-  // just a full name (Facebook) — prefill whatever's available.
+  // Social providers hand back given_name/family_name (Google) or just a full
+  // name — prefill whatever's available.
   const [firstName, setFirstName] = useState(
     draft.firstName ?? (meta.first_name || meta.given_name || (meta.full_name || meta.name || '').split(' ')[0] || '')
   )
@@ -72,28 +93,38 @@ export default function FinishSignup({ session, profile, onDone }) {
   const [newsOptIn, setNewsOptIn] = useState(
     draft.newsOptIn ?? (typeof meta.email_news_opt_in === 'boolean' ? meta.email_news_opt_in : null)
   )
-  const [address1, setAddress1] = useState(draft.address1 ?? '')
-  const [address2, setAddress2] = useState(draft.address2 ?? '')
-  const [address3, setAddress3] = useState(draft.address3 ?? '')
-  const [province, setProvince] = useState(draft.province ?? '')
-  const [city, setCity] = useState(draft.city ?? (profile?.city || ''))
-  // Set when a City suggestion is picked — see Auth.jsx for the rationale.
-  // Not part of the draft: coordinates are only trustworthy alongside the
-  // exact city label they came from, so a restored draft re-picks or
-  // re-geocodes rather than reusing a stale pin.
-  const [cityCoords, setCityCoords] = useState(null)
-  const [postCode, setPostCode] = useState(draft.postCode ?? '')
-  const [country, setCountry] = useState(draft.country ?? (profile?.country || 'South Africa'))
   const [dataConsent, setDataConsent] = useState(false)
   const [privacyOpen, setPrivacyOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
-  const values = {
-    firstName, preferredName, lastName, startYear, endYear, newsOptIn,
-    address1, address2, address3, province, city, postCode, country,
+  const values = { firstName, preferredName, lastName, startYear, endYear, newsOptIn }
+  // Only writes once there's something the person actually typed, and only
+  // when it differs from what the provider handed back.
+  //
+  // Writing unconditionally on mount had two bad effects. It refreshed
+  // `savedAt` every time the screen was opened, so DRAFT_MAX_AGE_MS could
+  // never expire anything for a regular visitor — the whole point of the
+  // expiry. And it immediately persisted the *prefilled* Google values, which
+  // then take priority over `meta` on the next load (see the `??` chain
+  // above), pinning the first thing Google ever returned and making a later
+  // corrected name from the provider impossible to pick up. That's precisely
+  // the failure the header comment warns about.
+  const providerDefaults = {
+    firstName: meta.first_name || meta.given_name || (meta.full_name || meta.name || '').split(' ')[0] || '',
+    preferredName: meta.preferred_name || '',
+    lastName: meta.last_name || meta.family_name || (meta.full_name || meta.name || '').split(' ').slice(1).join(' ') || '',
+    startYear: meta.start_year || '',
+    endYear: meta.grad_year || '',
+    newsOptIn: typeof meta.email_news_opt_in === 'boolean' ? meta.email_news_opt_in : null,
   }
+  const draftWorthSaving = DRAFT_FIELDS.some((k) => {
+    const v = values[k]
+    if (v === '' || v === null || v === undefined) return false
+    return String(v) !== String(providerDefaults[k] ?? '')
+  })
   useEffect(() => {
+    if (!draftWorthSaving) return
     try {
       localStorage.setItem(draftKey, JSON.stringify({
         savedAt: Date.now(),
@@ -101,7 +132,7 @@ export default function FinishSignup({ session, profile, onDone }) {
       }))
     } catch { /* private mode / quota — the form still works, just not resumable */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, DRAFT_FIELDS.map((k) => values[k]))
+  }, [draftWorthSaving, ...DRAFT_FIELDS.map((k) => values[k])])
 
   function validate() {
     if (!firstName.trim()) return 'Enter your first name.'
@@ -113,8 +144,6 @@ export default function FinishSignup({ session, profile, onDone }) {
     if (Number(endYear) - Number(startYear) > MAX_RESIDENCE_YEARS) {
       return `That's more than ${MAX_RESIDENCE_YEARS} years in Eendrag — check the years are right.`
     }
-    if (!city.trim()) return 'Enter your city or town.'
-    if (!country.trim()) return 'Enter your country.'
     if (newsOptIn === null) return 'Choose whether you’d like news and events by email.'
     if (!dataConsent) return 'You’ll need to consent to your data being held to join.'
     return null
@@ -130,17 +159,15 @@ export default function FinishSignup({ session, profile, onDone }) {
       .from('profiles')
       .update({
         full_name: fullName,
+        // Own columns as of schema-update-57 — an admin checking someone
+        // against residence records needs the legal first name, which is
+        // exactly what full_name loses whenever a preferred name is given.
+        first_name: firstName.trim(),
+        preferred_name: preferredName.trim(),
+        last_name: lastName.trim(),
         start_year: Number(startYear),
         grad_year: Number(endYear),
         email_news_opt_in: newsOptIn === true,
-        address_line1: address1.trim(),
-        address_line2: address2.trim(),
-        address_line3: address3.trim(),
-        province: province.trim(),
-        city: city.trim(),
-        postal_code: postCode.trim(),
-        country: country.trim(),
-        ...(cityCoords ? { lat: cityCoords.lat, lng: cityCoords.lng } : {}),
         consented_at: new Date().toISOString(),
       })
       .eq('id', session.user.id)
@@ -149,6 +176,20 @@ export default function FinishSignup({ session, profile, onDone }) {
     setBusy(false)
     if (err) { setError(friendlyAuthError(err, "Couldn't save your details — please try again.")); return }
     try { localStorage.removeItem(draftKey) } catch { /* ignore */ }
+    // "We've got your details" email. Google joiners previously received no
+    // email at all between signing up and being approved, so the account went
+    // silent at exactly the point people worry it hasn't worked.
+    //
+    // Fire-and-forget — a mail failure must never block joining — but read the
+    // result rather than chaining .catch(): supabase-js's functions.invoke
+    // resolves with { data, error } even for network, CORS and "function isn't
+    // deployed" failures, so a .catch() can never fire and would hide all of
+    // them behind an empty console.
+    supabase.functions
+      .invoke('send-member-email', { body: { kind: 'received' } })
+      .then(({ error: mailErr }) => {
+        if (mailErr) console.error('send-member-email (received) failed:', mailErr)
+      })
     onDone(data)
   }
 
@@ -157,7 +198,16 @@ export default function FinishSignup({ session, profile, onDone }) {
       <div className="auth-card">
         <img src="/eendrag-logo.png" alt="Eendrag logo" className="auth-logo" />
         <h1 className="auth-title">Nearly done</h1>
-        <p className="auth-sub">A few details to finish joining Eendrag Alumni</p>
+        <p className="auth-sub">Two quick things and you&rsquo;re in the queue</p>
+
+        {/* Says up front how long this is. The old version opened straight
+            into eleven fields with no indication of where the bottom was,
+            which is its own reason to abandon a form. */}
+        <p className="auth-verify-note">
+          We just need your name and the years you were in Eendrag &mdash; that&rsquo;s what
+          the committee checks against residence records. You can fill in the rest
+          of your profile once you&rsquo;re in.
+        </p>
 
         <form onSubmit={save} noValidate>
           <div className="auth-field-row">
@@ -200,55 +250,6 @@ export default function FinishSignup({ session, profile, onDone }) {
             </label>
           </div>
 
-          {/* Says why before it asks. An unexplained "give us your home
-              address" block in the middle of a signup form is the single
-              biggest reason people abandon one — especially optional fields,
-              where the natural read is "why do they want this?" */}
-          <p className="hint" style={{ marginTop: 14 }}>
-            Your address is optional. It&rsquo;s used to place you on the alumni map
-            and to post you reunion invitations, and it isn&rsquo;t displayed on your
-            profile.
-          </p>
-          <label className="field">
-            <span>Address line 1</span>
-            <input value={address1} onChange={(e) => setAddress1(e.target.value)} autoComplete="address-line1" />
-          </label>
-          <label className="field">
-            <span>Address line 2</span>
-            <input value={address2} onChange={(e) => setAddress2(e.target.value)} autoComplete="address-line2" />
-          </label>
-          <label className="field">
-            <span>Address line 3</span>
-            <input value={address3} onChange={(e) => setAddress3(e.target.value)} autoComplete="address-line3" />
-          </label>
-          <div className="auth-field-row">
-            <label className="field">
-              <span>Province</span>
-              <input value={province} onChange={(e) => setProvince(e.target.value)} autoComplete="address-level1" />
-            </label>
-            <label className="field">
-              <span>City *</span>
-              <CityAutocomplete
-                value={city}
-                country={country}
-                onChange={setCity}
-                onSelectCoords={setCityCoords}
-                placeholder="Start typing…"
-              />
-            </label>
-          </div>
-          <div className="auth-field-row">
-            <label className="field">
-              {/* Optional and non-numeric — see the note in Auth.jsx. */}
-              <span>Post code</span>
-              <input value={postCode} onChange={(e) => setPostCode(e.target.value)} autoComplete="postal-code" />
-            </label>
-            <label className="field">
-              <span>Country *</span>
-              <CountryAutocomplete value={country} onChange={setCountry} placeholder="Start typing…" />
-            </label>
-          </div>
-
           <fieldset className="auth-consent-group">
             <legend>I&rsquo;m happy to hear about news and events by email. *</legend>
             <div className="auth-consent-row">
@@ -283,9 +284,9 @@ export default function FinishSignup({ session, profile, onDone }) {
           </p>
           {privacyOpen && <PrivacyPolicyModal onClose={() => setPrivacyOpen(false)} />}
 
-          {/* Live region: this form is eleven fields long and validate()
-              returns one message at a time, so without an announcement a
-              screen-reader user submitting it gets no feedback at all. */}
+          {/* Live region: validate() returns one message at a time, so without
+              an announcement a screen-reader user submitting this gets no
+              feedback at all. */}
           {error && <p className="form-error" role="alert">{error}</p>}
 
           <button type="submit" className="btn primary wide" disabled={busy}>

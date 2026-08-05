@@ -9,6 +9,9 @@ import ConfirmDialog from './ConfirmDialog.jsx'
 import { Avatar } from './Directory.jsx'
 import { useToast } from './Toast.jsx'
 import AdminHandbook from './AdminHandbook.jsx'
+import Turnstile, { TURNSTILE_SITE_KEY } from './Turnstile.jsx'
+import { authRedirectTo } from '../authRedirect.js'
+import { friendlyAuthError } from '../authErrors.js'
 
 // `help` is the one-line explainer rendered under the tab strip whenever that
 // section is open. It exists because this page is meant to be handed to a
@@ -153,29 +156,118 @@ export default function Admin({ session }) {
   }
 
   async function setApproved(id, approved) {
+    const target = members.find((m) => m.id === id)
     // Guard against approving a signup that hasn't finished FinishSignup.jsx
     // (or the Auth.jsx wizard) yet — e.g. someone who used "Continue with
-    // Google" but closed the tab before submitting years/address/consent.
+    // Google" but closed the tab before submitting years and consent.
     // The RLS policy (schema-update-45) enforces this server-side too, but
     // checking here avoids the optimistic-update-then-rollback flicker and
     // gives a clearer message than the raw Postgres error.
     if (approved) {
-      const target = members.find((m) => m.id === id)
       if (target && !target.consented_at) {
         setMemberError("This member hasn't finished signing up yet — they still need to complete their profile before you can approve them.")
         return
       }
+      // Approving an unconfirmed address is worse than useless: the profile
+      // row (and consented_at) is written by handle_new_user the instant the
+      // auth user is created, i.e. BEFORE anyone clicks anything in their
+      // inbox — so an unconfirmed signup looked exactly like a confirmed one
+      // here. Two members were approved that way, were emailed "you're
+      // verified, sign in", and then couldn't: sign-in fails outright until
+      // the address is confirmed. schema-update-57 blocks this in the database
+      // as well; this is the readable version of the same rule.
+      if (target && !target.email_confirmed_at) {
+        setMemberError("This member hasn't confirmed their email address yet, so they couldn't sign in even once you approve them. Send them a confirmation email first — there's a button on their row.")
+        return
+      }
     }
-    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, approved } : m)))
+    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, approved, declined_at: approved ? null : m.declined_at } : m)))
     const { error } = await supabase.from('profiles').update({ approved }).eq('id', id)
-    if (error) { setMemberError(error.message); loadMembers() }
+    if (error) { setMemberError(friendlyAuthError(error)); loadMembers(); return }
     // Fire-and-forget: a failed email must never block or roll back the
     // approval itself. The member can still find out via "Check my status"
     // on PendingVerification.jsx if this silently fails.
-    if (approved && !error) {
+    if (approved) {
+      // .then, not .catch — functions.invoke never rejects, it resolves with
+      // { data, error } even when the function is undeployed or CORS blocks
+      // the response. The old .catch() could not fire under any circumstance,
+      // so an approval email that never sent left no trace anywhere.
       supabase.functions.invoke('send-approval-email', { body: { user_id: id } })
-        .catch((e) => console.error('send-approval-email failed:', e))
+        .then(({ error: mailErr }) => {
+          if (mailErr) {
+            console.error('send-approval-email failed:', mailErr)
+            setMemberError("They're approved, but the 'you're verified' email didn't send — let them know another way.")
+          }
+        })
     }
+  }
+
+  // Turning someone down. Keeps the account (so it can be undone, and so they
+  // can't simply sign up again into the same queue) but flips them onto the
+  // "we couldn't verify you" screen in App.jsx and emails them why.
+  async function declineMember(id, reason) {
+    setMembers((prev) => prev.map((m) => (
+      m.id === id ? { ...m, approved: false, declined_at: new Date().toISOString(), declined_reason: reason } : m
+    )))
+    const { error } = await supabase
+      .from('profiles')
+      .update({ declined_at: new Date().toISOString(), declined_reason: reason })
+      .eq('id', id)
+    if (error) { setMemberError(friendlyAuthError(error)); loadMembers(); return }
+    // Same .then-not-.catch reasoning as setApproved above. This one matters
+    // more: a decline the person is never told about is exactly the silent
+    // limbo this feature exists to end, so say so rather than logging nothing.
+    supabase.functions.invoke('send-member-email', { body: { kind: 'declined', user_id: id, reason } })
+      .then(({ error: mailErr }) => {
+        if (mailErr) {
+          console.error('send-member-email (declined) failed:', mailErr)
+          setMemberError("They're marked as declined, but the email explaining why didn't send — please tell them directly.")
+        }
+      })
+  }
+
+  // Undo. Puts them back on the ordinary waiting screen with nothing lost.
+  async function undoDecline(id) {
+    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, declined_at: null, declined_reason: '' } : m)))
+    const { error } = await supabase
+      .from('profiles')
+      .update({ declined_at: null, declined_reason: '' })
+      .eq('id', id)
+    if (error) { setMemberError(friendlyAuthError(error)); loadMembers() }
+  }
+
+  // Re-sends Supabase's own confirmation email to someone whose address is
+  // still unconfirmed.
+  //
+  // This is the member-facing /resend endpoint rather than an admin API call,
+  // which is why it needs a captcha token: GoTrue validates one on /resend
+  // exactly as it does on /signup. `captchaToken` comes from the widget
+  // rendered on the pending tab, and is single-use, so the nonce below forces
+  // a fresh challenge after every attempt.
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const [captchaNonce, setCaptchaNonce] = useState(0)
+  const [resendMsg, setResendMsg] = useState(null)
+
+  async function resendConfirmation(id) {
+    const target = members.find((m) => m.id === id)
+    if (!target?.email) return
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setResendMsg({ type: 'error', text: 'Complete the security check above first, then try again.' })
+      return
+    }
+    setResendMsg(null)
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: target.email,
+      options: { emailRedirectTo: authRedirectTo(), captchaToken },
+    })
+    setCaptchaToken(null)
+    setCaptchaNonce((n) => n + 1)
+    setResendMsg(
+      error
+        ? { type: 'error', text: friendlyAuthError(error) }
+        : { type: 'ok', text: `Confirmation email sent to ${target.email}. They need to click it before you can approve them.` }
+    )
   }
 
   // Permanent removal — replaces the old "Revoke" (which only flipped
@@ -204,12 +296,20 @@ export default function Admin({ session }) {
     if (error) { setMemberError(error.message); loadMembers() }
   }
 
-  const pending = useMemo(() => members.filter((m) => !m.approved), [members])
-  // Split out because they mean different things to whoever's on duty: one is
-  // a decision waiting to be made, the other is someone who wandered off
-  // mid-signup and can't be approved yet no matter what you do.
-  const readyToApprove = useMemo(() => pending.filter((m) => m.consented_at), [pending])
-  const unfinished = pending.length - readyToApprove.length
+  const pending = useMemo(() => members.filter((m) => !m.approved && !m.declined_at), [members])
+  // Split three ways, because they mean different things to whoever's on duty:
+  // a decision you can make now, someone who wandered off mid-signup, and
+  // someone who can't be approved until they confirm their email — which is a
+  // thing you CAN act on (resend), unlike the middle group.
+  const readyToApprove = useMemo(
+    () => pending.filter((m) => m.consented_at && m.email_confirmed_at),
+    [pending],
+  )
+  const unconfirmedCount = useMemo(
+    () => pending.filter((m) => m.consented_at && !m.email_confirmed_at).length,
+    [pending],
+  )
+  const unfinished = pending.filter((m) => !m.consented_at).length
   const adminCount = useMemo(() => members.filter((m) => m.is_admin).length, [members])
   const needsSetup = !!memberError && (memberError.includes('does not exist') || memberError.includes('function'))
 
@@ -233,6 +333,7 @@ export default function Admin({ session }) {
         loading={loadingMembers}
         readyToApprove={readyToApprove.length}
         unfinished={unfinished}
+        unconfirmed={unconfirmedCount}
         openReports={openReportsCount}
         adminCount={adminCount}
         onGo={setSubtab}
@@ -292,8 +393,15 @@ export default function Admin({ session }) {
         <PendingList
           loading={loadingMembers}
           pending={pending}
+          declined={members.filter((m) => m.declined_at)}
           busyIds={busyIds}
           onApprove={(id) => withBusy(id, () => setApproved(id, true))}
+          onDecline={(id, reason) => withBusy(id, () => declineMember(id, reason))}
+          onUndoDecline={(id) => withBusy(id, () => undoDecline(id))}
+          onResendConfirmation={(id) => withBusy(id, () => resendConfirmation(id))}
+          resendMsg={resendMsg}
+          captchaNonce={captchaNonce}
+          onCaptchaToken={setCaptchaToken}
         />
       )}
       {subtab === 'reports' && <ReportsModeration onCountChange={setOpenReportsCount} />}
@@ -320,7 +428,7 @@ export default function Admin({ session }) {
 }
 
 /* ---------- "Does anything need me?" ---------- */
-function AttentionPanel({ loading, readyToApprove, unfinished, openReports, adminCount, onGo }) {
+function AttentionPanel({ loading, readyToApprove, unfinished, unconfirmed, openReports, adminCount, onGo }) {
   if (loading) return null
 
   const items = []
@@ -329,6 +437,20 @@ function AttentionPanel({ loading, readyToApprove, unfinished, openReports, admi
       key: 'approve',
       text: readyToApprove === 1 ? '1 person is waiting to be approved' : `${readyToApprove} people are waiting to be approved`,
       action: 'Review them',
+      tab: 'pending',
+    })
+  }
+  // Surfaced here rather than left buried in the list, because this group is
+  // completely stuck until somebody acts: they finished signing up, so from
+  // their side it's done, but they can't sign in and no amount of approving
+  // will change that.
+  if (unconfirmed > 0) {
+    items.push({
+      key: 'unconfirmed',
+      text: unconfirmed === 1
+        ? "1 person never confirmed their email — they can't sign in until they do"
+        : `${unconfirmed} people never confirmed their email — they can't sign in until they do`,
+      action: 'Send them a link',
       tab: 'pending',
     })
   }
@@ -395,9 +517,29 @@ function StatCard({ label, value, highlight, hint }) {
 }
 
 /* ---------- Pending approvals ---------- */
-function PendingList({ loading, pending, onApprove, busyIds }) {
+function PendingList({
+  loading, pending, declined = [], onApprove, onDecline, onUndoDecline,
+  onResendConfirmation, resendMsg, captchaNonce, onCaptchaToken, busyIds,
+}) {
+  const [decliningId, setDecliningId] = useState(null)
+  const [declineReason, setDeclineReason] = useState('')
+
   if (loading) return <LoadingState message="Loading pending signups…" />
-  if (pending.length === 0) {
+
+  // Four groups now, because "pending" was hiding four different situations
+  // behind one word and only one of them is a decision:
+  //   ready       — you can approve or decline right now.
+  //   unconfirmed — finished signing up, but never clicked the link in their
+  //                 email. Approving them does nothing: sign-in fails until
+  //                 the address is confirmed. Actionable, via Resend.
+  //   unfinished  — came in through Google and never completed the short form.
+  //                 Nothing to approve, but they can be chased.
+  //   declined    — already turned down, kept visible so it can be undone.
+  const ready = pending.filter((m) => m.consented_at && m.email_confirmed_at)
+  const unconfirmed = pending.filter((m) => m.consented_at && !m.email_confirmed_at)
+  const unfinished = pending.filter((m) => !m.consented_at)
+
+  if (pending.length === 0 && declined.length === 0) {
     return (
       <EmptyState
         icon="feed"
@@ -407,11 +549,18 @@ function PendingList({ loading, pending, onApprove, busyIds }) {
     )
   }
 
-  // Two very different situations sharing one list made it look like half the
-  // queue was stuck. Split them: the top group is a decision you can make now,
-  // the bottom group is nothing you can act on at all.
-  const ready = pending.filter((m) => m.consented_at)
-  const unfinished = pending.filter((m) => !m.consented_at)
+  function confirmDecline(id) {
+    onDecline(id, declineReason.trim())
+    setDecliningId(null)
+    setDeclineReason('')
+  }
+
+  const rowProps = {
+    busyIds,
+    onApprove,
+    onResendConfirmation,
+    onStartDecline: (id) => { setDecliningId(id); setDeclineReason('') },
+  }
 
   return (
     <>
@@ -423,58 +572,192 @@ function PendingList({ loading, pending, onApprove, busyIds }) {
           costs them nothing, and there's no way to un-send access to the directory.
         </p>
         <p className="admin-guidance-note">
-          They aren't emailed when you approve them, so drop them a message. They can also press
-          “Check my status” on the waiting screen themselves.
+          Approving emails them automatically. If you're sure someone isn't an Eendragter, use
+          Decline rather than leaving them waiting — it tells them so, politely, and can be undone.
         </p>
       </div>
 
       {ready.length > 0 && <h3 className="admin-list-heading">Waiting on your decision</h3>}
-      {ready.length > 0 && <PendingRows rows={ready} onApprove={onApprove} busyIds={busyIds} />}
+      {ready.length > 0 && <PendingRows rows={ready} {...rowProps} />}
+
+      {unconfirmed.length > 0 && (
+        <>
+          <h3 className="admin-list-heading">Haven&rsquo;t confirmed their email yet</h3>
+          <p className="admin-tab-footnote" style={{ marginTop: 0, marginBottom: 10 }}>
+            These people finished signing up but never clicked the link in their inbox — usually a
+            spam filter ate it. <strong>Approving them wouldn&rsquo;t work</strong>: sign-in is
+            refused until the address is confirmed, so they'd get a "you're verified" email and
+            then be locked out. Send them a fresh link instead.
+          </p>
+          {/* The resend goes through Supabase's own /resend endpoint, which
+              validates a captcha exactly like signup does — hence a widget on
+              an admin screen. Rendered once for the whole group rather than
+              per row. */}
+          {TURNSTILE_SITE_KEY && (
+            <Turnstile onToken={onCaptchaToken} resetSignal={captchaNonce} className="auth-captcha admin-captcha" />
+          )}
+          {resendMsg && (
+            <p className={resendMsg.type === 'ok' ? 'form-notice' : 'form-error'} role="status">
+              {resendMsg.text}
+            </p>
+          )}
+          <PendingRows rows={unconfirmed} {...rowProps} />
+        </>
+      )}
 
       {unfinished.length > 0 && (
         <>
-          <h3 className="admin-list-heading">Started but didn't finish signing up</h3>
+          <h3 className="admin-list-heading">Started but didn&rsquo;t finish signing up</h3>
           <p className="admin-tab-footnote" style={{ marginTop: 0, marginBottom: 10 }}>
-            Nothing to do here — these accounts have no profile yet, usually because someone used
-            the Google button and closed the tab. They move up automatically when the person
-            returns and finishes.
+            These accounts have no details yet — almost always someone who used the Google button
+            and closed the tab before finishing the short form. They move up on their own the
+            moment the person comes back, but a nudge works: use the email link on their row.
           </p>
-          <PendingRows rows={unfinished} onApprove={onApprove} busyIds={busyIds} />
+          <PendingRows rows={unfinished} {...rowProps} />
         </>
+      )}
+
+      {declined.length > 0 && (
+        <>
+          <h3 className="admin-list-heading">Declined</h3>
+          <p className="admin-tab-footnote" style={{ marginTop: 0, marginBottom: 10 }}>
+            Turned down and told so by email. Their account and anything they'd posted is untouched,
+            so this can be reversed at any time — which matters, because the older residence records
+            are patchy and a decline is often our mistake rather than theirs.
+          </p>
+          <ul className="admin-list">
+            {declined.map((m) => (
+              <li className="admin-row" key={m.id}>
+                <Avatar url={null} name={m.full_name} size={40} />
+                <div className="admin-row-info">
+                  <span className="admin-row-name">{m.full_name || 'Name not set yet'}</span>
+                  <span className="admin-row-meta">{m.email}</span>
+                  <span className="admin-row-meta">
+                    Declined {timeAgo(m.declined_at)}
+                    {m.declined_reason ? ` · “${m.declined_reason}”` : ''}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn ghost small"
+                  onClick={() => onUndoDecline(m.id)}
+                  disabled={busyIds?.has(m.id)}
+                >
+                  {busyIds?.has(m.id) ? 'Working…' : 'Move back to pending'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {decliningId && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setDecliningId(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Decline this signup"
+        >
+          <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Decline this signup?</h2>
+              <button type="button" className="modal-close" onClick={() => setDecliningId(null)} aria-label="Close">×</button>
+            </div>
+            <div className="modal-body">
+              <p>
+                They'll be emailed to say we couldn't match them against residence records, and
+                they'll see the same message if they sign in. Nothing is deleted and you can undo
+                this at any time.
+              </p>
+              <label className="field">
+                <span>Reason (optional — they will see this)</span>
+                <input
+                  value={declineReason}
+                  onChange={(e) => setDeclineReason(e.target.value)}
+                  placeholder="e.g. No record of these years in Eendrag"
+                  maxLength={200}
+                />
+              </label>
+              <p className="hint">
+                Leave it blank if you'd rather not say. Either way the email invites them to come
+                back to us with more detail.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn ghost" onClick={() => setDecliningId(null)}>Cancel</button>
+              <button type="button" className="btn primary" onClick={() => confirmDecline(decliningId)}>
+                Decline and email them
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
 }
 
-function PendingRows({ rows, onApprove, busyIds }) {
+function PendingRows({ rows, onApprove, onStartDecline, onResendConfirmation, busyIds }) {
   return (
     <ul className="admin-list">
-      {rows.map((m) => (
-        <li className="admin-row" key={m.id}>
-          <Avatar url={null} name={m.full_name} size={40} />
-          <div className="admin-row-info">
-            <span className="admin-row-name">{m.full_name || 'Name not set yet'}</span>
-            <span className="admin-row-meta">
-              {m.email}
-              {m.grad_year ? ` · Class of '${String(m.grad_year).slice(-2)}` : ''}
-              {m.city ? ` · ${m.city}` : ''}
-            </span>
-            <span className="admin-row-meta">Signed up {timeAgo(m.created_at)}</span>
-          </div>
-          {/* consented_at is only set once someone finishes FinishSignup.jsx
-              (Google) or the last step of the signup wizard (email) — a
-              Google signup can land here with nothing but an email address.
-              No point offering Approve until they've actually filled the
-              rest of their profile in. */}
-          {m.consented_at ? (
-            <button type="button" className="btn primary small" onClick={() => onApprove(m.id)} disabled={busyIds?.has(m.id)}>
-              {busyIds?.has(m.id) ? 'Approving…' : 'Approve'}
-            </button>
-          ) : (
-            <span className="admin-row-meta admin-row-note">Hasn&rsquo;t finished signing up</span>
-          )}
-        </li>
-      ))}
+      {rows.map((m) => {
+        const busy = busyIds?.has(m.id)
+        // consented_at is only set once someone finishes FinishSignup.jsx
+        // (Google) or the last step of the signup wizard (email).
+        const finished = !!m.consented_at
+        const confirmed = !!m.email_confirmed_at
+        return (
+          <li className="admin-row" key={m.id}>
+            <Avatar url={null} name={m.full_name} size={40} />
+            <div className="admin-row-info">
+              <span className="admin-row-name">
+                {m.full_name || 'Name not set yet'}
+                {/* The legal first name, shown only when it differs from the
+                    display name — that's the one to check against residence
+                    records, and it's exactly the one full_name hides whenever
+                    someone gave a preferred name. */}
+                {m.first_name && m.preferred_name && m.preferred_name !== m.first_name && (
+                  <span className="admin-row-meta"> (on records: {m.first_name} {m.last_name})</span>
+                )}
+              </span>
+              <span className="admin-row-meta">
+                <a className="footer-link" href={`mailto:${m.email}`}>{m.email}</a>
+                {m.grad_year ? ` · Class of '${String(m.grad_year).slice(-2)}` : ''}
+                {m.city ? ` · ${m.city}` : ''}
+              </span>
+              <span className="admin-row-meta">
+                Signed up {timeAgo(m.created_at)}
+                {finished && !confirmed ? ' · email not confirmed' : ''}
+              </span>
+            </div>
+            <div className="admin-row-actions">
+              {finished && confirmed && (
+                <>
+                  <button type="button" className="btn primary small" onClick={() => onApprove(m.id)} disabled={busy}>
+                    {busy ? 'Working…' : 'Approve'}
+                  </button>
+                  <button type="button" className="btn ghost small" onClick={() => onStartDecline(m.id)} disabled={busy}>
+                    Decline
+                  </button>
+                </>
+              )}
+              {finished && !confirmed && (
+                <button type="button" className="btn primary small" onClick={() => onResendConfirmation(m.id)} disabled={busy}>
+                  {busy ? 'Sending…' : 'Resend confirmation'}
+                </button>
+              )}
+              {!finished && (
+                <a
+                  className="btn ghost small"
+                  href={`mailto:${m.email}?subject=${encodeURIComponent('Finishing your Eendrag Alumni signup')}&body=${encodeURIComponent('Hi,\n\nYou started signing up for the Eendrag Alumni Hub but there are a couple of details still to fill in — it takes about thirty seconds. Just sign in again at https://www.eendragalumni.org and it will pick up where you left off.\n\nThanks,\nEendrag Alumni')}`}
+                >
+                  Nudge them
+                </a>
+              )}
+            </div>
+          </li>
+        )
+      })}
     </ul>
   )
 }
@@ -682,20 +965,35 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                     {m.city ? ` · ${m.city}` : ''}
                   </span>
                   <span className="admin-row-badges">
-                    <span className={m.approved ? 'admin-badge approved' : 'admin-badge pending'}>
-                      {m.approved ? 'Approved' : 'Pending'}
+                    <span className={
+                      m.approved ? 'admin-badge approved'
+                        : m.declined_at ? 'admin-badge'
+                        : 'admin-badge pending'
+                    }>
+                      {m.approved ? 'Approved' : m.declined_at ? 'Declined' : 'Pending'}
                     </span>
+                    {/* Silent before: nothing anywhere in the admin tools said
+                        an address was unconfirmed, so an account that
+                        physically cannot sign in looked identical to a healthy
+                        one. */}
+                    {!m.email_confirmed_at && <span className="admin-badge pending">Email unconfirmed</span>}
                     {m.is_admin && <span className="admin-badge admin">Admin</span>}
                   </span>
                 </div>
                 <div className="admin-row-actions">
                   {!m.approved ? (
-                    m.consented_at ? (
+                    !m.consented_at ? (
+                      <button type="button" className="btn primary small" disabled title="Hasn't finished signing up yet">Approve</button>
+                    ) : !m.email_confirmed_at ? (
+                      // Blocked in the database too (schema-update-57): they
+                      // can't sign in until the address is confirmed, so an
+                      // approval here would only produce a "you're verified"
+                      // email followed by a locked door.
+                      <button type="button" className="btn primary small" disabled title="Hasn't confirmed their email address yet — resend it from the Pending approval tab">Approve</button>
+                    ) : (
                       <button type="button" className="btn primary small" onClick={() => onSetApproved(m.id, true)} disabled={busy}>
                         {busy ? 'Working…' : 'Approve'}
                       </button>
-                    ) : (
-                      <button type="button" className="btn primary small" disabled title="Hasn't finished signing up yet">Approve</button>
                     )
                   ) : (
                     // Approving the wrong person used to be irreversible from
