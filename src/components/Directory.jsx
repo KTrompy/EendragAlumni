@@ -110,7 +110,7 @@ export default function Directory({ session, people, loading, me, onMessage, hid
       )}
 
       <div className="directory-result-row">
-        <p className="result-count">{sorted.length} Registered {sorted.length === 1 ? 'User' : 'Users'}</p>
+        <p className="result-count">{sorted.length} {sorted.length === 1 ? 'Member' : 'Members'}</p>
         <div className="sort-switch" role="tablist" aria-label="Sort">
           <button type="button" role="tab" aria-selected={sort === 'discover'} className={sort === 'discover' ? 'on' : ''} onClick={() => setSort('discover')}>For You</button>
           <button type="button" role="tab" aria-selected={sort === 'alpha'} className={sort === 'alpha' ? 'on' : ''} onClick={() => setSort('alpha')}>Alphabetically</button>
@@ -139,7 +139,7 @@ export default function Directory({ session, people, loading, me, onMessage, hid
       {hasMore && (
         <div className="load-more-row">
           <button type="button" className="btn ghost" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
-            Load more ({sorted.length - shown.length} remaining)
+            Load more
           </button>
         </div>
       )}

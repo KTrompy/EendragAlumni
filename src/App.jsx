@@ -349,15 +349,38 @@ export default function App() {
         if (!cancelled) await load(true)
         return
       }
-      // Still failing after the retry, and it looks like an auth problem
-      // rather than a transient blip (e.g. a revoked/expired refresh token
-      // that didn't trigger a clean SIGNED_OUT event) — a stale JWT reads
-      // as "authenticated" to this component but every Supabase call keeps
-      // failing, leaving someone stuck looking at a signed-in app where
-      // nothing works. Forcing a real sign-out drops them back to the
-      // login screen instead of a silently broken one.
+      // Still failing after the retry, and it *looks* like an auth problem
+      // (401/JWT-shaped error) rather than a transient blip. This used to
+      // sign out unconditionally on that shape alone — but a 401 here isn't
+      // proof the session is actually dead. It's also exactly what a request
+      // whose Authorization header got dropped or mangled in transit looks
+      // like: a privacy-focused browser's shields (e.g. Brave, or a strict
+      // tracker-protection extension) rewriting/stripping headers on a
+      // cross-origin fetch to the Supabase domain produces the same 401
+      // shape as a genuinely revoked token, and previously this silently
+      // signed the person out and dropped them back on the sign-in screen a
+      // couple of seconds after a perfectly good login — with no
+      // explanation, which is exactly what "logs in, then bounces back to
+      // sign-in" looks like from the outside.
+      //
+      // So: ask Supabase directly whether the session is actually dead
+      // (refreshSession() talks to the auth server, not just local state)
+      // before taking the destructive step. Only a confirmed-invalid
+      // refresh token justifies a forced sign-out; anything else — including
+      // the refresh itself failing for a network/blocked-request reason —
+      // falls through to the ordinary 'error' screen below, which has a
+      // visible "Try again" instead of silently booting them.
       if (error && isRetry && isAuthError(error)) {
-        await supabase.auth.signOut()
+        const { error: refreshErr } = await supabase.auth.refreshSession()
+        if (cancelled) return
+        if (refreshErr && isAuthError(refreshErr)) {
+          await supabase.auth.signOut()
+          return
+        }
+        // Session is fine (or refreshSession itself just couldn't reach the
+        // server) — don't sign out. Report it as a normal load error instead.
+        setProfile(null)
+        setProfileStatus('error')
         return
       }
       // No error, but no row either. Two very different causes, and they need
