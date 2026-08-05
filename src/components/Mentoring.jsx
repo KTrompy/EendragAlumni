@@ -740,17 +740,26 @@ function SettingsTab({ profile, session, activeAsMentor, onSaved, showToast }) {
   }, [profile])
 
   async function save(patch) {
+    setSaving(true)
     const next = { ...form, ...patch }
     setForm(next)
-    setSaving(true)
+
     await supabase.auth.getSession()
     const { error } = await supabase.from('profiles').update(patch).eq('id', session.user.id)
     setSaving(false)
+
     if (error) {
       showToast('Could not save that — please try again.', { type: 'error' })
-      setForm(form)
+      // Revert to profile state since the update failed
+      setForm({
+        is_open_to_opportunities: !!profile?.is_open_to_opportunities,
+        mentor_paused: !!profile?.mentor_paused,
+        mentor_capacity: Number(profile?.mentor_capacity) || 2,
+        seeking_mentor: !!profile?.seeking_mentor,
+      })
       return
     }
+
     onSaved?.()
   }
 
