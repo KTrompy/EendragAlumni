@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
@@ -38,7 +38,7 @@ const MENTORSHIP_FIELDS =
   'id, mentor_id, mentee_id, initiated_by, status, request_message, response_message, ' +
   'focus, cadence, duration_months, closing_note, requested_at, started_at, ended_at, ended_by'
 
-export default function Mentoring({ session, profile, onMessage }) {
+export default function Mentoring({ session, profile, onProfileChange, onMessage }) {
   const [params, setParams] = useSearchParams()
   const showToast = useToast()
   const myId = session.user.id
@@ -53,8 +53,12 @@ export default function Mentoring({ session, profile, onMessage }) {
 
   const canMentor = !!profile?.is_open_to_opportunities
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  // `quiet` refetches without flipping `loading`. That matters: the loading
+  // branch below swaps the whole tab body out for a spinner, which unmounts
+  // Settings and loses whatever the person just clicked. Anything that
+  // refreshes *because of* a change made on this page should refresh quietly.
+  const load = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true)
     await supabase.auth.getSession()
 
     const [people, mine, counts] = await Promise.all([
@@ -67,7 +71,10 @@ export default function Mentoring({ session, profile, onMessage }) {
       supabase.rpc('mentor_load'),
     ])
 
-    if (people.error || mine.error) { setLoadError(true); setLoading(false); return }
+    // A quiet refresh that fails leaves the lists as they were rather than
+    // replacing a working page with an error screen — the save it followed
+    // already succeeded, so there is nothing for the person to retry.
+    if (people.error || mine.error) { if (!quiet) setLoadError(true); setLoading(false); return }
     setLoadError(false)
 
     const countMap = {}
@@ -189,7 +196,8 @@ export default function Mentoring({ session, profile, onMessage }) {
               profile={profile}
               session={session}
               activeAsMentor={loadCounts[myId] || 0}
-              onSaved={load}
+              onProfileChange={onProfileChange}
+              onSaved={() => load({ quiet: true })}
               showToast={showToast}
             />
           )}
@@ -720,46 +728,60 @@ function MentorshipRow({ mentorship: m, other, iAmMentor, session, expanded, onT
 // on are things you do *because* of what you're seeing on this page, and
 // bouncing someone to a different screen to do it is how you end up with
 // mentors who never adjust either.
-function SettingsTab({ profile, session, activeAsMentor, onSaved, showToast }) {
-  const navigate = useNavigate()
-  const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({
+function formFromProfile(profile) {
+  return {
     is_open_to_opportunities: !!profile?.is_open_to_opportunities,
     mentor_paused: !!profile?.mentor_paused,
     mentor_capacity: Number(profile?.mentor_capacity) || 2,
     seeking_mentor: !!profile?.seeking_mentor,
-  })
+  }
+}
 
+function SettingsTab({ profile, session, activeAsMentor, onProfileChange, onSaved, showToast }) {
+  const navigate = useNavigate()
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(() => formFromProfile(profile))
+
+  // Only re-sync from the prop when nothing is in flight. Mid-save the local
+  // form is ahead of the app-level profile on purpose, and letting an
+  // unrelated re-render push the old value back in is exactly the flicker
+  // where a click appeared to do nothing until the page was refreshed.
+  const savingRef = useRef(false)
   useEffect(() => {
-    setForm({
-      is_open_to_opportunities: !!profile?.is_open_to_opportunities,
-      mentor_paused: !!profile?.mentor_paused,
-      mentor_capacity: Number(profile?.mentor_capacity) || 2,
-      seeking_mentor: !!profile?.seeking_mentor,
-    })
+    if (savingRef.current) return
+    setForm(formFromProfile(profile))
   }, [profile])
 
   async function save(patch) {
+    savingRef.current = true
     setSaving(true)
     const next = { ...form, ...patch }
     setForm(next)
 
     await supabase.auth.getSession()
-    const { error } = await supabase.from('profiles').update(patch).eq('id', session.user.id)
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(patch)
+      .eq('id', session.user.id)
+      .select()
+      .single()
     setSaving(false)
+    savingRef.current = false
 
     if (error) {
       showToast('Could not save that — please try again.', { type: 'error' })
       // Revert to profile state since the update failed
-      setForm({
-        is_open_to_opportunities: !!profile?.is_open_to_opportunities,
-        mentor_paused: !!profile?.mentor_paused,
-        mentor_capacity: Number(profile?.mentor_capacity) || 2,
-        seeking_mentor: !!profile?.seeking_mentor,
-      })
+      setForm(formFromProfile(profile))
       return
     }
 
+    // Hand the saved row back up so the app-level profile matches the
+    // database. Without this the parent keeps serving the pre-save profile,
+    // and the effect above quietly undoes the click on the next re-render.
+    if (data) {
+      setForm(formFromProfile(data))
+      onProfileChange?.(data)
+    }
     onSaved?.()
   }
 
