@@ -13,7 +13,17 @@ function timeAgo(iso) {
 // this app already has (see App.jsx TABS).
 // `member` covers the new-signup alerts added in schema-update-46, which
 // go to admins and should land them on the pending-approval queue.
-const ENTITY_TAB = { post: 'feed', event: 'events', job: 'jobs', member: 'admin', conversation: null }
+// `mentorship` covers the request/accept/decline/session alerts added in
+// schema-update-56 — they all land on Mentoring's "My mentoring" tab, which
+// is where every one of them is actionable.
+const ENTITY_TAB = {
+  post: 'feed',
+  event: 'events',
+  job: 'jobs',
+  member: 'admin',
+  mentorship: 'mentoring',
+  conversation: null,
+}
 
 // Bell + dropdown in the header. Polls once on mount, then stays live via
 // Supabase realtime (new row insert) so a badge appears without a refresh —

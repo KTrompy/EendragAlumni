@@ -487,6 +487,10 @@ export default function App() {
     if (entityId && entityType === 'post') { goTo(`/feed/${entityId}`); return }
     if (entityId && entityType === 'event') { goTo(`/events/${entityId}`); return }
     if (entityId && entityType === 'job') { goTo(`/jobs/${entityId}`); return }
+    // Mentoring has no per-mentorship route — the pairing lives inside a tab
+    // rather than at its own URL — so these deep-link to the tab that lists
+    // them instead of dropping the person on Find a Mentor.
+    if (entityType === 'mentorship') { goTo('/mentoring?tab=mine'); return }
     // ADMIN_TAB is included deliberately: new-signup notifications
     // (schema-update-46) point admins at 'admin', which isn't in TABS.
     // Without it those notifications were clickable but went nowhere.

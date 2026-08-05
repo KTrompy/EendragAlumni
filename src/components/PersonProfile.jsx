@@ -5,6 +5,7 @@ import { PhotoBlock } from './Directory.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
 import ReportButton from './ReportButton.jsx'
+import MentorshipRequestModal from './MentorshipRequestModal.jsx'
 import { buildIcebreaker } from '../icebreaker.js'
 import { normalizeExpertise, formatExperienceRange, formatExperienceDuration, safeUrl } from '../utils.js'
 
@@ -52,6 +53,7 @@ export default function PersonProfile({ session, me, onMessage }) {
   const [notFound, setNotFound] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [retryTick, setRetryTick] = useState(0)
+  const [requesting, setRequesting] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -144,9 +146,20 @@ export default function PersonProfile({ session, me, onMessage }) {
   const expertise = normalizeExpertise(p.expertise)
   const servicesOffered = Array.isArray(p.services_offered) ? p.services_offered : []
   const geographicFocus = Array.isArray(p.geographic_focus) ? p.geographic_focus : []
+  const menteeGoals = normalizeExpertise(p.mentee_goals)
+  // The mentee half counts as mentoring info too — otherwise someone who is
+  // only looking for a mentor (and has filled in exactly that) gets no
+  // Mentoring section at all, and no way to be approached from this page.
   const hasMentoringInfo = expertise.length > 0 || servicesOffered.length > 0
     || geographicFocus.length > 0
     || !!p.business_website || !!p.availability
+    || p.is_open_to_opportunities || p.seeking_mentor
+
+  // Which request, if either, makes sense between these two people. Both can
+  // be true — a peer who mentors you in one area while you mentor them in
+  // another is a perfectly normal arrangement.
+  const canAskToMentorMe = !isMe && !!p.is_open_to_opportunities && !p.mentor_paused
+  const canOfferToMentor = !isMe && !!p.seeking_mentor && !!me?.is_open_to_opportunities
 
   return (
     <section className="panel narrow profile-page person-profile-page">
@@ -327,6 +340,35 @@ export default function PersonProfile({ session, me, onMessage }) {
               <Chips items={geographicFocus} />
             </div>
           )}
+
+          {p.seeking_mentor && (
+            <div className="profile-card-subsection">
+              <span className="profile-fact-label">Looking for help with</span>
+              {menteeGoals.length > 0
+                ? <Chips items={menteeGoals} />
+                : <p className="profile-card-bio">Open to a mentor — hasn&rsquo;t listed specific areas yet.</p>}
+              {p.mentee_note && <p className="profile-card-bio">{p.mentee_note}</p>}
+            </div>
+          )}
+
+          {(canAskToMentorMe || canOfferToMentor) && (
+            <div className="profile-mentoring-cta">
+              {canAskToMentorMe && (
+                <button type="button" className="btn primary small" onClick={() => setRequesting({ asMentor: false })}>
+                  Ask to be mentored
+                </button>
+              )}
+              {canOfferToMentor && (
+                <button type="button" className="btn ghost small" onClick={() => setRequesting({ asMentor: true })}>
+                  Offer to mentor them
+                </button>
+              )}
+              {/* Said plainly, because the whole point of keeping flash
+                  mentoring is that a request should never feel like the only
+                  way in. */}
+              <span className="hint">Just have one question? Message them instead — no commitment either way.</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -345,6 +387,16 @@ export default function PersonProfile({ session, me, onMessage }) {
           </button>
         )}
       </div>
+
+      {requesting && (
+        <MentorshipRequestModal
+          target={p}
+          profile={me}
+          asMentor={requesting.asMentor}
+          onClose={() => setRequesting(null)}
+          onSent={() => navigate('/mentoring?tab=mine')}
+        />
+      )}
     </section>
   )
 }

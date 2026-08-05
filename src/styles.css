@@ -9407,12 +9407,272 @@ button.delete-danger svg { flex-shrink: 0; }
   white-space: pre-wrap;
 }
 
+/* ---------- Rebuild: matching, capacity, my-mentoring (schema-update-56) ---------- */
+
+/* A count on the tab itself, so "someone is waiting on you" is visible from
+   any other tab rather than only once you go looking. */
+.section-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--maroon);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.mentoring-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--orange-soft);
+  border: 1px solid var(--orange);
+  border-radius: var(--radius-sm);
+}
+.mentoring-callout p { margin: 0; font-size: 13.5px; color: var(--ink); line-height: 1.45; }
+
+.mentoring-toggle-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.mentoring-toggle-filter input { accent-color: var(--maroon); width: 15px; height: 15px; }
+
+/* The badge is a label, never a number — the score exists to order the list,
+   not to be shown to the person being scored. */
+.mentor-match-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.mentor-match-badge.strong { background: rgba(44, 110, 73, 0.14); color: var(--ok); }
+.mentor-match-badge.good { background: var(--paper); color: var(--ink-soft); border: 1px solid var(--line); }
+
+.mentor-match-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mentor-match-reasons li {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  padding-left: 15px;
+  position: relative;
+  line-height: 1.4;
+}
+.mentor-match-reasons li::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--line-strong, var(--line));
+}
+.mentor-match-reasons li.strong { color: var(--ink); font-weight: 600; }
+.mentor-match-reasons li.strong::before { background: var(--ok); }
+
+.mentor-tag-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  align-self: center;
+  margin-right: 2px;
+}
+
+.mentor-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mentor-capacity { font-size: 11.5px; font-weight: 600; }
+.mentor-capacity.open { color: var(--ok); }
+.mentor-capacity.full { color: var(--ink-soft); }
+.mentor-capacity.paused { color: var(--orange-dark); }
+
+.mentor-card-state {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--maroon);
+  position: relative;
+  z-index: 2;
+}
+
+/* ---------- My mentoring ---------- */
+.mentoring-mine { display: flex; flex-direction: column; gap: 26px; }
+.mentoring-group-title {
+  margin: 0 0 10px;
+  font-family: var(--display);
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--maroon);
+}
+.mentoring-group-title span {
+  color: var(--ink-soft);
+  font-weight: 600;
+  margin-left: 4px;
+}
+.relationship-card-name {
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.relationship-card-name:hover { color: var(--maroon); text-decoration: underline; }
+.relationship-card-role { font-size: 12.5px; color: var(--ink-soft); }
+
+/* ---------- Goals & sessions ---------- */
+.mentoring-goal-target {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.mentoring-goal-date { max-width: 150px; }
+
+/* Deliberately informational rather than alarming — a gap is normal, and a
+   red warning about it would just make people avoid the page. */
+.mentoring-stale-note {
+  margin: 0;
+  padding: 9px 13px;
+  background: var(--orange-soft);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--orange-dark);
+}
+.mentoring-next-session {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.mentoring-note-next {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.mentoring-note-next strong { color: var(--ink); }
+.mentoring-session-fields {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.mentoring-note-form textarea + textarea { margin-top: 8px; }
+.mentoring-form-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.mentoring-end-row { display: flex; justify-content: flex-end; }
+.link-btn.subtle { color: var(--ink-soft); font-size: 12.5px; }
+.link-btn.subtle:hover { color: var(--danger); }
+.mentoring-end-panel {
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mentoring-end-panel h4 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--maroon);
+}
+.mentoring-end-panel textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--card);
+  color: var(--ink);
+  resize: vertical;
+}
+.mentoring-end-panel textarea:focus { border-color: var(--maroon); outline: none; }
+
+/* ---------- Settings ---------- */
+.mentoring-settings-row span small {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-weight: 400;
+  margin-top: 2px;
+}
+.mentoring-capacity-picker { display: flex; gap: 5px; flex-wrap: wrap; }
+.mentoring-capacity-picker .tag-btn { min-width: 34px; justify-content: center; }
+.mentoring-settings .settings-card .mentoring-settings-row { margin-bottom: 8px; }
+.mentoring-settings .settings-card > .btn { margin-top: 6px; }
+
+/* ---------- Request modal ---------- */
+.modal-mentorship { max-width: 560px; }
+
+/* ---------- Profile page hooks ---------- */
+.profile-mentee-block {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.profile-mentee-block textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--card);
+  color: var(--ink);
+  resize: vertical;
+}
+.profile-mentee-block textarea:focus { border-color: var(--maroon); outline: none; }
+.profile-mentoring-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.profile-mentoring-cta .hint { flex-basis: 100%; margin: 0; }
+
 @media (max-width: 640px) {
   .mentor-card-grid { grid-template-columns: 1fr; }
   .mentoring-filter-bar { flex-direction: column; }
   .mentoring-search-wrap { flex: 1 1 100%; }
   .relationship-card-head { flex-direction: column; align-items: flex-start; }
   .relationship-card-actions { width: 100%; }
+  .mentoring-callout { flex-direction: column; align-items: flex-start; }
+  .mentoring-settings-row { flex-direction: column; align-items: flex-start; }
+  .mentor-match-badge { margin-left: 0; }
+  .mentoring-inline-form { flex-wrap: wrap; }
+  .mentoring-goal-date { max-width: none; flex: 1; }
 }
 
 /* ===========================================================
@@ -9789,6 +10049,7 @@ button.delete-danger svg { flex-shrink: 0; }
 .job-card-actions,
 .job-poster-row,
 .job-save-btn,
+.mentor-request-btn,
 .business-card-actions {
   position: relative;
   z-index: 2;

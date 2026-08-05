@@ -46,6 +46,13 @@ const EMPTY = {
   is_open_to_opportunities: false,
   availability: '',
   geographic_focus: [],
+  // The mentee half of mentoring (schema-update-56). Kept in the same
+  // section as the mentor fields because they're two answers to one
+  // question — what do you want out of this — and splitting them apart is
+  // how you end up with people who only ever notice one of them.
+  seeking_mentor: false,
+  mentee_goals: [],
+  mentee_note: '',
   experience: [],
   // keeping looking_to_connect for backward compatibility but not using in UI
   looking_to_connect: [],
@@ -163,6 +170,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         is_open_to_opportunities: profile.is_open_to_opportunities === true,
         availability: profile.availability || '',
         geographic_focus: Array.isArray(profile.geographic_focus) ? profile.geographic_focus : [],
+        seeking_mentor: profile.seeking_mentor === true,
+        mentee_goals: normalizeExpertise(profile.mentee_goals),
+        mentee_note: profile.mentee_note || '',
         experience: (Array.isArray(profile.experience) ? profile.experience : [])
           .map((entry) => ({ ...entry, _key: makeExperienceKey() })),
         looking_to_connect: Array.isArray(profile.looking_to_connect) ? profile.looking_to_connect : [],
@@ -592,6 +602,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       linkedin_url: form.linkedin_url.trim(),
       phone: form.phone.trim(),
       business_website: website,
+      mentee_note: form.mentee_note.trim(),
       address_line1: form.address_line1.trim(),
       address_line2: form.address_line2.trim(),
       address_line3: form.address_line3.trim(),
@@ -1240,6 +1251,67 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                 </label>
               </div>
             )}
+
+            {/* ---- The other half: being mentored ----
+                Sits inside the same collapsible section as the mentor
+                fields, below a divider, because "would you mentor?" and
+                "do you want a mentor?" are not opposites — plenty of people
+                are usefully both, and separating them into different
+                sections made the second one invisible. */}
+            <div className="profile-mentee-block">
+              <div className="field">
+                <span>Looking for a mentor yourself?</span>
+                <span className="hint">
+                  Say yes and mentors can find you under Find a Mentee, instead of you having to do all the asking.
+                </span>
+                <div className="onboarding-choice-row profile-choice-row">
+                  <button
+                    type="button"
+                    className={form.seeking_mentor ? 'onboarding-choice on' : 'onboarding-choice'}
+                    onClick={() => set('seeking_mentor', true)}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    className={!form.seeking_mentor ? 'onboarding-choice on' : 'onboarding-choice'}
+                    onClick={() => set('seeking_mentor', false)}
+                  >
+                    Not right now
+                  </button>
+                </div>
+              </div>
+
+              {form.seeking_mentor && (
+                <div className="profile-mentoring-details">
+                  <label className="field"><span>What do you want help with?</span>
+                    <MultiSelectAutocomplete
+                      values={form.mentee_goals}
+                      onChange={(value) => set('mentee_goals', value)}
+                      options={EXPERTISE_BY_INDUSTRY[form.industry] || EXPERTISE_OPTIONS}
+                      placeholder={form.industry ? 'Search areas, or type your own' : 'Pick an industry above to see relevant options'}
+                      allowCustom
+                    />
+                    {/* This is also what orders Find a Mentor for you, which
+                        is worth saying out loud — otherwise it reads like
+                        yet another optional tag field. */}
+                    <span className="hint">
+                      This is what sorts the Find a Mentor list for you, so it&rsquo;s worth being specific.
+                    </span>
+                  </label>
+
+                  <label className="field"><span>Anything else a mentor should know? (optional)</span>
+                    <textarea
+                      value={form.mentee_note}
+                      onChange={(e) => set('mentee_note', e.target.value.slice(0, 600))}
+                      placeholder="Where you are now, and what you're trying to work out."
+                      rows={3}
+                    />
+                    <span className="hint">{form.mentee_note.length} / 600</span>
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
