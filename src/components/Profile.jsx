@@ -127,6 +127,9 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   const [dirty, setDirty] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [showMentoring, setShowMentoring] = useState(false)
+  // Which of the two mentoring yes/no toggles (if any) has a write in
+  // flight — see saveToggle below.
+  const [togglingField, setTogglingField] = useState(null)
   const [showPhotoModal, setShowPhotoModal] = useState(false)
   const [deletingPhoto, setDeletingPhoto] = useState(false)
   // Which experience cards are showing the full edit form rather than the
@@ -244,6 +247,33 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   }
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); setSaved(false); setDirty(true); clearMissing(k) }
+
+  // "Open to mentoring" and "Looking for a mentor" read like on/off
+  // settings switches, not fields you fill in and then remember to click
+  // "Save changes" for. Routed through the full-form save() they could sit
+  // changed-but-unsaved, or get silently blocked by unrelated validation
+  // errors elsewhere in the form (a bad LinkedIn URL, a missing grad year)
+  // with nothing telling you why the click "didn't hold". Writing just this
+  // one column straight to the DB means the click itself is the save, so it
+  // can never be lost to an unrelated field or an un-clicked Save button.
+  async function saveToggle(key, value) {
+    const previous = form[key]
+    set(key, value)
+    setTogglingField(key)
+    const { data, error: dbErr } = await supabase
+      .from('profiles')
+      .update({ [key]: value })
+      .eq('id', session.user.id)
+      .select()
+      .single()
+    setTogglingField(null)
+    if (dbErr) {
+      setForm((f) => ({ ...f, [key]: previous }))
+      setError(dbErr.message)
+      return
+    }
+    onSaved(data)
+  }
 
   // className helper for the fields flagged by the post-onboarding
   // highlight — appends 'field-missing' (styles.css) when this key is
@@ -1156,14 +1186,16 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                 <button
                   type="button"
                   className={form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
-                  onClick={() => set('is_open_to_opportunities', true)}
+                  onClick={() => saveToggle('is_open_to_opportunities', true)}
+                  disabled={togglingField === 'is_open_to_opportunities'}
                 >
                   Yes
                 </button>
                 <button
                   type="button"
                   className={!form.is_open_to_opportunities ? 'onboarding-choice on' : 'onboarding-choice'}
-                  onClick={() => set('is_open_to_opportunities', false)}
+                  onClick={() => saveToggle('is_open_to_opportunities', false)}
+                  disabled={togglingField === 'is_open_to_opportunities'}
                 >
                   Not right now
                 </button>
@@ -1268,14 +1300,16 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
                   <button
                     type="button"
                     className={form.seeking_mentor ? 'onboarding-choice on' : 'onboarding-choice'}
-                    onClick={() => set('seeking_mentor', true)}
+                    onClick={() => saveToggle('seeking_mentor', true)}
+                    disabled={togglingField === 'seeking_mentor'}
                   >
                     Yes
                   </button>
                   <button
                     type="button"
                     className={!form.seeking_mentor ? 'onboarding-choice on' : 'onboarding-choice'}
-                    onClick={() => set('seeking_mentor', false)}
+                    onClick={() => saveToggle('seeking_mentor', false)}
+                    disabled={togglingField === 'seeking_mentor'}
                   >
                     Not right now
                   </button>
