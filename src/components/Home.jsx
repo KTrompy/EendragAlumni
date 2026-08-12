@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { isGhost } from '../ghost.js'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useIsWide } from '../utils.js'
@@ -698,13 +699,17 @@ export default function Home({ session, profile, onMessage }) {
                         {m.industry && (
                           <p className="home-community-industry">{m.industry}</p>
                         )}
-                        <button
-                          type="button"
-                          className="home-community-message-btn"
-                          onClick={(e) => handleCommunityCardClick(e, () => onMessage?.(m, buildIcebreaker(profile, m)))}
-                        >
-                          Message
-                        </button>
+                        {/* Ghosts can't message anyone (schema-update-58);
+                            the card itself still opens the profile. */}
+                        {!isGhost(profile) && (
+                          <button
+                            type="button"
+                            className="home-community-message-btn"
+                            onClick={(e) => handleCommunityCardClick(e, () => onMessage?.(m, buildIcebreaker(profile, m)))}
+                          >
+                            Message
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

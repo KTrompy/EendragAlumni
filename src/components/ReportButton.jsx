@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useToast } from './Toast.jsx'
 import useModal from '../useModal.js'
+import { isGhost } from '../ghost.js'
 
 const REASONS = [
   { id: 'spam', label: 'Spam or misleading' },
@@ -18,7 +19,12 @@ const REASONS = [
 // everything filed here from the new Reports tab in Admin.jsx. Not gated
 // behind account approval (unlike posting/messaging): flagging something
 // is a safety action, not a content-creation privilege.
-export default function ReportButton({ session, entityType, entityId, className = 'post-action', label = 'Report', title = 'Report this' }) {
+//
+// Ghost accounts are the one exception, and it isn't a judgement about
+// safety — `reports` is on schema-update-58's browse-only list, so the
+// insert below would simply be refused. The choice is between hiding the
+// button and showing one that always errors.
+export default function ReportButton({ session, profile, entityType, entityId, className = 'post-action', label = 'Report', title = 'Report this' }) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [details, setDetails] = useState('')
@@ -78,6 +84,10 @@ export default function ReportButton({ session, entityType, entityId, className 
   // was closable by backdrop click only, which is the half of the pair that
   // keyboard users can't reach.
   const modalRef = useModal({ enabled: open, onClose: () => close(), closeOnEscape: !busy })
+
+  // Below every hook, not up with the other guards — an early return above
+  // useModal would change the hook order the render after `profile` arrives.
+  if (isGhost(profile)) return null
 
   return (
     <>

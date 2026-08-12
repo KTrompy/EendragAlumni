@@ -124,6 +124,20 @@ export default function useModal(options = {}) {
     let pushed = false
     let pushTimer = null
     function onPop() {
+      // Ignore a popstate that fires before THIS modal's own history entry
+      // has actually been pushed (that push is deferred by a tick — see
+      // below). This happens whenever a modal opens in the same tick a
+      // different modal closes: the outgoing modal's cleanup calls
+      // history.back() to remove ITS entry, which fires a popstate — and
+      // this modal's listener, already registered synchronously below,
+      // was catching that stray pop and treating it as the user hitting
+      // Back on an entry that doesn't exist yet, closing itself before it
+      // had shown anything. Concretely: Profile.jsx closes the "profile
+      // photo" modal and opens PhotoCropper in the same state update, so
+      // picking a photo looked like it did nothing at all — Update just
+      // "clicked off". Real Back-button presses always land after
+      // `pushed` flips true, so this only filters out that race.
+      if (!pushed) return
       poppedByUser = true
       close()
     }

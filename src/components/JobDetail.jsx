@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { canWrite } from '../ghost.js'
 import { useNavigate, useParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
@@ -267,7 +268,9 @@ export default function JobDetail({ session, profile, onMessage }) {
               >
                 {isSaved ? 'Saved' : 'Save'}
               </button>
-              {!isMine && (
+              {/* Ghost accounts can't apply — job_applications is on
+                  schema-update-58's browse-only list. */}
+              {!isMine && canWrite(profile) && (
                 <button type="button"
                   className="btn primary small"
                   onClick={() => !hasApplied && !closed && setShowApply(true)}

@@ -25,6 +25,15 @@ const CV_ACCEPT = '.pdf,.doc,.docx,application/pdf,application/msword,applicatio
 // then never fired: a modal with Save permanently disabled, no error, no
 // way to tell what went wrong. Same list ApplyModal enforces for its uploads.
 const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+// iPhones save Camera Roll photos as HEIC by default, and browsers can't
+// decode that format at all — PhotoCropper's <img> would never fire onLoad,
+// same dead-end as the non-image case above. Safari sometimes reports these
+// with an empty file.type, so a filename check backs up the mime check.
+// heic2any (WASM build of libheif) converts them to a normal JPEG blob
+// before they ever reach the cropper; it's loaded on demand (see pickPhoto)
+// so nobody pays for it unless they actually pick a HEIC file.
+const HEIC_TYPES = ['image/heic', 'image/heif']
+const isHeicFile = (file) => HEIC_TYPES.includes(file.type) || /\.hei[cf]$/i.test(file.name || '')
 const CV_TYPES = [
   'application/pdf',
   'application/msword',
@@ -114,6 +123,10 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   const [customCity, setCustomCity] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
+  // True only while a HEIC file is being converted to JPEG, before the
+  // cropper even opens — separate from `uploading` (which covers the save
+  // step) so the two "please wait" states can't be confused for each other.
+  const [convertingPhoto, setConvertingPhoto] = useState(false)
   const [cropFile, setCropFile] = useState(null)
   // Last-saved crop (zoom/position/rotation/flip/filters), passed to
   // PhotoCropper so re-editing an existing photo restores where you left
@@ -364,12 +377,13 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSA])
 
-  function pickPhoto(e) {
+  async function pickPhoto(e) {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file later (e.g. after cancel)
     if (!file) return
-    if (!AVATAR_TYPES.includes(file.type)) {
-      setError('Please choose a JPEG, PNG or WebP image.')
+    const heic = isHeicFile(file)
+    if (!AVATAR_TYPES.includes(file.type) && !heic) {
+      setError('Please choose a JPEG, PNG, WebP or HEIC image.')
       return
     }
     if (file.size > 8 * 1024 * 1024) {
@@ -377,17 +391,49 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       return
     }
     setError(null)
+
+    let imageFile = file
+    if (heic) {
+      setConvertingPhoto(true)
+      try {
+        const { default: heic2any } = await import('heic2any')
+        const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })
+        const jpegBlob = Array.isArray(converted) ? converted[0] : converted
+        imageFile = new File([jpegBlob], file.name.replace(/\.hei[cf]$/i, '.jpg'), { type: 'image/jpeg' })
+      } catch {
+        setConvertingPhoto(false)
+        setError("Couldn't convert that HEIC photo. Try exporting it as JPEG first, or take a new photo in JPEG format.")
+        return
+      }
+      setConvertingPhoto(false)
+    }
+
     setShowPhotoModal(false)
-    setCropFile(file)
-    // A newly picked photo is unrelated to whatever crop you last saved on
-    // your previous avatar, so the editor should open centered/unzoomed —
-    // never carry over the old crop fractions onto a differently-shaped image.
-    setCropInitial(null)
+    // Deferred a tick rather than set alongside setShowPhotoModal above.
+    // Both used to fire in the same React commit, which unmounts
+    // ProfilePhotoModal and mounts PhotoCropper together — each one owns a
+    // useModal() history entry, and closing one modal while opening another
+    // in that same commit races the outgoing modal's async history.back()
+    // against the incoming modal's own pushState (see useModal.js). When it
+    // lost, the cropper's popstate listener caught the outgoing modal's
+    // delayed "back" as if the user had pressed it and closed itself
+    // instantly — Update just "clicked off" with nothing happening. Waiting
+    // a tick lets ProfilePhotoModal's cleanup fully settle before
+    // PhotoCropper ever mounts, so there's nothing left to race.
+    setTimeout(() => {
+      setCropFile(imageFile)
+      // A newly picked photo is unrelated to whatever crop you last saved on
+      // your previous avatar, so the editor should open centered/unzoomed —
+      // never carry over the old crop fractions onto a differently-shaped image.
+      setCropInitial(null)
+    }, 0)
     // Stash the untouched original (best-effort, don't block the crop UI on
     // it) so a later re-edit can start from the full photo again instead of
-    // the already-cropped/zoomed avatar — see editExistingPhoto below.
+    // the already-cropped/zoomed avatar — see editExistingPhoto below. Uses
+    // the converted JPEG for HEIC sources, since re-uploading the original
+    // HEIC bytes here would just recreate the same undecodable file.
     supabase.storage.from('avatars')
-      .upload(`${session.user.id}/original`, file, { upsert: true, contentType: file.type || 'image/jpeg' })
+      .upload(`${session.user.id}/original`, imageFile, { upsert: true, contentType: imageFile.type || 'image/jpeg' })
       .catch(() => {})
   }
 
@@ -485,13 +531,18 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       const blob = await res.blob()
       const file = new File([blob], 'avatar.jpg', { type: blob.type || 'image/jpeg' })
       setShowPhotoModal(false)
-      // Only restore the last-saved crop (zoom/position/rotation/filters)
-      // when we know we're loading the real, uncropped original — applying
-      // it on top of the fallback avatar_url image would re-crop an
-      // already-cropped image and effectively zoom in even further, the
-      // exact bug this whole original-preservation mechanism exists to fix.
-      setCropInitial(usingOriginal ? (profile.avatar_crop || null) : null)
-      setCropFile(file)
+      // Deferred a tick — same modal-swap history race as pickPhoto above,
+      // since this path also closes ProfilePhotoModal and opens PhotoCropper
+      // together (React 18 batches state updates after an await too).
+      setTimeout(() => {
+        // Only restore the last-saved crop (zoom/position/rotation/filters)
+        // when we know we're loading the real, uncropped original — applying
+        // it on top of the fallback avatar_url image would re-crop an
+        // already-cropped image and effectively zoom in even further, the
+        // exact bug this whole original-preservation mechanism exists to fix.
+        setCropInitial(usingOriginal ? (profile.avatar_crop || null) : null)
+        setCropFile(file)
+      }, 0)
     } catch {
       setError('Could not load current photo for editing.')
     }
@@ -758,12 +809,12 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
             >
               {profile?.avatar_url ? 'Profile picture' : 'Add photo'}
             </button>
-            <p className="profile-photo-hint">JPG, PNG or WebP • Max 8MB</p>
+            <p className="profile-photo-hint">JPG, PNG, WebP or HEIC • Max 8MB</p>
           </div>
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
             style={{ display: 'none' }}
             onChange={pickPhoto}
           />
@@ -1382,12 +1433,14 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
         <ProfilePhotoModal
           avatarUrl={profile?.avatar_url}
           name={form.full_name}
-          onClose={() => setShowPhotoModal(false)}
+          onClose={() => { setShowPhotoModal(false); setError(null) }}
           onEdit={editExistingPhoto}
           onUpdate={() => fileRef.current?.click()}
           onDelete={deletePhoto}
           deleting={deletingPhoto}
           hasPhoto={!!profile?.avatar_url}
+          error={error}
+          converting={convertingPhoto}
         />
       )}
 
@@ -1461,17 +1514,23 @@ function CvFileIcon() {
   )
 }
 
-function ProfilePhotoModal({ avatarUrl, name, onClose, onEdit, onUpdate, onDelete, deleting, hasPhoto }) {
+function ProfilePhotoModal({ avatarUrl, name, onClose, onEdit, onUpdate, onDelete, deleting, hasPhoto, error, converting }) {
   const initials = (name || 'A').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
   // Escape, focus trap and Back-button close — this one was closable by
-  // backdrop click only.
-  const modalRef = useModal({ onClose, closeOnEscape: !deleting })
+  // backdrop click only. Also refused mid-delete; a HEIC conversion in
+  // flight is the same kind of "don't yank this away mid-action" moment.
+  // history: false — this modal is a quick-action sheet (view / edit / update /
+  // delete), not a page-level view. It doesn't need a browser-history stop, and
+  // giving it one caused a race: the cleanup history.back() fired a popstate that
+  // the PhotoCropper's useModal (which DOES manage history) caught, closing the
+  // cropper before the user ever saw it — "Update, pick file, nothing happens."
+  const modalRef = useModal({ onClose, closeOnEscape: !deleting && !converting, history: false })
   return (
-    <div className="modal-backdrop pfp-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Profile photo">
+    <div className="modal-backdrop pfp-modal-backdrop" onClick={converting ? undefined : onClose} role="dialog" aria-modal="true" aria-label="Profile photo">
       <div className="pfp-modal" ref={modalRef} onClick={e => e.stopPropagation()}>
         <div className="pfp-modal-header">
           <h2>Profile photo</h2>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Close" disabled={converting}>×</button>
         </div>
         <div className="pfp-modal-body">
           <div className="pfp-modal-photo">
@@ -1481,20 +1540,22 @@ function ProfilePhotoModal({ avatarUrl, name, onClose, onEdit, onUpdate, onDelet
               <div className="pfp-modal-fallback" style={{ fontSize: 72 }}>{initials}</div>
             )}
           </div>
+          {converting && <p className="form-hint pfp-modal-error">Converting your photo…</p>}
+          {error && <p className="form-error pfp-modal-error">{error}</p>}
         </div>
         <div className="pfp-modal-actions">
           {hasPhoto && (
-            <button type="button" className="pfp-action-btn" onClick={onEdit}>
+            <button type="button" className="pfp-action-btn" onClick={onEdit} disabled={converting}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
               <span>Edit</span>
             </button>
           )}
-          <button type="button" className="pfp-action-btn" onClick={onUpdate}>
+          <button type="button" className="pfp-action-btn" onClick={onUpdate} disabled={converting}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-            <span>Update</span>
+            <span>{converting ? 'Converting…' : 'Update'}</span>
           </button>
           {hasPhoto && (
-            <button type="button" className="pfp-action-btn pfp-action-delete" onClick={onDelete} disabled={deleting}>
+            <button type="button" className="pfp-action-btn pfp-action-delete" onClick={onDelete} disabled={deleting || converting}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
               <span>{deleting ? 'Deleting…' : 'Delete'}</span>
             </button>

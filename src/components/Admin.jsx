@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase, adminDeleteAccount, deleteStorageFilesFromUrls } from '../supabaseClient'
+import { supabase, adminDeleteAccount, adminCreateGhost, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { LEGEND_CATEGORIES } from './Legends.jsx'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -296,6 +296,17 @@ export default function Admin({ session }) {
     if (error) { setMemberError(error.message); loadMembers() }
   }
 
+  // Turning ghost mode on or off for an account that already exists — the
+  // other half of "Add ghost account" below, and the way back out of it.
+  // Enforced in the database either way: prevent_self_privilege_escalation
+  // (schema-update-58) refuses this update unless is_admin() says the caller
+  // is one, so a ghost can't quietly un-ghost themselves.
+  async function setGhost(id, is_ghost) {
+    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, is_ghost } : m)))
+    const { error } = await supabase.from('profiles').update({ is_ghost }).eq('id', id)
+    if (error) { setMemberError(error.message); loadMembers() }
+  }
+
   const pending = useMemo(() => members.filter((m) => !m.approved && !m.declined_at), [members])
   // Split three ways, because they mean different things to whoever's on duty:
   // a decision you can make now, someone who wandered off mid-signup, and
@@ -413,7 +424,9 @@ export default function Admin({ session }) {
           busyIds={busyIds}
           onSetApproved={(id, approved) => withBusy(id, () => setApproved(id, approved))}
           onSetAdmin={(id, isAdmin) => withBusy(id, () => setAdmin(id, isAdmin))}
+          onSetGhost={(id, isGhost) => withBusy(id, () => setGhost(id, isGhost))}
           onDeleteMember={(id) => withBusy(id, () => deleteMember(id))}
+          onGhostCreated={loadMembers}
         />
       )}
       {subtab === 'posts' && <PostsModeration />}
@@ -893,8 +906,8 @@ function ReportList({ items, onSetStatus, navigate }) {
 }
 
 /* ---------- Members table ---------- */
-function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDeleteMember, busyIds }) {
-  const [confirmTarget, setConfirmTarget] = useState(null) // { member, action: 'delete' | 'promote' | 'demote' | 'unapprove' }
+function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onSetGhost, onDeleteMember, onGhostCreated, busyIds }) {
+  const [confirmTarget, setConfirmTarget] = useState(null) // { member, action: 'delete' | 'promote' | 'demote' | 'unapprove' | 'ghost' | 'unghost' }
   const [q, setQ] = useState('')
 
   if (loading) return <LoadingState message="Loading members…" />
@@ -909,6 +922,8 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
   function askPromote(m) { setConfirmTarget({ member: m, action: 'promote' }) }
   function askDemote(m) { setConfirmTarget({ member: m, action: 'demote' }) }
   function askUnapprove(m) { setConfirmTarget({ member: m, action: 'unapprove' }) }
+  function askGhost(m) { setConfirmTarget({ member: m, action: 'ghost' }) }
+  function askUnghost(m) { setConfirmTarget({ member: m, action: 'unghost' }) }
 
   function runConfirmed() {
     const { member, action } = confirmTarget
@@ -916,6 +931,8 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
     if (action === 'promote') onSetAdmin(member.id, true)
     if (action === 'demote') onSetAdmin(member.id, false)
     if (action === 'unapprove') onSetApproved(member.id, false)
+    if (action === 'ghost') onSetGhost(member.id, true)
+    if (action === 'unghost') onSetGhost(member.id, false)
     setConfirmTarget(null)
   }
 
@@ -937,6 +954,9 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
           Every action on this tab is recorded in the Activity log with your name against it.
         </p>
       </div>
+
+      <GhostAccountPanel onCreated={onGhostCreated} />
+
       <input
         className="search"
         style={{ marginBottom: 14 }}
@@ -978,6 +998,11 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                         one. */}
                     {!m.email_confirmed_at && <span className="admin-badge pending">Email unconfirmed</span>}
                     {m.is_admin && <span className="admin-badge admin">Admin</span>}
+                    {/* This row is invisible to every other member — worth
+                        saying out loud, because otherwise an admin looking at
+                        a name here and then failing to find it in Eendragters
+                        would reasonably conclude something is broken. */}
+                    {m.is_ghost && <span className="admin-badge ghost-badge" title="Browse-only and hidden from every other member">Ghost</span>}
                   </span>
                 </div>
                 <div className="admin-row-actions">
@@ -1011,12 +1036,34 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
                       Un-approve
                     </button>
                   )}
+                  {/* A ghost can't be an admin and an admin can't be a ghost —
+                      the database refuses the combination outright
+                      (prevent_ghost_admin), so offering the button and then
+                      showing an error would be theatre. */}
                   {m.is_admin ? (
                     <button type="button" className="btn ghost small" onClick={() => askDemote(m)} disabled={isMe || busy} title={isMe ? "Can't remove your own admin rights" : undefined}>
                       Remove admin
                     </button>
                   ) : (
-                    <button type="button" className="btn ghost small" onClick={() => askPromote(m)} disabled={busy}>Make admin</button>
+                    <button type="button" className="btn ghost small" onClick={() => askPromote(m)} disabled={busy || m.is_ghost} title={m.is_ghost ? 'A ghost account cannot be an admin — turn ghost mode off first' : undefined}>Make admin</button>
+                  )}
+                  {m.is_ghost ? (
+                    <button type="button" className="btn ghost small" onClick={() => askUnghost(m)} disabled={busy}>
+                      Turn off ghost
+                    </button>
+                  ) : (
+                    <button type="button"
+                      className="btn ghost small"
+                      onClick={() => askGhost(m)}
+                      disabled={isMe || busy || m.is_admin}
+                      title={
+                        isMe ? "You can't make yourself a ghost"
+                          : m.is_admin ? 'An admin cannot be a ghost — remove admin rights first'
+                          : 'Hide this member from everyone and make their account browse-only'
+                      }
+                    >
+                      Make ghost
+                    </button>
                   )}
                   {/* Permanent, and there's no undo — the confirm dialog
                       spells out what goes with it. Blocked on your own row;
@@ -1042,6 +1089,8 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
             confirmTarget.action === 'delete' ? 'Delete this account?'
               : confirmTarget.action === 'promote' ? 'Grant admin access?'
               : confirmTarget.action === 'unapprove' ? 'Move back to pending?'
+              : confirmTarget.action === 'ghost' ? 'Make this a ghost account?'
+              : confirmTarget.action === 'unghost' ? 'Turn ghost mode off?'
               : 'Remove admin access?'
           }
           message={
@@ -1051,12 +1100,22 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
               ? `${confirmTarget.member.full_name || 'This member'} will be able to approve members and moderate posts, jobs and events — the same access you have.`
               : confirmTarget.action === 'unapprove'
               ? `${confirmTarget.member.full_name || 'This member'} will lose access to the site and go back to the "waiting to be verified" screen. Nothing they've posted is deleted, and you can approve them again at any time.`
+              : confirmTarget.action === 'ghost'
+              // Deliberately spells out that their existing content stays put:
+              // ghost mode hides the person, it doesn't retract what they've
+              // already posted, and an admin expecting a clean sweep would be
+              // surprised later.
+              ? `${confirmTarget.member.full_name || 'This member'} will disappear from Eendragters, the map, search, Who's online and Mentoring, and their profile page will stop loading for everyone else. They keep full access to browse the site, but can no longer post, comment, message, RSVP or apply for anything. Anything they've already posted stays where it is — delete it separately if it shouldn't be up. You can reverse this at any time.`
+              : confirmTarget.action === 'unghost'
+              ? `${confirmTarget.member.full_name || 'This member'} will become an ordinary member again — visible to everyone in Eendragters and able to post, message and apply as normal.`
               : `${confirmTarget.member.full_name || 'This member'} will lose admin access.`
           }
           confirmLabel={
             confirmTarget.action === 'delete' ? 'Delete account'
               : confirmTarget.action === 'promote' ? 'Make admin'
               : confirmTarget.action === 'unapprove' ? 'Move to pending'
+              : confirmTarget.action === 'ghost' ? 'Make ghost'
+              : confirmTarget.action === 'unghost' ? 'Turn off ghost'
               : 'Remove admin'
           }
           onConfirm={runConfirmed}
@@ -1064,6 +1123,130 @@ function MembersTable({ loading, members, myId, onSetApproved, onSetAdmin, onDel
         />
       )}
     </>
+  )
+}
+
+/* ---------- Ghost accounts ---------- */
+// Creates a browse-only, invisible account with its own separate email and
+// password (schema-update-58). Collapsed by default: it sits above a list an
+// admin opens many times a day for ordinary approvals, and this is not an
+// ordinary thing to do.
+//
+// The password is typed here and shown once, on purpose. There's no email to
+// send it to — a ghost's address is frequently a mailbox nobody reads, and
+// there's no "reset password" journey for an account that isn't meant to be
+// discussed. Whoever creates it writes it down.
+function GhostAccountPanel({ onCreated }) {
+  const [open, setOpen] = useState(false)
+  const [label, setLabel] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [created, setCreated] = useState(null)
+  const showToast = useToast()
+
+  function reset() {
+    setLabel(''); setEmail(''); setPassword(''); setError(null)
+  }
+
+  async function submit(e) {
+    e.preventDefault()
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    const { error: err } = await adminCreateGhost({
+      email: email.trim(),
+      password,
+      label: label.trim() || 'Ghost account',
+    })
+    setBusy(false)
+    if (err) { setError(err.message); return }
+    // Kept on screen after the form clears — this is the only time these
+    // credentials are ever displayed.
+    setCreated({ email: email.trim(), password, label: label.trim() || 'Ghost account' })
+    reset()
+    showToast('Ghost account created')
+    onCreated?.()
+  }
+
+  return (
+    <div className="admin-guidance" style={{ marginBottom: 14 }}>
+      <strong>Ghost accounts</strong>
+      <p>
+        A ghost can sign in and browse the whole site, but <strong>nobody can see them</strong> —
+        not in Eendragters, the map, search, Who's online or Mentoring — and they can't post,
+        comment, message, RSVP or apply for anything. It's a look-around account with its own
+        login, not a member.
+      </p>
+
+      {created && (
+        <div className="admin-setup-banner" style={{ marginTop: 10 }}>
+          <strong>Write these down now</strong>
+          <p>
+            They aren't emailed anywhere and this is the only time the password is shown.
+          </p>
+          <p className="admin-setup-banner-detail">
+            <strong>{created.label}</strong><br />
+            Email: <code>{created.email}</code><br />
+            Password: <code>{created.password}</code>
+          </p>
+          <button type="button" className="btn ghost small" onClick={() => setCreated(null)}>Done</button>
+        </div>
+      )}
+
+      {!open ? (
+        <button type="button" className="btn ghost small" onClick={() => setOpen(true)}>Add ghost account</button>
+      ) : (
+        <form onSubmit={submit} className="admin-ghost-form">
+          <label>
+            <span>Label</span>
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Committee observer"
+              autoComplete="off"
+            />
+            <small>Only ever shown to admins, on this tab.</small>
+          </label>
+          <label>
+            <span>Email</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="observer@example.com"
+              autoComplete="off"
+              required
+            />
+            <small>What they sign in with. It doesn't have to be a mailbox anyone reads.</small>
+          </label>
+          <label>
+            <span>Password</span>
+            {/* Deliberately a visible text field, not a password one: the admin
+                typing it has to be able to copy it down accurately, and there's
+                nobody else to hide it from. */}
+            <input
+              type="text"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 8 characters, with a capital and a number"
+              autoComplete="off"
+              required
+            />
+          </label>
+          {error && <p className="form-error">{error}</p>}
+          <div className="admin-ghost-form-actions">
+            <button type="submit" className="btn primary small" disabled={busy}>
+              {busy ? 'Creating…' : 'Create ghost account'}
+            </button>
+            <button type="button" className="btn ghost small" onClick={() => { setOpen(false); reset() }} disabled={busy}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   )
 }
 
@@ -1077,6 +1260,7 @@ const ACTION_TEXT = {
   unapprove_member:  { verb: 'moved back to pending',    tone: 'warn' },
   grant_admin:       { verb: 'made an admin',            tone: 'warn' },
   revoke_admin:      { verb: 'removed admin access from', tone: 'warn' },
+  create_ghost:      { verb: 'created a ghost account for', tone: 'warn' },
   delete_member:     { verb: 'permanently deleted the account of', tone: 'bad' },
   delete_post:       { verb: 'deleted the post',         tone: 'bad' },
   delete_job:        { verb: 'deleted the job listing',  tone: 'bad' },

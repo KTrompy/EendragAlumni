@@ -447,6 +447,25 @@ input, textarea, select { font: inherit; }
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 65px); }
 
 .content { flex: 1; padding: 18px 24px 60px; max-width: 100%; overflow-x: hidden; }
+
+/* Standing notice for a ghost account (schema-update-58): browse-only and
+   invisible to other members. Sits above .content rather than inside it so it
+   stays put across every route — this isn't a transient message, it's the
+   condition the whole session is in. Muted on purpose: nothing is wrong, and
+   it will be on screen the entire time they're signed in. */
+.ghost-mode-banner {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--ink-soft);
+  padding: 9px 24px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.ghost-mode-banner strong { color: var(--ink); }
+@media (max-width: 720px) {
+  .ghost-mode-banner { padding: 9px 16px; font-size: 12.5px; }
+}
 /* Every top-level page is a `.panel` (Home, Feed, Jobs, Events, Directory,
    Profile, etc.) — a small shared fade-in here means navigating between
    them always feels like a continuous transition rather than an abrupt
@@ -5810,10 +5829,16 @@ button.delete-danger svg { flex-shrink: 0; }
 .pfp-modal-header .modal-close:hover { color: #fff; }
 .pfp-modal-body {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 12px;
   padding: 32px 24px;
   background: #1a1a1a;
+}
+.pfp-modal-error {
+  margin: 0;
+  text-align: center;
 }
 .pfp-modal-photo {
   width: 280px;
@@ -7217,6 +7242,32 @@ button.delete-danger svg { flex-shrink: 0; }
 .admin-badge.approved { background: rgba(44, 110, 73, 0.12); color: var(--ok); }
 .admin-badge.pending { background: var(--orange-soft); color: var(--orange-dark); }
 .admin-badge.admin { background: var(--maroon); color: #fff; }
+/* Ghost accounts (schema-update-58). Deliberately the flattest, greyest badge
+   in the set — it marks a row nobody else can see, which is a statement of
+   fact rather than a status worth celebrating or warning about. */
+.admin-badge.ghost-badge {
+  background: var(--line);
+  color: var(--ink-soft);
+  border: 1px dashed var(--line-strong);
+  padding: 1px 7px;
+}
+
+/* The "Add ghost account" form, inside the guidance box on Admin → Members. */
+.admin-ghost-form { display: grid; gap: 12px; margin-top: 12px; max-width: 46ch; }
+.admin-ghost-form label { display: grid; gap: 4px; }
+.admin-ghost-form label > span { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.admin-ghost-form label > small { font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
+.admin-ghost-form input {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink);
+}
+.admin-ghost-form input:focus { outline: 2px solid var(--maroon); outline-offset: 1px; }
+.admin-ghost-form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Shown in place of the old one-line error whenever the members RPC fails
    because a schema-update migration hasn't been run yet — the small red

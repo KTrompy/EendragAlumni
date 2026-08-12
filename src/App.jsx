@@ -484,6 +484,12 @@ export default function App() {
   }, [profile, checkedFirstRun]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function openMessage(targetProfile, draftText = '') {
+    // A ghost has no messaging at all — the database refuses every write to
+    // conversations and messages (schema-update-58). The buttons that call
+    // this are hidden for them anyway; this is the funnel every one of those
+    // buttons goes through, so guarding it here means a missed button can
+    // only ever do nothing rather than open a compose box that can't send.
+    if (profile?.is_ghost) return
     setDmTarget(targetProfile)
     setDmDraft(draftText)
     setMessagesOpen(true)
@@ -577,6 +583,13 @@ export default function App() {
     return <PendingVerification session={session} profile={profile} onProfileChange={setProfile} />
   }
 
+  // A "ghost": browse-only and invisible to every other member. Enforced in
+  // the database — the profiles SELECT policy withholds their row and a
+  // restrictive policy plus a trigger refuse every write (schema-update-58).
+  // Everything keyed off this flag in the UI is therefore cosmetic: it's here
+  // so a ghost isn't shown buttons that would fail, not to make them safe.
+  const isGhost = profile?.is_ghost === true
+
   const navTabs = profile?.is_admin ? [...TABS, ADMIN_TAB] : TABS
   const activeTabId = navTabs.find((t) => location.pathname.startsWith(t.path))?.id
   // Desktop sidebar shows five core sections up front; everything else
@@ -604,16 +617,21 @@ export default function App() {
           </div>
 
           <div className="masthead-actions">
-            <button type="button"
-              className="header-icon-btn"
-              onClick={() => setMessagesOpen((o) => !o)}
-              aria-label="Messages"
-              title="Messages"
-            >
-              <MessagesIcon />
-            </button>
+            {/* Both of these are dead ends for a ghost: they can't hold a
+                conversation, and nothing they do generates a notification
+                because there's nothing anyone can react to. */}
+            {!isGhost && (
+              <button type="button"
+                className="header-icon-btn"
+                onClick={() => setMessagesOpen((o) => !o)}
+                aria-label="Messages"
+                title="Messages"
+              >
+                <MessagesIcon />
+              </button>
+            )}
 
-            <NotificationBell session={session} onNavigate={handleNotificationNavigate} />
+            {!isGhost && <NotificationBell session={session} onNavigate={handleNotificationNavigate} />}
 
             {/* My profile lives here — top-right of the header — on every
                 screen size now, instead of as a sidebar/hamburger entry.
@@ -737,6 +755,16 @@ export default function App() {
         </aside>
 
         <div className="app-main">
+          {/* Said once, at the top, rather than as a tooltip on each missing
+              button. Someone handed a ghost login needs to know why half the
+              site's controls aren't where they expect them — otherwise the
+              account reads as broken. */}
+          {isGhost && (
+            <div className="ghost-mode-banner" role="status">
+              <strong>Browse-only account.</strong> You can look around the whole site, but you're
+              hidden from other members and can't post, comment, message, RSVP or apply.
+            </div>
+          )}
           <main className="content">
             {/* Covers the brief fetch of a lazy route's chunk on first visit.
                 Deliberately the same "Loading…" treatment the auth/profile
@@ -865,7 +893,7 @@ export default function App() {
         </>
       )}
 
-      <FloatingMessages
+      {!isGhost && <FloatingMessages
         session={session}
         profile={profile}
         open={messagesOpen}
@@ -877,7 +905,7 @@ export default function App() {
           setMessagesOpen(false)
           goTo('/directory')
         }}
-      />
+      />}
 
       {confirmingSignOut && (
         <ConfirmDialog
