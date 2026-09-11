@@ -7,6 +7,21 @@
 // verifying against residence records.
 export const MAX_RESIDENCE_YEARS = 12
 
+// ---------------------------------------------------------------------------
+// TEMPORARY SIGNUP SWITCHES (September 2026 intake)
+//
+// Nothing is deleted behind these — the fields, columns, validation and the
+// profile editor all still exist. These just take the slow parts out of the
+// way while a large batch of alumni joins at once. Flip it back to `true` and
+// the old behaviour returns with no other change.
+//
+// SIGNUP_COLLECT_ADDRESS — when false, step 2 of the wizard asks only for
+// city and country (which is what places someone on the alumni map). The
+// three address lines, province and post code are hidden; they're still on
+// `profiles` and still editable from the profile page after joining.
+// ---------------------------------------------------------------------------
+export const SIGNUP_COLLECT_ADDRESS = false
+
 // Grouped from the Eendrag/SACS alumni occupation data.
 // "Other" is handled separately in the UI (shows a text input).
 //

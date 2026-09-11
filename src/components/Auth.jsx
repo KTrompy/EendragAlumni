@@ -7,7 +7,7 @@ import CityAutocomplete from './CityAutocomplete.jsx'
 import { PASSWORD_MIN, passwordProblem, PasswordStrengthMeter } from '../passwordRules.jsx'
 import { authRedirectTo } from '../authRedirect.js'
 import { friendlyAuthError } from '../authErrors.js'
-import { MAX_RESIDENCE_YEARS } from '../constants.js'
+import { MAX_RESIDENCE_YEARS, SIGNUP_COLLECT_ADDRESS } from '../constants.js'
 import { PrivacyPolicyModal } from './PrivacyPolicy.jsx'
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
@@ -1116,66 +1116,104 @@ export default function Auth({ initialError = null, initialMode = null }) {
                   </label>
                 </div>
 
-                {/* See the matching note in FinishSignup.jsx — an unexplained
-                    home-address block mid-signup is a well-known drop-off
-                    point, and the answer ("map + posted invitations, not shown
-                    on your profile") is one sentence. */}
-                <p className="hint" style={{ marginTop: 14 }}>
-                  Your address is optional. It&rsquo;s used to place you on the alumni
-                  map and to post you reunion invitations, and it isn&rsquo;t
-                  displayed on your profile.
-                </p>
-                <label className="field" style={{ marginTop: 10 }}>
-                  <span>Address line 1</span>
-                  <input value={address1} onChange={(e) => setAddress1(e.target.value)} autoComplete="address-line1" />
-                </label>
-                <label className="field">
-                  <span>Address line 2</span>
-                  <input value={address2} onChange={(e) => setAddress2(e.target.value)} autoComplete="address-line2" />
-                </label>
-                <label className="field">
-                  <span>Address line 3</span>
-                  <input value={address3} onChange={(e) => setAddress3(e.target.value)} autoComplete="address-line3" />
-                </label>
-                <div className="auth-field-row">
-                  <label className="field">
-                    <span>Province</span>
-                    <input value={province} onChange={(e) => setProvince(e.target.value)} autoComplete="address-level1" />
+                {/* TEMPORARY (Sept 2026 intake): SIGNUP_COLLECT_ADDRESS in
+                    constants.js decides whether the wizard asks for the full
+                    postal address. Nothing below is deleted — flip that flag
+                    back to true and the original block returns exactly as it
+                    was. City and country are asked either way: they're what
+                    puts a new member on the alumni map, and Profile.jsx still
+                    collects the rest once someone is in. */}
+                {SIGNUP_COLLECT_ADDRESS ? (
+                  <>
+                  {/* See the matching note in FinishSignup.jsx — an unexplained
+                      home-address block mid-signup is a well-known drop-off
+                      point, and the answer ("map + posted invitations, not shown
+                      on your profile") is one sentence. */}
+                  <p className="hint" style={{ marginTop: 14 }}>
+                    Your address is optional. It&rsquo;s used to place you on the alumni
+                    map and to post you reunion invitations, and it isn&rsquo;t
+                    displayed on your profile.
+                  </p>
+                  <label className="field" style={{ marginTop: 10 }}>
+                    <span>Address line 1</span>
+                    <input value={address1} onChange={(e) => setAddress1(e.target.value)} autoComplete="address-line1" />
                   </label>
                   <label className="field">
-                    <span>City *</span>
-                    {/* Same live Mapbox suggestions as the profile editor — a
-                        picked suggestion also gives us coordinates, so new
-                        members land on the alumni map straight away instead
-                        of waiting for a later geocode of free-typed text. */}
-                    <CityAutocomplete
-                      value={city}
-                      country={country}
-                      onChange={setCity}
-                      onSelectCoords={setCityCoords}
-                      placeholder="Start typing…"
-                    />
-                  </label>
-                </div>
-                <div className="auth-field-row">
-                  <label className="field">
-                    {/* Optional, and no longer hinted as numeric: plenty of
-                        countries use letters in theirs (UK, Canada,
-                        Netherlands) and a few have none at all, so
-                        requiring a numeric post code blocked exactly the
-                        overseas alumni this directory most wants to find. */}
-                    <span>Post code</span>
-                    <input
-                      value={postCode}
-                      onChange={(e) => setPostCode(e.target.value)}
-                      autoComplete="postal-code"
-                    />
+                    <span>Address line 2</span>
+                    <input value={address2} onChange={(e) => setAddress2(e.target.value)} autoComplete="address-line2" />
                   </label>
                   <label className="field">
-                    <span>Country *</span>
-                    <CountryAutocomplete value={country} onChange={setCountry} placeholder="Start typing…" />
+                    <span>Address line 3</span>
+                    <input value={address3} onChange={(e) => setAddress3(e.target.value)} autoComplete="address-line3" />
                   </label>
-                </div>
+                  <div className="auth-field-row">
+                    <label className="field">
+                      <span>Province</span>
+                      <input value={province} onChange={(e) => setProvince(e.target.value)} autoComplete="address-level1" />
+                    </label>
+                    <label className="field">
+                      <span>City *</span>
+                      {/* Same live Mapbox suggestions as the profile editor — a
+                          picked suggestion also gives us coordinates, so new
+                          members land on the alumni map straight away instead
+                          of waiting for a later geocode of free-typed text. */}
+                      <CityAutocomplete
+                        value={city}
+                        country={country}
+                        onChange={setCity}
+                        onSelectCoords={setCityCoords}
+                        placeholder="Start typing…"
+                      />
+                    </label>
+                  </div>
+                  <div className="auth-field-row">
+                    <label className="field">
+                      {/* Optional, and no longer hinted as numeric: plenty of
+                          countries use letters in theirs (UK, Canada,
+                          Netherlands) and a few have none at all, so
+                          requiring a numeric post code blocked exactly the
+                          overseas alumni this directory most wants to find. */}
+                      <span>Post code</span>
+                      <input
+                        value={postCode}
+                        onChange={(e) => setPostCode(e.target.value)}
+                        autoComplete="postal-code"
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Country *</span>
+                      <CountryAutocomplete value={country} onChange={setCountry} placeholder="Start typing…" />
+                    </label>
+                  </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="hint" style={{ marginTop: 14 }}>
+                      Your city and country place you on the alumni map. You can add
+                      the rest of your details on your profile once you&rsquo;re in.
+                    </p>
+                    <div className="auth-field-row" style={{ marginTop: 10 }}>
+                      <label className="field">
+                        <span>City *</span>
+                        {/* Same live Mapbox suggestions as the profile editor — a
+                            picked suggestion also gives us coordinates, so new
+                            members land on the alumni map straight away instead
+                            of waiting for a later geocode of free-typed text. */}
+                        <CityAutocomplete
+                          value={city}
+                          country={country}
+                          onChange={setCity}
+                          onSelectCoords={setCityCoords}
+                          placeholder="Start typing…"
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Country *</span>
+                        <CountryAutocomplete value={country} onChange={setCountry} placeholder="Start typing…" />
+                      </label>
+                    </div>
+                  </>
+                )}
               </>
             )}
 
