@@ -26,6 +26,61 @@ export async function deleteOwnAccount() {
   return supabase.functions.invoke('delete-account')
 }
 
+// functions.invoke() never rejects. When a function answers with a 4xx/5xx it
+// resolves with `data: null` and a FunctionsHttpError whose message is always
+// "Edge Function returned a non-2xx status code" — every friendly message the
+// function wrote ("Admins only", "An account already exists for …") is left
+// unread in the response body. This reads it back out, so callers can show
+// the person what actually went wrong.
+//
+// Always resolves to { data, error }, where error (if any) is an Error whose
+// message is fit to show on screen and which carries `.status` when known.
+export async function invokeFunction(name, body) {
+  let result
+  try {
+    result = await supabase.functions.invoke(name, body === undefined ? undefined : { body })
+  } catch (e) {
+    return { data: null, error: new Error(e?.message || 'Could not reach the server.') }
+  }
+  const { data, error } = result
+  if (!error) {
+    // Some functions report refusal with a 200 and an `error` field.
+    if (data && typeof data === 'object' && data.error) {
+      return { data: null, error: new Error(String(data.error)) }
+    }
+    return { data, error: null }
+  }
+
+  const response = error.context
+  let message = null
+  let status
+  if (response && typeof response.clone === 'function') {
+    status = response.status
+    try {
+      const text = await response.clone().text()
+      try {
+        const parsed = JSON.parse(text)
+        message = parsed?.error || parsed?.message || parsed?.msg || null
+      } catch {
+        message = text && text.length < 300 ? text : null
+      }
+    } catch {
+      // Body already consumed or unreadable — fall through to the defaults.
+    }
+  }
+  if (!message) {
+    if (error.name === 'FunctionsFetchError') message = "Couldn't reach the server. Check your connection and try again."
+    else if (status === 404) message = `The "${name}" server function isn't deployed yet.`
+    else if (status === 401) message = 'Your session has expired. Sign in again and retry.'
+    else message = error.message || 'Something went wrong on the server.'
+  } else if (status === 404 && /not found/i.test(message) && !/account/i.test(message)) {
+    message = `The "${name}" server function isn't deployed yet.`
+  }
+  const err = new Error(message)
+  err.status = status
+  return { data: null, error: err }
+}
+
 // Admin removing someone else's account. A SEPARATE Edge Function from
 // delete-account, which checks is_admin() against the CALLER's own token
 // server-side — the target id sent from here is never trusted on its own.
@@ -42,9 +97,7 @@ export async function deleteOwnAccount() {
 // whoever was calling — an admin removing a member would have deleted their
 // own account. An undeployed function just 404s.
 export async function adminDeleteAccount(targetUserId) {
-  const result = await supabase.functions.invoke('admin-delete-member', {
-    body: { target_user_id: targetUserId },
-  })
+  const result = await invokeFunction('admin-delete-member', { target_user_id: targetUserId })
   if (result.error) return result
   // Belt and braces: only treat this as done if the server confirms it removed
   // the person we actually asked about.
@@ -64,14 +117,11 @@ export async function adminDeleteAccount(targetUserId) {
 // The caller's admin rights are re-checked server-side against their own
 // token; nothing here is trusted.
 export async function adminCreateGhost({ email, password, label }) {
-  const result = await supabase.functions.invoke('admin-create-ghost', {
-    body: { email, password, label },
-  })
+  // invokeFunction reads the function's own message out of a 4xx/5xx body
+  // (and out of a 200 that carries `error`), so "An account already exists
+  // for …" reaches the screen instead of a generic status-code message.
+  const result = await invokeFunction('admin-create-ghost', { email, password, label })
   if (result.error) return result
-  // functions.invoke resolves rather than rejects on a non-2xx, and a body
-  // carrying `error` is how every function in this project reports refusal —
-  // so an unchecked caller would show "ghost created" for "Admins only".
-  if (result.data?.error) return { data: null, error: new Error(result.data.error) }
   if (!result.data?.user_id) {
     return { data: null, error: new Error('The account could not be confirmed as created — check Admin → Members before trying again.') }
   }

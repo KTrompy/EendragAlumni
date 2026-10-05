@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { CATEGORY_LABEL, LEGEND_FIELDS, legendMeta } from './Legends.jsx'
 import LoadingState from './LoadingState.jsx'
 import EmptyState from './EmptyState.jsx'
+import { safeUrl } from '../utils.js'
 
 // One legend's own page — what used to be a modal opened from the Home band
 // (or the Hall grid) now has a real URL, so it's shareable and gets a
@@ -45,6 +46,9 @@ export default function LegendProfile() {
   }
 
   const meta = legendMeta(legend)
+  // Admin-typed and rendered as an href: safeUrl drops anything that isn't
+  // http(s)/mailto/tel, so a javascript: link can never become clickable.
+  const linkHref = safeUrl(legend.link_url)
   // Story is stored as plain text, so paragraph breaks are blank lines. Split
   // rather than white-space: pre-wrap so the spacing between paragraphs is the
   // stylesheet's decision, not the typist's — same approach the old modal used.
@@ -67,11 +71,11 @@ export default function LegendProfile() {
         </div>
         <p className="legend-modal-headline">{legend.headline}</p>
         {paragraphs.map((p, i) => <p className="legend-modal-story" key={i}>{p}</p>)}
-        {legend.link_url && (
+        {linkHref && (
           /* rel="noopener noreferrer" because this URL is typed in by an
              admin and points off-site — without it the destination gets a
              handle on our window via window.opener. */
-          <a className="legend-modal-link" href={legend.link_url} target="_blank" rel="noopener noreferrer">
+          <a className="legend-modal-link" href={linkHref} target="_blank" rel="noopener noreferrer">
             {legend.link_label || 'Read more'} <ArrowRightIcon />
           </a>
         )}

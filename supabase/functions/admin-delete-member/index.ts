@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     // is_admin() reads profiles.is_admin for auth.uid() — evaluated against
     // the caller's own JWT, so a non-admin can't talk their way past it.
     const { data: isAdmin, error: adminCheckErr } = await callerClient.rpc('is_admin')
-    if (adminCheckErr || isAdmin !== true) return json(req, { error: 'Admins only' }, 403)
+    if (adminCheckErr || isAdmin !== true) return json(req, { error: 'Only admins can delete accounts.' }, 403)
 
     // Deleting yourself from the admin screen skips the "are you sure" copy
     // written for self-deletion and, if you're the last admin, locks everyone
@@ -80,28 +80,40 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
-    // Write the activity-log entry *before* the delete, for two reasons: the
-    // profile row (and the name we want to record) is gone afterwards, and the
-    // log_member_deletion trigger in schema-update-52.sql can't cover this
-    // path — it keys off auth.uid(), which is null under the service-role
-    // client used here. A failure to log must never block the deletion, so
-    // this is deliberately not awaited into the error path.
-    const [{ data: actor }, { data: target }] = await Promise.all([
+    // Capture who this is BEFORE deleting — the profile row and the auth user
+    // (where the email lives; `profiles` has no email column) are both gone
+    // afterwards. The log_member_deletion trigger in schema-update-52.sql
+    // can't cover this path: it keys off auth.uid(), which is null under the
+    // service-role client used here, so this function writes its own entry.
+    const [{ data: actor }, { data: target }, { data: targetAuth, error: targetAuthErr }] = await Promise.all([
       adminClient.from('profiles').select('full_name').eq('id', callerId).maybeSingle(),
-      adminClient.from('profiles').select('full_name, email').eq('id', targetUserId).maybeSingle(),
+      adminClient.from('profiles').select('full_name').eq('id', targetUserId).maybeSingle(),
+      adminClient.auth.admin.getUserById(targetUserId),
     ])
-    await adminClient.from('admin_actions').insert({
+    if (targetAuthErr || !targetAuth?.user) {
+      return json(req, { error: 'That account no longer exists — it may already have been deleted.' }, 404)
+    }
+    const targetEmail = targetAuth.user.email ?? null
+    const targetName = (target?.full_name ?? '').trim()
+
+    const { error: deleteErr } = await purgeAndDeleteUser(adminClient, targetUserId)
+    if (deleteErr) return json(req, { error: `The account could not be deleted: ${deleteErr.message}` }, 400)
+
+    // Only now that the delete has succeeded. A failed delete must never show
+    // up in the log as a deletion. A failure to *log* must never be reported
+    // as a failed delete either, so the result is checked but not returned.
+    const { error: logErr } = await adminClient.from('admin_actions').insert({
       actor_id: callerId,
       actor_name: actor?.full_name ?? 'an admin',
       action: 'delete_member',
       target_type: 'member',
       target_id: targetUserId,
-      target_label: target?.full_name ?? target?.email ?? 'a member',
-      details: 'Account and all their content permanently removed',
+      target_label: targetName || targetEmail || 'a member',
+      details: targetName && targetEmail
+        ? `${targetEmail} — account and all their content permanently removed`
+        : 'Account and all their content permanently removed',
     })
-
-    const { error: deleteErr } = await purgeAndDeleteUser(adminClient, targetUserId)
-    if (deleteErr) return json(req, { error: deleteErr.message }, 400)
+    if (logErr) console.error('admin-delete-member: activity log insert failed', logErr)
 
     return json(req, { success: true, deleted_user_id: targetUserId })
   } catch (e) {

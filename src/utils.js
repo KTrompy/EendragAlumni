@@ -239,3 +239,26 @@ export function formatExperienceDuration(from, to) {
   if (rem || !years) parts.push(`${rem} mo${rem === 1 ? '' : 's'}`)
   return parts.join(' ')
 }
+
+// Short relative time for lists: "just now", "5m ago", "3h ago", then a date.
+export function timeAgo(iso) {
+  if (!iso) return ''
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  if (s < 86400 * 7) return `${Math.floor(s / 86400)}d ago`
+  return new Date(iso).toLocaleDateString()
+}
+
+// Strips HTML to plain text for previews. Parsed into a detached document, so
+// an untrusted payload like <img src=x onerror=…> never loads or runs.
+export function plainText(html) {
+  if (!html) return ''
+  return new DOMParser().parseFromString(html, 'text/html').body.textContent || ''
+}
+
+export function truncate(text, n = 140) {
+  const t = (text || '').trim().replace(/\s+/g, ' ')
+  return t.length > n ? t.slice(0, n).trimEnd() + '…' : t
+}

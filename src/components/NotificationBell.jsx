@@ -21,6 +21,7 @@ const ENTITY_TAB = {
   event: 'events',
   job: 'jobs',
   member: 'admin',
+  report: 'admin',
   mentorship: 'mentoring',
   conversation: null,
 }

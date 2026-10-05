@@ -16,7 +16,11 @@ export function ToastProvider({ children }) {
     setToasts((t) => t.filter((x) => x.id !== id))
   }, [])
 
-  // showToast(message, { type: 'success' | 'error', duration })
+  // showToast(message, { type: 'success' | 'error', duration, action })
+  //
+  // `action` is an optional { label, onClick } shown as a button inside the
+  // toast — the admin area uses it for "Undo". A toast with an action stays
+  // up a little longer so there is time to reach it.
   //
   // Errors persist until dismissed. 3.2 seconds is fine for "Post
   // published" — you don't need to do anything about it — but it's not
@@ -25,10 +29,10 @@ export function ToastProvider({ children }) {
   // a message the person has to act on shouldn't time out on them.
   // Callers can still pass an explicit `duration` either way.
   const showToast = useCallback((message, opts = {}) => {
-    const { type = 'success' } = opts
-    const duration = 'duration' in opts ? opts.duration : (type === 'error' ? 0 : 3200)
+    const { type = 'success', action = null } = opts
+    const duration = 'duration' in opts ? opts.duration : (type === 'error' ? 0 : action ? 7000 : 3200)
     const id = ++idCounter
-    setToasts((t) => [...t, { id, message, type }])
+    setToasts((t) => [...t, { id, message, type, action }])
     if (duration) setTimeout(() => dismiss(id), duration)
     return id
   }, [dismiss])
@@ -43,11 +47,20 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`toast toast-${t.type}`}
+            className={`toast toast-${t.type}${t.action ? ' toast-has-action' : ''}`}
             role={t.type === 'error' ? 'alert' : undefined}
           >
             {t.type === 'success' ? <CheckIcon /> : <ErrorIcon />}
             <span>{t.message}</span>
+            {t.action && (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => { dismiss(t.id); t.action.onClick?.() }}
+              >
+                {t.action.label}
+              </button>
+            )}
             {/* The whole toast used to be the dismiss button, with nothing
                 indicating that. A visible × says so — and matters more now
                 that an error sits there until it's dismissed. */}

@@ -41,7 +41,7 @@ const LegendsHall = lazy(() => import('./components/LegendsHall.jsx'))
 const LegendProfile = lazy(() => import('./components/LegendProfile.jsx'))
 const Donate = lazy(() => import('./components/Donate.jsx'))
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy.jsx'))
-const Admin = lazy(() => import('./components/Admin.jsx'))
+const Admin = lazy(() => import('./components/admin/AdminShell.jsx'))
 const Settings = lazy(() => import('./components/Settings.jsx'))
 const NotFound = lazy(() => import('./components/NotFound.jsx'))
 
@@ -508,6 +508,10 @@ export default function App() {
     // rather than at its own URL — so these deep-link to the tab that lists
     // them instead of dropping the person on Find a Mentor.
     if (entityType === 'mentorship') { goTo('/mentoring?tab=mine'); return }
+    // Admin alerts: a new signup lands on the approval queue, a new report on
+    // Reports (schema-update-46 / -62).
+    if (entityType === 'report') { goTo('/admin/reports'); return }
+    if (entityType === 'member') { goTo('/admin'); return }
     // ADMIN_TAB is included deliberately: new-signup notifications
     // (schema-update-46) point admins at 'admin', which isn't in TABS.
     // Without it those notifications were clickable but went nowhere.
@@ -789,7 +793,7 @@ export default function App() {
               <Route path="/donate" element={<Donate />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route
-                path="/admin"
+                path="/admin/*"
                 element={profile?.is_admin ? <Admin session={session} /> : <Navigate to="/home" replace />}
               />
               <Route
