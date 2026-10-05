@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { canWrite } from '../ghost.js'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { supabase, deleteStorageFilesFromUrls } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
@@ -434,7 +433,7 @@ export default function Feed({ session, profile, onMessage }) {
               icon="feed"
               message="No posts yet."
               subMessage="Be the first Eendragter to break the silence."
-              actionLabel={canWrite(profile) ? 'Write the first post' : undefined}
+              actionLabel={profile?.approved ? 'Write the first post' : undefined}
               onAction={() => composerOpenRef.current?.()}
             />
           )}
@@ -558,7 +557,7 @@ function Composer({ session, profile, onPosted, openRef }) {
   }, [title, body, open])
   const titleRef = useRef(null)
 
-  const canPost = canWrite(profile)
+  const canPost = profile?.approved
   const canSubmit = canPost && (hasText(body) || files.length > 0 || videoFile)
 
   function openModal() {
@@ -971,7 +970,7 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
   const [needsTruncation, setNeedsTruncation] = useState(false)
   const likeCount = p.likes?.[0]?.count ?? 0
   const commentCount = p.comments?.[0]?.count ?? 0
-  const canInteract = canWrite(profile)
+  const canInteract = profile?.approved
   const images = p.image_urls || []
   const isMine = p.author_id === session.user.id
 
@@ -1174,7 +1173,7 @@ function PostItem({ post: p, session, profile, isAdmin, highlighted, liked, onLi
           </button>
         )}
         {p.author_id !== session.user.id && (
-          <ReportButton session={session} profile={profile} entityType="post" entityId={p.id} className="post-action" />
+          <ReportButton session={session} entityType="post" entityId={p.id} className="post-action" />
         )}
       </div>
 
@@ -1191,7 +1190,7 @@ function Comments({ postId, session, profile, onOpenProfile }) {
   const [draft, setDraft] = useState('')
   const [error, setError] = useState(null)
   const [sending, setSending] = useState(false)
-  const canPost = canWrite(profile)
+  const canPost = profile?.approved
   const showToast = useToast()
 
   async function load() {

@@ -3,7 +3,7 @@
 // Functions re-checking is_admin against the caller's token). Nothing in this
 // file is a security boundary; it is the one place the admin UI talks to
 // Supabase, so error handling and fallbacks live in one spot.
-import { supabase, invokeFunction, adminDeleteAccount, adminCreateGhost, deleteStorageFilesFromUrls } from '../../supabaseClient'
+import { supabase, invokeFunction, adminDeleteAccount, deleteStorageFilesFromUrls } from '../../supabaseClient'
 import { authRedirectTo } from '../../authRedirect.js'
 import { friendlyAuthError } from '../../authErrors.js'
 
@@ -74,7 +74,6 @@ const FILTER_TEST = {
   incomplete: (m) => memberStatus(m) === 'incomplete',
   declined: (m) => !!m.declined_at,
   admins: (m) => m.is_admin,
-  ghosts: (m) => m.is_ghost,
 }
 
 export async function fetchMemberCounts() {
@@ -85,7 +84,7 @@ export async function fetchMemberCounts() {
     return {
       data: {
         total: n('total'), pending: n('pending'), unconfirmed: n('unconfirmed'),
-        incomplete: n('incomplete'), declined: n('declined'), admins: n('admins'), ghosts: n('ghosts'),
+        incomplete: n('incomplete'), declined: n('declined'), admins: n('admins'),
       },
       error: null,
     }
@@ -97,7 +96,7 @@ export async function fetchMemberCounts() {
   return {
     data: {
       total: rows.length, pending: count('pending'), unconfirmed: count('unconfirmed'),
-      incomplete: count('incomplete'), declined: count('declined'), admins: count('admins'), ghosts: count('ghosts'),
+      incomplete: count('incomplete'), declined: count('declined'), admins: count('admins'),
     },
     error: null,
   }
@@ -197,20 +196,10 @@ export async function setMemberAdmin(id, isAdmin) {
   return updateProfile(id, { is_admin: isAdmin })
 }
 
-export async function setMemberGhost(id, isGhost) {
-  return updateProfile(id, { is_ghost: isGhost })
-}
-
 export async function deleteMember(id) {
   forgetLegacyMembers()
   const { error } = await adminDeleteAccount(id)
   return { error: error ? new Error(error.message) : null }
-}
-
-export async function createGhost(fields) {
-  forgetLegacyMembers()
-  const { data, error } = await adminCreateGhost(fields)
-  return { data, error: error ? new Error(error.message) : null }
 }
 
 // Supabase's own confirmation email, through the member-facing /resend
@@ -382,7 +371,7 @@ export async function attachReportTargets(reports) {
     const list = [...ids]
     let res
     if (type === 'profile') {
-      res = await supabase.from('profiles').select('id, full_name, avatar_url, grad_year, is_ghost').in('id', list)
+      res = await supabase.from('profiles').select('id, full_name, avatar_url, grad_year').in('id', list)
     } else if (CONTENT_TYPES[type]) {
       const numeric = list.filter((x) => /^\d+$/.test(x))
       if (numeric.length === 0) return
@@ -441,9 +430,6 @@ export const ACTION_TEXT = {
   undo_decline: 'Undid decline',
   grant_admin: 'Made admin',
   revoke_admin: 'Removed admin',
-  enable_ghost: 'Turned ghost on',
-  disable_ghost: 'Turned ghost off',
-  create_ghost: 'Created ghost account',
   delete_member: 'Deleted account',
   delete_post: 'Deleted post',
   delete_job: 'Deleted job listing',
@@ -463,7 +449,7 @@ export const ACTION_TEXT = {
 
 export const LOG_FILTERS = [
   { id: 'all', label: 'All' },
-  { id: 'members', label: 'Members', actions: ['approve_member', 'unapprove_member', 'decline_member', 'undo_decline', 'grant_admin', 'revoke_admin', 'enable_ghost', 'disable_ghost', 'create_ghost', 'delete_member'] },
+  { id: 'members', label: 'Members', actions: ['approve_member', 'unapprove_member', 'decline_member', 'undo_decline', 'grant_admin', 'revoke_admin', 'delete_member'] },
   { id: 'content', label: 'Content', actions: ['delete_post', 'delete_job', 'delete_event', 'delete_business', 'feature_business', 'unfeature_business'] },
   { id: 'reports', label: 'Reports', actions: ['resolve_report', 'dismiss_report', 'reopen_report'] },
   { id: 'legends', label: 'Legends', actions: ['create_legend', 'edit_legend', 'hide_legend', 'show_legend', 'delete_legend'] },

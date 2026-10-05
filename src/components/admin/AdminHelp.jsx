@@ -1,6 +1,6 @@
 // /admin/help — the handover manual. Replaces AdminHandbook.jsx, which was
 // out of date (it said approvals weren't emailed and that there was no
-// domain, and never mentioned Decline, Resend, ghosts or legends).
+// domain, and never mentioned Decline, Resend or legends).
 //
 // Written for the next committee member, not a developer. Keep it short and
 // keep it true: when the site changes, change this.
@@ -8,7 +8,6 @@ const SECTIONS = [
   ['routine', 'The weekly routine'],
   ['signups', 'New signups'],
   ['members', 'Managing members'],
-  ['ghosts', 'Ghost accounts'],
   ['reports', 'Reports and content'],
   ['legends', 'Legends'],
   ['log', 'Activity log'],
@@ -69,16 +68,6 @@ export default function AdminHelp() {
         </dl>
       </section>
 
-      <section id="help-ghosts">
-        <h2 className="adm-h2">Ghost accounts</h2>
-        <p>A ghost is a login that can browse the whole site but is <strong>invisible</strong> to every other member and <strong>can&rsquo;t</strong> post, comment, message, RSVP, apply or report. Useful for a committee observer or a sponsor who wants to look around.</p>
-        <ul>
-          <li><strong>New ghost account</strong> (Members) creates a separate login. The password is shown once — write it down; it isn&rsquo;t emailed.</li>
-          <li><strong>Make ghost</strong> turns an existing member into a ghost. Anything they already posted stays up.</li>
-          <li>A ghost can&rsquo;t be an admin, and an admin can&rsquo;t be a ghost.</li>
-        </ul>
-      </section>
-
       <section id="help-reports">
         <h2 className="adm-h2">Reports and content</h2>
         <dl className="adm-help-dl">
@@ -103,7 +92,7 @@ export default function AdminHelp() {
 
       <section id="help-log">
         <h2 className="adm-h2">Activity log</h2>
-        <p>Records who approved, declined, deleted, featured or changed what, and when — including ghost changes, legend edits and report decisions. It&rsquo;s written by the database, so nobody (including you) can edit or erase it.</p>
+        <p>Records who approved, declined, deleted, featured or changed what, and when — including legend edits and report decisions. It&rsquo;s written by the database, so nobody (including you) can edit or erase it.</p>
       </section>
 
       <section id="help-broken">
@@ -145,7 +134,7 @@ export default function AdminHelp() {
         <ul>
           <li>React 18 + Vite SPA talking straight to Supabase. Row-level security and triggers do the real enforcement; the admin UI only hides what would fail.</li>
           <li>Database changes are numbered <code>schema-update-N.sql</code> files, run in order in the Supabase SQL Editor.</li>
-          <li>Edge Functions: <code>admin-delete-member</code>, <code>admin-create-ghost</code>, <code>delete-account</code>, <code>send-approval-email</code>, <code>send-member-email</code>. Deploy with <code>supabase functions deploy &lt;name&gt;</code>.</li>
+          <li>Edge Functions: <code>admin-delete-member</code>, <code>delete-account</code>, <code>send-approval-email</code>, <code>send-member-email</code>. Deploy with <code>supabase functions deploy &lt;name&gt;</code>.</li>
           <li>Admin code lives in <code>src/components/admin/</code>; data access is in <code>adminApi.js</code>.</li>
         </ul>
       </section>

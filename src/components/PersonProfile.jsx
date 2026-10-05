@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { isGhost } from '../ghost.js'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase, isNetworkError, openStorageFile } from '../supabaseClient'
 import { PhotoBlock } from './Directory.jsx'
@@ -188,17 +187,15 @@ export default function PersonProfile({ session, me, onMessage }) {
             <div className="profile-header-actions">
               {!isMe && (
                 <>
-                  {!isGhost(me) && (
-                    <button type="button" className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
-                      <MessageIcon />
-                    </button>
-                  )}
+                  <button type="button" className="header-icon-btn profile-message-btn" onClick={() => onMessage({ id: p.id, full_name: p.full_name })} aria-label="Message" title="Message">
+                    <MessageIcon />
+                  </button>
                   {linkedinHref && (
                     <a href={linkedinHref} target="_blank" rel="noopener noreferrer" className="header-icon-btn profile-linkedin-btn" aria-label="LinkedIn" title="LinkedIn">
                       <LinkedInIcon />
                     </a>
                   )}
-                  <ReportButton session={session} profile={me} entityType="profile" entityId={p.id} className="header-icon-btn" label="" title="Report member" />
+                  <ReportButton session={session} entityType="profile" entityId={p.id} className="header-icon-btn" label="" title="Report member" />
                 </>
               )}
             </div>
@@ -381,7 +378,7 @@ export default function PersonProfile({ session, me, onMessage }) {
             <LinkedInIconSmall /> LinkedIn
           </a>
         )}
-        {!isMe && !isGhost(me) && (
+        {!isMe && (
           <button type="button"
             className="btn primary"
             onClick={() => onMessage?.({ id: p.id, full_name: p.full_name }, buildIcebreaker(me, p))}

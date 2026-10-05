@@ -448,24 +448,6 @@ input, textarea, select { font: inherit; }
 
 .content { flex: 1; padding: 18px 24px 60px; max-width: 100%; overflow-x: hidden; }
 
-/* Standing notice for a ghost account (schema-update-58): browse-only and
-   invisible to other members. Sits above .content rather than inside it so it
-   stays put across every route — this isn't a transient message, it's the
-   condition the whole session is in. Muted on purpose: nothing is wrong, and
-   it will be on screen the entire time they're signed in. */
-.ghost-mode-banner {
-  background: var(--paper);
-  border-bottom: 1px solid var(--line);
-  border-left: 3px solid var(--ink-soft);
-  padding: 9px 24px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
-.ghost-mode-banner strong { color: var(--ink); }
-@media (max-width: 720px) {
-  .ghost-mode-banner { padding: 9px 16px; font-size: 12.5px; }
-}
 /* Every top-level page is a `.panel` (Home, Feed, Jobs, Events, Directory,
    Profile, etc.) — a small shared fade-in here means navigating between
    them always feels like a continuous transition rather than an abrupt

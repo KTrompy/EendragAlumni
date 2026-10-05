@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { canWrite } from '../ghost.js'
 import { Link, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -144,7 +143,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
   const isWide = useIsWide(900)
   const showToast = useToast()
 
-  const canPost = canWrite(profile)
+  const canPost = profile?.approved
   const isAdmin = !!profile?.is_admin
 
   // Was loading every business row with no limit at all — fine for a
@@ -367,7 +366,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                       <BusinessCard
                         key={b.id}
                         b={b}
-                        profile={profile}
                         session={session}
                         isAdmin={isAdmin}
                         editingId={editingId}
@@ -391,7 +389,6 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
                       <BusinessCard
                         key={b.id}
                         b={b}
-                        profile={profile}
                         session={session}
                         isAdmin={isAdmin}
                         editingId={editingId}
@@ -499,7 +496,7 @@ export default function BusinessDirectory({ session, profile, onMessage }) {
 }
 
 /* ---------- One business card (used in both Featured and All sections) ---------- */
-function BusinessCard({ b, session, profile, isAdmin, editingId, setEditingId, onOpenOwner, onMessage, onDelete, onTogglePromote, onUpdated }) {
+function BusinessCard({ b, session, isAdmin, editingId, setEditingId, onOpenOwner, onMessage, onDelete, onTogglePromote, onUpdated }) {
   const isMine = b.owner_id === session.user.id
 
   if (editingId === b.id) {
@@ -574,7 +571,7 @@ function BusinessCard({ b, session, profile, isAdmin, editingId, setEditingId, o
               <button type="button" className="btn ghost small" onClick={onMessage}>Message about this business</button>
             )}
             {!isMine && (
-              <ReportButton session={session} profile={profile} entityType="business" entityId={b.id} className="btn ghost small" />
+              <ReportButton session={session} entityType="business" entityId={b.id} className="btn ghost small" />
             )}
             {isMine && (
               <button type="button" className="btn ghost small" onClick={() => setEditingId(b.id)}>Edit</button>

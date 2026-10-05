@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { isGhost } from '../ghost.js'
 import { Link } from 'react-router-dom'
 import EmptyState from './EmptyState.jsx'
 import LoadingState from './LoadingState.jsx'
@@ -78,9 +77,6 @@ export function OnlineDot({ lastSeen }) {
 // and back doesn't lose them. This component only owns what's specific to
 // the *list* itself: sort order and how many rows are revealed so far.
 export default function Directory({ session, people, loading, me, onMessage, hideHeader = false }) {
-  // A ghost has no messaging at all (schema-update-58), so the primary action
-  // on every card would be a dead button.
-  const canMessage = !isGhost(me)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   // Default is 'discover' rather than 'alpha' — a shuffle that's seeded off
   // the viewer's own id (see seededScore below), so every visitor gets a
@@ -135,7 +131,6 @@ export default function Directory({ session, people, loading, me, onMessage, hid
             key={p.id}
             person={p}
             isMe={p.id === session.user.id}
-            canMessage={canMessage}
             onMessage={() => messageWithIcebreaker(p)}
           />
         ))}
@@ -153,7 +148,7 @@ export default function Directory({ session, people, loading, me, onMessage, hid
 }
 
 /* ---------- Person card (grid layout) ---------- */
-function PersonCard({ person: p, isMe, canMessage = true, onMessage }) {
+function PersonCard({ person: p, isMe, onMessage }) {
   const roleLine = p.occupation && p.company
     ? `${p.occupation} @ ${p.company}`
     : (p.occupation || p.company || '')
@@ -193,11 +188,9 @@ function PersonCard({ person: p, isMe, canMessage = true, onMessage }) {
             {locationLine && <p className="person-card-location">{locationLine}</p>}
           </div>
           <div className="person-card-actions">
-            {canMessage && (
-              <button type="button" className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label={isMe ? "That's you — you can't message yourself" : 'Send a message'}>
-                <EnvelopeIcon />
-              </button>
-            )}
+            <button type="button" className="person-action primary" onClick={onMessage} disabled={isMe} title={isMe ? "That's you" : 'Send a message'} aria-label={isMe ? "That's you — you can't message yourself" : 'Send a message'}>
+              <EnvelopeIcon />
+            </button>
             {/* safeUrl, not the raw column: isSafeHttpUrl() blocks a
                 javascript:/data: URI at save time, but a row written straight
                 against the API never passes through that form. PersonProfile

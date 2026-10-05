@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { canWrite } from '../ghost.js'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import L from 'leaflet'
@@ -376,7 +375,7 @@ export default function Events({ session, profile, onMessage }) {
     }
   }
 
-  const canPost = canWrite(profile)
+  const canPost = profile?.approved
   const now = new Date()
   const upcoming = events.filter((e) => new Date(e.event_date) >= now)
   const past = events.filter((e) => new Date(e.event_date) < now).reverse()
@@ -633,7 +632,7 @@ function EventCard({ e, session, profile, iAmGoing, isSaved, onToggleSave, onTog
   const isPast = d < new Date()
   const rsvpCount = e.rsvps?.[0]?.count ?? 0
   const commentCount = e.comments?.[0]?.count ?? 0
-  const canInteract = canWrite(profile)
+  const canInteract = profile?.approved
   const isMine = e.created_by === session.user.id
 
   // The moment you RSVP "I'm going", show who else is — turning a passive
@@ -872,7 +871,7 @@ function EventComments({ eventId, session, profile }) {
   const [draft, setDraft] = useState('')
   const [error, setError] = useState(null)
   const [sending, setSending] = useState(false)
-  const canPost = canWrite(profile)
+  const canPost = profile?.approved
   const showToast = useToast()
 
   async function load() {

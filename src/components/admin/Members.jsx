@@ -11,9 +11,8 @@ import {
 } from './AdminUI.jsx'
 import { PAGE_SIZE, STATUS_LABEL, fetchMembersPage, memberStatus } from './adminApi.js'
 import { DeclineDialog, ResendButton, memberName, useMemberActions } from './memberActions.jsx'
-import GhostAccountModal from './GhostAccountModal.jsx'
 
-const FILTERS = ['all', 'pending', 'unconfirmed', 'declined', 'admins', 'ghosts']
+const FILTERS = ['all', 'pending', 'unconfirmed', 'declined', 'admins']
 const SORTS = ['joined', 'name', 'class']
 
 export default function Members() {
@@ -29,7 +28,6 @@ export default function Members() {
   const search = params.get('q') || ''
 
   const [draft, setDraft] = useState(search)
-  const [ghostOpen, setGhostOpen] = useState(false)
 
   // Keep the box in sync when Back/Forward changes the URL.
   useEffect(() => { setDraft(search) }, [search])
@@ -73,9 +71,7 @@ export default function Members() {
 
   return (
     <div className="adm-page">
-      <PageHeader title="Members">
-        <button type="button" className="adm-btn" onClick={() => setGhostOpen(true)}>+ New ghost account</button>
-      </PageHeader>
+      <PageHeader title="Members" />
 
       <div className="adm-toolbar">
         <Segmented
@@ -88,7 +84,6 @@ export default function Members() {
             { id: 'unconfirmed', label: 'Unconfirmed', count: counts?.unconfirmed },
             { id: 'declined', label: 'Declined' },
             { id: 'admins', label: 'Admins' },
-            { id: 'ghosts', label: 'Ghosts' },
           ]}
         />
         <label className="adm-search">
@@ -134,7 +129,6 @@ export default function Members() {
         </>
       )}
 
-      {ghostOpen && <GhostAccountModal onClose={() => setGhostOpen(false)} />}
       <Outlet />
     </div>
   )
@@ -165,7 +159,7 @@ function MemberRow({ member: m, isMe, listPath, onOpen }) {
     onOpen()
   }
 
-  const role = m.is_admin ? 'Admin' : m.is_ghost ? 'Ghost' : 'Member'
+  const role = m.is_admin ? 'Admin' : 'Member'
 
   return (
     <tr className="adm-row-link" onClick={onRowClick}>
@@ -177,7 +171,7 @@ function MemberRow({ member: m, isMe, listPath, onOpen }) {
               {memberName(m)}
             </Link>
             {isMe && <span className="adm-you">You</span>}
-            <span className="adm-sub adm-only-sm">{m.email}{m.is_admin ? ' · Admin' : m.is_ghost ? ' · Ghost' : ''}</span>
+            <span className="adm-sub adm-only-sm">{m.email}{m.is_admin ? ' · Admin' : ''}</span>
             <RowError message={errors[m.id]} />
           </div>
         </div>

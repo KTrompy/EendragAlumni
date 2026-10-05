@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { canWrite } from '../ghost.js'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { Avatar } from './Directory.jsx'
@@ -427,20 +426,15 @@ function PersonCard({ person, mode, profile, existing, onMessage, onRequest }) {
 
       <div className="mentor-card-footer">
         <div className="mentor-card-actions">
-          {/* Nothing here works for a ghost: messaging and mentorship
-              requests both write rows other members would see, and
-              schema-update-58 refuses both. */}
-          {canWrite(profile) && (
-            <button
-              type="button"
-              className="header-icon-btn mentor-message-btn"
-              onClick={() => onMessage?.({ id: person.id, full_name: person.full_name }, buildIcebreaker(profile, person))}
-              aria-label={`Message ${person.full_name}`}
-              title="Ask a quick question"
-            >
-              <MessageIcon />
-            </button>
-          )}
+          <button
+            type="button"
+            className="header-icon-btn mentor-message-btn"
+            onClick={() => onMessage?.({ id: person.id, full_name: person.full_name }, buildIcebreaker(profile, person))}
+            aria-label={`Message ${person.full_name}`}
+            title="Ask a quick question"
+          >
+            <MessageIcon />
+          </button>
           {/* safeUrl rather than the raw column — see the note on the same
               field in Directory.jsx. */}
           {safeUrl(person.linkedin_url) && (
@@ -461,7 +455,7 @@ function PersonCard({ person, mode, profile, existing, onMessage, onRequest }) {
           <span className="mentor-card-state">
             {existing.status === 'active' ? 'Mentoring underway' : 'Request pending'}
           </span>
-        ) : canWrite(profile) ? (
+        ) : (
           <button
             type="button"
             className="btn ghost small mentor-request-btn"
@@ -471,7 +465,7 @@ function PersonCard({ person, mode, profile, existing, onMessage, onRequest }) {
           >
             {lookingForMentor ? 'Request mentorship' : 'Offer to mentor'}
           </button>
-        ) : null}
+        )}
       </div>
     </div>
   )

@@ -64,7 +64,7 @@ function MemberDetail({ data, onDeleted }) {
   const { member: m, activity, activityError } = data
   const { myId } = useAdmin()
   const actions = useMemberActions()
-  const [confirm, setConfirm] = useState(null) // 'unapprove' | 'promote' | 'demote' | 'ghost' | 'unghost' | 'delete'
+  const [confirm, setConfirm] = useState(null) // 'unapprove' | 'promote' | 'demote' | 'delete'
   const [declining, setDeclining] = useState(false)
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
@@ -105,16 +105,6 @@ function MemberDetail({ data, onDeleted }) {
       body: 'They become an ordinary member again. The site won’t let you remove the last admin.',
       label: 'Remove admin', tone: 'danger', run: () => actions.setAdmin(m, false),
     },
-    ghost: {
-      title: `Make ${name} a ghost account?`,
-      body: 'They disappear from Eendragters, the map, search, Who’s online and Mentoring, and can only browse: no posting, commenting, messaging, RSVPs or applications. Anything they’ve already posted stays up. You can turn this off again.',
-      label: 'Make ghost', tone: 'primary', run: () => actions.setGhost(m, true),
-    },
-    unghost: {
-      title: `Turn ghost mode off for ${name}?`,
-      body: 'They become an ordinary member again: visible to everyone and able to post, message and apply.',
-      label: 'Turn off ghost', tone: 'primary', run: () => actions.setGhost(m, false),
-    },
     delete: {
       title: `Delete ${name}'s account?`,
       body: 'Their login, profile, posts, comments, job listings, events, RSVPs, business listings, messages and uploaded files are all removed. This can’t be undone.',
@@ -124,7 +114,7 @@ function MemberDetail({ data, onDeleted }) {
   }
   const c = confirm ? CONFIRM[confirm] : null
 
-  const canBeAdmin = !!m.consented_at && !m.is_ghost
+  const canBeAdmin = !!m.consented_at
 
   return (
     <>
@@ -136,7 +126,7 @@ function MemberDetail({ data, onDeleted }) {
           </h2>
           <p className="adm-item-meta">
             <Status value={status}>{STATUS_LABEL[status]}</Status>
-            <span> · {m.is_admin ? 'Admin' : m.is_ghost ? 'Ghost account' : 'Member'}</span>
+            <span> · {m.is_admin ? 'Admin' : 'Member'}</span>
           </p>
         </div>
       </header>
@@ -205,18 +195,12 @@ function MemberDetail({ data, onDeleted }) {
             ) : canBeAdmin ? (
               <button type="button" className="adm-btn" onClick={() => setConfirm('promote')}>Make admin</button>
             ) : null}
-            {m.is_ghost ? (
-              <button type="button" className="adm-btn" onClick={() => setConfirm('unghost')}>Turn off ghost</button>
-            ) : !m.is_admin ? (
-              <button type="button" className="adm-btn" onClick={() => setConfirm('ghost')}>Make ghost</button>
-            ) : null}
           </div>
           {!m.is_admin && !canBeAdmin && (
             <p className="adm-inline-note adm-muted">
-              {m.is_ghost ? 'A ghost account can’t be an admin.' : 'They can be made an admin once they’ve finished signing up.'}
+              They can be made an admin once they’ve finished signing up.
             </p>
           )}
-          {m.is_admin && <p className="adm-inline-note adm-muted">An admin can&rsquo;t be a ghost account.</p>}
         </section>
       )}
 

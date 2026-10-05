@@ -103,7 +103,6 @@ export default function Overview() {
       {counts && (
         <p className="adm-totals">
           {counts.total} {counts.total === 1 ? 'member' : 'members'} · {counts.admins} {counts.admins === 1 ? 'admin' : 'admins'}
-          {counts.ghosts > 0 && ` · ${counts.ghosts} ghost${counts.ghosts === 1 ? '' : 's'}`}
           {counts.incomplete > 0 && ` · ${counts.incomplete} unfinished signup${counts.incomplete === 1 ? '' : 's'}`}
         </p>
       )}

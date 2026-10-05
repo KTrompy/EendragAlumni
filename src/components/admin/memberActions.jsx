@@ -8,7 +8,7 @@ import Turnstile, { TURNSTILE_SITE_KEY } from '../Turnstile.jsx'
 import { AdminDialog, useAdmin, useDialogAction } from './AdminUI.jsx'
 import {
   approveMember, unapproveMember, declineMember, undoDecline, setMemberAdmin,
-  setMemberGhost, deleteMember, resendConfirmation, describeError,
+  deleteMember, resendConfirmation, describeError,
 } from './adminApi.js'
 
 export function memberName(m) {
@@ -85,14 +85,6 @@ export function useMemberActions() {
     return r
   }, [changed, showToast])
 
-  const setGhost = useCallback(async (m, value) => {
-    const r = await setMemberGhost(m.id, value)
-    if (r.error) return r
-    changed()
-    showToast(value ? `${memberName(m)} is now a ghost account` : `Ghost mode turned off for ${memberName(m)}`)
-    return r
-  }, [changed, showToast])
-
   const remove = useCallback(async (m) => {
     const r = await deleteMember(m.id)
     if (r.error) return r
@@ -108,7 +100,7 @@ export function useMemberActions() {
     return r
   }, [showToast])
 
-  return { approve, unapprove, decline, restore, setAdmin, setGhost, remove, resend }
+  return { approve, unapprove, decline, restore, setAdmin, remove, resend }
 }
 
 /* ---------- Decline ---------- */

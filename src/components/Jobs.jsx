@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { canWrite } from '../ghost.js'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import RichTextEditor from './RichTextEditor.jsx'
@@ -305,7 +304,7 @@ export default function Jobs({ session, profile, onMessage }) {
   function set(k, v) { setFilters((f) => ({ ...f, [k]: v })) }
   function clearFilters() { setFilters(EMPTY_FILTERS); setQ('') }
 
-  const canPost = canWrite(profile)
+  const canPost = profile?.approved
 
   const needle = q.trim().toLowerCase()
   const baseList = savedOnly ? savedJobs : jobs
@@ -566,9 +565,7 @@ export default function Jobs({ session, profile, onMessage }) {
                   className="job-card-actions"
                   style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}
                 >
-                  {/* canPost covers applying too: both write a row someone
-                      else can see, and a ghost can do neither. */}
-                  {!isMine && !closed && canPost && (
+                  {!isMine && !closed && (
                     <button
                       type="button"
                       className="btn primary small"
@@ -595,7 +592,7 @@ export default function Jobs({ session, profile, onMessage }) {
                     {copiedId === j.id ? 'Link copied!' : 'Share'}
                   </button>
                   {!isMine && (
-                    <ReportButton session={session} profile={profile} entityType="job" entityId={j.id} className="btn ghost small" />
+                    <ReportButton session={session} entityType="job" entityId={j.id} className="btn ghost small" />
                   )}
                   {isMine && (
                     <button type="button" className="btn ghost small" onClick={() => setEditingId(j.id)}>

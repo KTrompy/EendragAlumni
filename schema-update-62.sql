@@ -10,8 +10,7 @@
 -- place until this runs. Run it as soon as the new admin is deployed.
 --
 --   1. Only an admin can feature a business            (security fix)
---   2. Activity log: decline / undo decline / ghost on-off, no double entry
---      when a ghost account is created
+--   2. Activity log: decline / undo decline
 --   3. Activity log: legends created / edited / hidden / shown / deleted
 --   4. admin_reorder_legends(): reorder in one statement
 --   5. legends.link_url must be http(s)
@@ -86,11 +85,7 @@ end; $$;
    2. Membership changes: the full set.
 
    schema-update-52 logged approve/unapprove and admin grant/revoke. Missing:
-   decline, undo decline, and ghost mode switched on or off for an existing
-   account. Ghost *creation* was logged twice — once here as "approved" (the
-   admin-create-ghost function flips approved through the caller's token) and
-   once by the function itself as create_ghost. Creation is now recognised and
-   left to the function, which records the email address as well.
+   decline and undo decline.
    ------------------------------------------------------------------ */
 create or replace function public.log_profile_admin_change()
 returns trigger
@@ -106,14 +101,6 @@ declare
 begin
   -- Self-service changes aren't admin actions.
   if new.id = auth.uid() then return new; end if;
-
-  -- A brand-new ghost: admin-create-ghost sets is_ghost, approved and
-  -- consented_at in one update and writes its own create_ghost entry.
-  if new.is_ghost and not coalesce(old.is_ghost, false)
-     and new.approved and not coalesce(old.approved, false)
-     and old.consented_at is null and new.consented_at is not null then
-    return new;
-  end if;
 
   v_label := coalesce(
     nullif(new.full_name, ''),
@@ -148,19 +135,13 @@ begin
       'member', new.id::text, v_label, null);
   end if;
 
-  if new.is_ghost is distinct from old.is_ghost then
-    perform public.log_admin_action(
-      case when new.is_ghost then 'enable_ghost' else 'disable_ghost' end,
-      'member', new.id::text, v_label, null);
-  end if;
-
   return new;
 end;
 $$;
 
 drop trigger if exists on_profile_admin_change on public.profiles;
 create trigger on_profile_admin_change
-  after update of approved, is_admin, is_ghost, declined_at on public.profiles
+  after update of approved, is_admin, declined_at on public.profiles
   for each row execute function public.log_profile_admin_change();
 
 
@@ -279,7 +260,7 @@ alter table public.legends
 
    Filters (match the chips in Admin → Members):
      all · pending (ready for a decision) · unconfirmed (email not confirmed)
-     · incomplete (never finished signing up) · declined · admins · ghosts
+     · incomplete (never finished signing up) · declined · admins
    ------------------------------------------------------------------ */
 drop function if exists public.admin_members_page(text, text, text, boolean, integer, integer);
 
@@ -305,7 +286,6 @@ returns table (
   avatar_url text,
   approved boolean,
   is_admin boolean,
-  is_ghost boolean,
   created_at timestamptz,
   consented_at timestamptz,
   declined_at timestamptz,
@@ -336,7 +316,7 @@ begin
     select p.id, u.email::text, u.email_confirmed_at, p.full_name,
            p.first_name, p.preferred_name, p.last_name,
            p.grad_year, p.city, p.country, nullif(p.avatar_url, ''),
-           p.approved, p.is_admin, p.is_ghost,
+           p.approved, p.is_admin,
            p.created_at, p.consented_at, p.declined_at, p.declined_reason,
            count(*) over ()
       from public.profiles p
@@ -350,7 +330,6 @@ begin
                                       and p.consented_at is null
               when 'declined'    then p.declined_at is not null
               when 'admins'      then p.is_admin
-              when 'ghosts'      then p.is_ghost
               when 'approved'    then p.approved
               else true
             end)
@@ -382,8 +361,7 @@ returns table (
   unconfirmed bigint,
   incomplete bigint,
   declined bigint,
-  admins bigint,
-  ghosts bigint
+  admins bigint
 )
 language plpgsql
 stable
@@ -401,8 +379,7 @@ begin
            count(*) filter (where not p.approved and p.declined_at is null and u.email_confirmed_at is null),
            count(*) filter (where not p.approved and p.declined_at is null and p.consented_at is null),
            count(*) filter (where p.declined_at is not null),
-           count(*) filter (where p.is_admin),
-           count(*) filter (where p.is_ghost)
+           count(*) filter (where p.is_admin)
       from public.profiles p
       join auth.users u on u.id = p.id;
 end;
@@ -431,7 +408,6 @@ returns table (
   avatar_url text,
   approved boolean,
   is_admin boolean,
-  is_ghost boolean,
   created_at timestamptz,
   consented_at timestamptz,
   declined_at timestamptz,
@@ -452,7 +428,7 @@ begin
     select p.id, u.email::text, u.email_confirmed_at, u.last_sign_in_at, p.full_name,
            p.first_name, p.preferred_name, p.last_name,
            p.grad_year, p.city, p.country, nullif(p.avatar_url, ''),
-           p.approved, p.is_admin, p.is_ghost,
+           p.approved, p.is_admin,
            p.created_at, p.consented_at, p.declined_at, p.declined_reason, p.last_seen
       from public.profiles p
       join auth.users u on u.id = p.id

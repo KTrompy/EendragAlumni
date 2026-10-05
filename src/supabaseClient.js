@@ -107,27 +107,6 @@ export async function adminDeleteAccount(targetUserId) {
   return result
 }
 
-// Admin creating a "ghost": a browse-only account that no other member can
-// see (schema-update-58). Its own separate email + password, so it's a real
-// account someone signs into rather than a mode on an existing one.
-//
-// An Edge Function for the same reason deletion is one — creating an auth
-// user needs the service-role key, and schema-update-3 records that hosted
-// Supabase silently no-ops raw auth.users writes even from SECURITY DEFINER.
-// The caller's admin rights are re-checked server-side against their own
-// token; nothing here is trusted.
-export async function adminCreateGhost({ email, password, label }) {
-  // invokeFunction reads the function's own message out of a 4xx/5xx body
-  // (and out of a 200 that carries `error`), so "An account already exists
-  // for …" reaches the screen instead of a generic status-code message.
-  const result = await invokeFunction('admin-create-ghost', { email, password, label })
-  if (result.error) return result
-  if (!result.data?.user_id) {
-    return { data: null, error: new Error('The account could not be confirmed as created — check Admin → Members before trying again.') }
-  }
-  return result
-}
-
 // Distinguishes "your JWT/session is no good" from an ordinary network
 // blip or a genuine "no rows" result. Postgrest returns 401s as a JWT-shaped
 // message/code, and a network failure (offline, DNS, CORS) never reaches
