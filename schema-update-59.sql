@@ -3,6 +3,13 @@
 -- Run this in the Supabase SQL Editor. Safe to re-run.
 -- ============================================================
 --
+-- *** CLOSED 2026-10-05 — the intake is over. ***
+-- The approval gate was put back by running (in the SQL Editor):
+--     alter table public.profiles alter column approved set default false;
+-- and "Confirm email" is switched back on in the Supabase dashboard
+-- (custom SMTP is enabled). New signups wait in the admin queue again.
+-- Do NOT re-run the line below unless you want to open the gate again.
+--
 -- A large batch of Eendragters is signing up at once and neither gate is
 -- worth making them wait on right now:
 --
