@@ -1,7 +1,12 @@
+import { lazy, Suspense } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Directory from './Directory.jsx'
-import AlumniMap from './AlumniMap.jsx'
+import LoadingState from './LoadingState.jsx'
 import { useDirectoryFilters, DirectoryToolbar, DirectoryFilterPanel } from './DirectoryFilters.jsx'
+
+// The map (and the Leaflet library behind it) only downloads when someone
+// actually opens the Map view, instead of for every visitor on every page load.
+const AlumniMap = lazy(() => import('./AlumniMap.jsx'))
 
 // Directory and the alumni map both answer the same question — "find an
 // Eendragter" — so they live under one nav item with a view toggle instead
@@ -49,7 +54,11 @@ export default function People({ session, onMessage, onGoToProfile, refetchTrigg
         <div className="directory-main">
           {view === 'list'
             ? <Directory session={session} people={f.filtered} loading={f.loading} me={f.me} onMessage={onMessage} hideHeader />
-            : <AlumniMap session={session} people={f.filtered} loading={f.loading} onMessage={onMessage} onGoToProfile={onGoToProfile} hideHeader />}
+            : (
+              <Suspense fallback={<LoadingState message="Loading map…" />}>
+                <AlumniMap session={session} people={f.filtered} loading={f.loading} onMessage={onMessage} onGoToProfile={onGoToProfile} hideHeader />
+              </Suspense>
+            )}
         </div>
         <DirectoryFilterPanel f={f} />
       </div>
