@@ -21,7 +21,6 @@ const SETTINGS_TABS = [
 // features don't send notifications yet — adding them here would just be
 // UI with nothing behind it.
 const NOTIF_CATEGORIES = [
-  { key: 'notify_message', label: 'Someone sends you a message' },
   { key: 'notify_post_activity', label: 'Someone likes or comments on your post' },
   { key: 'notify_event_rsvp', label: "Someone RSVPs to an event you created" },
   { key: 'notify_event_comment', label: 'Someone comments on an event you created' },
@@ -31,7 +30,7 @@ const PRIVACY_FIELDS = [
   { key: 'privacy_phone', label: 'Who can see your phone number?' },
   { key: 'privacy_email', label: 'Who can see your email address?' },
   { key: 'privacy_location', label: 'Who can see your location (city, country)?' },
-  { key: 'privacy_messages', label: 'Who can send you messages?' },
+  { key: 'privacy_messages', label: 'Who can email you through the site?' },
 ]
 
 const PRIVACY_OPTIONS = [
@@ -474,7 +473,7 @@ function AccountTab({ session, profile, onSaved }) {
 
       <div className="settings-section settings-danger">
         <h3>Delete account</h3>
-        <p className="hint">Permanently deletes your account, profile, posts, photos, messages and mentoring data. This can't be undone.</p>
+        <p className="hint">Permanently deletes your account, profile, posts, photos and mentoring data. This can't be undone.</p>
         <button type="button" className="btn danger" onClick={() => setConfirmingDelete(true)}>Delete account</button>
       </div>
 
@@ -504,7 +503,7 @@ function NotificationsTab({ session }) {
       .eq('user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => {
-        setPrefs(data || { notify_message: true, notify_post_activity: true, notify_event_rsvp: true, notify_event_comment: true })
+        setPrefs(data || { notify_post_activity: true, notify_event_rsvp: true, notify_event_comment: true })
         setLoading(false)
       })
   }, [session.user.id])

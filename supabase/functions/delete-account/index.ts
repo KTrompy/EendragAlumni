@@ -25,7 +25,7 @@
 //   3. Clean up their storage objects, which the database cascade doesn't
 //      cover — see OWNED_BUCKETS in ../_shared/accountCleanup.ts.
 //   4. Use the service-role client to permanently delete that auth user.
-//      Everything referencing it cascades: profiles, posts, messages, jobs,
+//      Everything referencing it cascades: profiles, posts, jobs,
 //      events, likes, comments.
 //
 // Deploy with the Supabase CLI:

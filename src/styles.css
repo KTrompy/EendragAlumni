@@ -585,258 +585,6 @@ input, textarea, select { font: inherit; }
 
 .masthead-actions { display: flex; align-items: center; gap: 4px; }
 
-/* ---------- Floating messages widget ---------- */
-.chat-fab {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--orange);
-  color: #fff;
-  border: none;
-  display: grid;
-  place-items: center;
-  box-shadow: var(--shadow-lift);
-  cursor: pointer;
-  /* Above Leaflet's own overlays (max ~1000) so the widget floats over the
-     Alumni Map too, but below the profile modal (2000). */
-  z-index: 1100;
-  transition: transform 0.12s ease, background 0.12s ease;
-}
-.chat-fab:hover { transform: translateY(-2px); background: var(--orange-dark); }
-.chat-fab-badge {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  display: grid;
-  place-items: center;
-  border: 2px solid var(--paper);
-}
-
-.chat-panel {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  width: 760px;
-  max-width: calc(100vw - 32px);
-  height: 600px;
-  max-height: calc(100vh - 48px);
-  background: var(--card);
-  border-radius: 16px;
-  box-shadow:
-    0 12px 32px rgba(26, 26, 26, 0.18),
-    0 4px 12px rgba(26, 26, 26, 0.08);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 1100;
-  animation: rise-in 0.18s ease;
-  border: 1px solid var(--line);
-}
-/* Slim top bar with just a close affordance — WA-style headers live inside
-   each pane (chat list / conversation), not above them. */
-.chat-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--maroon);
-  color: #fff;
-  font-family: var(--display);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 12.5px;
-  flex-shrink: 0;
-}
-.chat-panel-header .modal-close {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 22px;
-  line-height: 1;
-  padding: 0 4px;
-}
-.chat-panel-header .modal-close:hover { color: #fff; }
-.chat-panel-body {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--paper);
-}
-.chat-panel-body .messages-panel {
-  height: 100%;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-.chat-panel-body .messages-layout {
-  height: 100%;
-  min-height: 0;
-  grid-template-columns: 280px 1fr;
-  gap: 0;
-}
-.chat-panel-body .thread-list {
-  overflow-y: auto;
-  border: none;
-  border-right: 1px solid var(--line);
-  border-radius: 0;
-  padding: 0;
-  gap: 0;
-  background: var(--card);
-}
-.chat-panel-body .chat {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-}
-.chat-panel-body .chat-scroll { max-height: none; }
-
-@media (max-width: 720px) {
-  /* Full-screen on mobile instead of a floating box with a gap above it —
-     that gap left the original page visible (and still scrollable) behind
-     what was supposed to read as a modal. Covering the whole viewport and
-     locking body scroll (see FloatingMessages.jsx) makes it read as an
-     actual full-screen view instead of a widget that's ambiguously "over"
-     the page. */
-  .chat-panel {
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    max-width: none;
-    max-height: none;
-    border-radius: 0;
-  }
-  /* On mobile, WA shows one pane at a time: list OR conversation.
-     The .chat data-view attribute (set in Messages.jsx) toggles which. */
-  .chat-panel-body .messages-layout { grid-template-columns: 1fr; }
-  .chat-panel-body .thread-list {
-    border-right: none;
-    display: block;
-  }
-  .chat-panel-body .messages-panel[data-view="chat"] .thread-list { display: none; }
-  .chat-panel-body .messages-panel[data-view="list"] .chat { display: none; }
-}
-
-/* ---------- Mobile messaging redesign ----------
-   Same underlying pattern as desktop (grouped bubbles, thread list, WA-ish
-   input) but tuned for a lighter, cleaner, single-screen feel: one header
-   instead of two stacked bars, a flat surface instead of the dotted paper
-   texture, softer full-round bubbles with no tail, and roomier tap targets
-   throughout. */
-@media (max-width: 720px) {
-  /* The outer "Messages" bar (title + close) only earns its keep in list
-     view — once a conversation is open, .chat-header already has its own
-     back button, name and avatar, so showing both read as a cluttered
-     double header. Collapse the outer bar there instead. */
-  .chat-panel:has(.messages-panel[data-view="chat"]) .chat-panel-header {
-    display: none;
-  }
-  .chat-panel-header {
-    background: var(--card);
-    color: var(--maroon);
-    text-transform: none;
-    letter-spacing: normal;
-    font-size: 17px;
-    font-weight: 800;
-    padding: 14px 10px 14px 18px;
-    padding-top: max(14px, env(safe-area-inset-top));
-    border-bottom: 1px solid var(--line);
-  }
-  .chat-panel-header .modal-close {
-    color: var(--ink-soft);
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-  }
-  .chat-panel-header .modal-close:hover { background: var(--paper); color: var(--ink); }
-
-  /* The inner "Chats" label duplicated the title above it — drop it and
-     let the search field sit right under the (now single) header. */
-  .chat-panel-body .thread-list-header { display: none; }
-  .chat-panel-body .thread-search-wrap { margin: 14px 16px; }
-  .chat-panel-body .thread-search { padding: 11px 16px 11px 38px; font-size: 14.5px; }
-
-  /* Roomier, borderless rows with a soft highlight instead of a hard
-     left-edge bar — reads as a modern list, not a spreadsheet. */
-  .chat-panel-body .thread {
-    padding: 12px 16px;
-    border-bottom: none;
-    border-radius: 12px;
-    margin: 0 8px 2px;
-    width: calc(100% - 16px);
-  }
-  .chat-panel-body .thread.active { background: var(--orange-soft); }
-  .chat-panel-body .thread.active::before { display: none; }
-  .chat-panel-body .thread-name { font-size: 15px; }
-  .chat-panel-body .thread-preview { font-size: 13px; }
-
-  /* Conversation header: sticky, roomy back button, safe-area aware. */
-  .chat-panel-body .chat-header {
-    padding: 10px 16px;
-    padding-top: max(10px, env(safe-area-inset-top));
-  }
-  .chat-panel-body .chat-back {
-    display: inline-flex;
-    width: 34px;
-    height: 34px;
-    align-items: center;
-    justify-content: center;
-    margin-left: -6px;
-  }
-  .chat-panel-body .chat-header-name { font-size: 16px; }
-
-  /* Flat surface instead of the dotted paper texture — calmer background
-     that lets the bubbles do the talking. */
-  .chat-panel-body .chat { background-color: var(--paper); background-image: none; }
-  .chat-panel-body .chat-scroll { padding: 14px 14px 6px; gap: 3px; }
-
-  /* Soft, fully-rounded bubbles with no folded-corner tail — a cleaner,
-     more contemporary read than the WA-style corner fold. */
-  .chat-panel-body .bubble {
-    border-radius: 18px;
-    padding: 9px 14px 20px;
-    font-size: 15px;
-    line-height: 1.42;
-    box-shadow: none;
-  }
-  .chat-panel-body .bubble.mine { background: var(--orange); color: #fff; }
-  .chat-panel-body .bubble.mine .message-time { color: rgba(255, 255, 255, 0.75); }
-  .chat-panel-body .message-row.group-start:not(.mine) .bubble::before,
-  .chat-panel-body .message-row.group-start.mine .bubble::before {
-    content: none;
-  }
-  .chat-panel-body .message-row { max-width: 82%; }
-
-  /* Larger, more tappable composer. */
-  .chat-panel-body .chat-input {
-    padding: 10px 12px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
-    gap: 10px;
-  }
-  .chat-panel-body .chat-input input,
-  .chat-panel-body .chat-input textarea { padding: 12px 16px; font-size: 16px; } /* 16px+ stops iOS auto-zoom on focus */
-  .chat-panel-body .chat-send { width: 42px; height: 42px; }
-
-  .chat-panel-body .date-separator span { font-size: 10.5px; }
-}
 
 .center-page { display: grid; place-items: center; min-height: 100vh; min-height: 100dvh; color: var(--ink-soft); }
 
@@ -4345,503 +4093,193 @@ button.delete-danger svg { flex-shrink: 0; }
   display: inline-flex; align-items: center; justify-content: center;
 }
 
-/* ---------- Messages ---------- */
-.messages-layout {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 16px;
-  min-height: 520px;
+.modal-contact { max-width: 520px; }
+
+/* ---------- Contact modal (ContactModal.jsx) ----------
+   The one-shot "email a member" composer. Scoped entirely under
+   .modal-contact / .contact-modal-* so nothing here touches the shared
+   .modal chrome that every other dialog in the app still uses — this is a
+   deliberately calmer, more personal treatment for the single flow where
+   you're addressing one specific person, not a restyle of modals in
+   general. */
+.modal-contact {
+  border-top: none;
 }
-.thread-list {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+.contact-modal-header {
   background: var(--card);
-  padding: 0;
+  color: var(--ink);
+  align-items: center;
+  padding: 18px 20px;
+}
+.contact-modal-recipient {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.contact-modal-recipient .avatar,
+.contact-modal-recipient .avatar-fallback {
+  border-width: 1px;
+}
+.contact-modal-recipient-text {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  overflow: hidden;
+  gap: 2px;
+  min-width: 0;
 }
-/* "Chats" header at the top of the sidebar — matches WA's list header. */
-.thread-list-header {
-  padding: 14px 16px 10px;
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 15px;
-  color: var(--maroon);
+.contact-modal-eyebrow {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--line);
-  background: var(--card);
-}
-.thread-search-wrap {
-  margin: 10px 12px;
-  position: relative;
-}
-.thread-search {
-  font-size: 13px;
-  padding: 9px 30px 9px 34px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  width: 100%;
-}
-.thread-search:focus { outline: 2px solid var(--orange); border-color: transparent; }
-.thread-search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
   color: var(--ink-soft);
-  pointer-events: none;
-  display: flex;
 }
-.thread-list-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0;
-}
-.thread {
-  text-align: left;
-  background: none;
-  border: none;
-  padding: 12px 14px;
-  border-radius: 12px;
-  margin: 2px 8px;
-  width: calc(100% - 16px);
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: background 0.15s ease;
-  position: relative;
-}
-.thread:hover { background: var(--paper); }
-.thread.active { background: var(--orange-soft); }
-.thread.active .thread-preview { color: var(--ink-soft); }
-.thread.active .thread-time { color: var(--orange-dark); font-weight: 700; }
-.thread.active .thread-year { color: var(--orange-dark); }
-.thread-year { color: var(--orange); font-family: var(--display); font-weight: 800; font-size: 12px; }
-.thread-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.thread-row-1 {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-.thread-name {
-  font-weight: 600;
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.thread-preview {
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.thread-time {
-  font-size: 11px;
-  color: var(--ink-soft);
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.chat {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--card);
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  /* Subtle "paper" texture behind bubbles — WhatsApp's doodle pattern
-     translated into a warm dotted lattice on our Eendrag paper tone. */
-  background-color: var(--paper);
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(90, 26, 43, 0.05) 1px, transparent 0);
-  background-size: 22px 22px;
-}
-.chat-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
-  background: var(--card);
-  flex-shrink: 0;
-}
-.chat-back {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--maroon);
-  padding: 4px;
-  border-radius: 6px;
-  align-items: center;
-}
-.chat-back:hover { background: var(--paper); }
-/* The avatar + name in the chat header is now a button that opens the
-   other person's profile page — strip the default button chrome so it
-   still reads as header content, but add a subtle hover to hint it's
-   clickable. */
-.chat-header-person {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
-  background: none;
-  border: none;
-  padding: 4px 6px;
-  margin: -4px -6px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  text-align: left;
-  color: inherit;
-  font: inherit;
-}
-.chat-header-person:hover { background: var(--paper); }
-.chat-header-person:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
-.chat-header-person:disabled { cursor: default; }
-.chat-header-person:disabled:hover { background: none; }
-
-.chat-header-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-  min-width: 0;
-  flex: 1;
-}
-.chat-header-name {
-  font-weight: 700;
+.contact-modal-header h2 {
   font-family: var(--display);
-  color: var(--maroon);
-  font-size: 15px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--fs-xl);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chat-header-sub { font-size: 12px; color: var(--ink-soft); }
-.chat-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-height: none;
-}
-.bubble {
-  position: relative;
-  max-width: 100%;
-  padding: 7px 10px 18px;
-  border-radius: 12px;
-  background: var(--card);
-  border: none;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  box-shadow: 0 1px 1px rgba(26, 26, 26, 0.08);
-  font-size: 14px;
-  line-height: 1.4;
-}
-.bubble.mine {
-  background: var(--orange-soft);
-  color: var(--ink);
-}
-/* WA-style tail on the first bubble in a group */
-.message-row.group-start:not(.mine) .bubble::before {
-  content: '';
-  position: absolute;
-  left: -6px;
-  top: 0;
-  width: 12px;
-  height: 12px;
-  background: var(--card);
-  clip-path: polygon(100% 0, 100% 100%, 0 0);
-}
-.message-row.group-start.mine .bubble::before {
-  content: '';
-  position: absolute;
-  right: -6px;
-  top: 0;
-  width: 12px;
-  height: 12px;
-  background: var(--orange-soft);
-  clip-path: polygon(0 0, 100% 0, 0 100%);
-}
-
-.message-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: 78%;
-  align-self: flex-start;
-}
-.message-row.mine {
-  align-self: flex-end;
-  flex-direction: row-reverse;
-}
-.message-row.group-start { margin-top: 8px; }
-.message-row:first-child.group-start { margin-top: 0; }
-.avatar-spacer { flex-shrink: 0; display: inline-block; height: 1px; }
-
-/* Wraps the bubble plus whatever sits below it (reaction pills, "Seen") —
-   sized to the bubble's own width so those extras line up under it rather
-   than stretching the full 78% message-row column. */
-.message-content {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  max-width: 100%;
-  align-items: flex-start;
-}
-.message-row.mine .message-content { align-items: flex-end; }
-.message-content .bubble { max-width: 100%; }
-
-.message-deleted {
-  font-style: italic;
-  color: var(--ink-soft);
-  opacity: 0.85;
-}
-.message-edited-tag {
-  font-size: 10px;
-  font-style: italic;
-  opacity: 0.75;
-  margin-right: 4px;
-}
-
-/* Edit-in-place form — same width/shape budget as a bubble so swapping
-   into edit mode doesn't jump the layout around. */
-.message-edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  min-width: 220px;
-}
-.message-edit-input {
-  border: 1px solid var(--orange);
-  border-radius: 12px;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-family: inherit;
-  background: var(--card);
-  color: var(--ink);
-}
-.message-edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-/* Small hover-revealed toolbar tucked into the bubble's corner — react/
-   edit/delete. Hidden until the row is hovered or focused (keyboard/touch
-   users can still reach it via the bubble's own focus-within), so bubbles
-   stay clean at rest instead of every message sprouting three icons. */
-.message-hover-actions {
-  position: absolute;
-  top: -14px;
-  right: 6px;
-  display: flex;
-  gap: 2px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 2px;
-  box-shadow: 0 2px 6px rgba(26, 26, 26, 0.12);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease;
-}
-.bubble.mine .message-hover-actions { right: auto; left: 6px; }
-.message-row:hover .message-hover-actions,
-.message-row:focus-within .message-hover-actions {
-  opacity: 1;
-  pointer-events: auto;
-}
-.message-hover-btn {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.contact-modal-close {
   background: none;
   border: none;
-  border-radius: 50%;
-  color: var(--ink-soft);
-}
-.message-hover-btn:hover { background: var(--paper); color: var(--orange-dark); }
-
-/* Quick-react emoji strip, popped open from the hover toolbar's react
-   button. */
-.reaction-picker {
-  position: absolute;
-  top: -46px;
-  right: 6px;
-  display: flex;
-  gap: 2px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 6px;
-  box-shadow: 0 4px 12px rgba(26, 26, 26, 0.16);
-  z-index: 2;
-}
-.reaction-picker.mine { right: auto; left: 6px; }
-.reaction-picker button {
-  background: none;
-  border: none;
-  font-size: 17px;
-  line-height: 1;
-  padding: 3px;
-  border-radius: 50%;
-  transition: transform 0.1s ease, background 0.1s ease;
-}
-.reaction-picker button:hover { background: var(--paper); transform: scale(1.15); }
-
-/* Aggregated reaction pills under a bubble — one per distinct emoji, with
-   a count once more than one person's used it. */
-.message-reactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.reaction-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--card);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  padding: 1px 7px;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--ink);
-}
-.reaction-pill.mine { background: var(--orange-soft); border-color: var(--orange); color: var(--orange-dark); }
-.reaction-pill:hover { border-color: var(--orange); }
-
-.message-seen {
-  font-size: 10.5px;
-  color: var(--ink-soft);
-  padding-right: 2px;
-}
-
-.chat-header-typing {
-  color: var(--orange-dark);
-  font-weight: 700;
-  font-style: italic;
-}
-
-/* Centered "Today / Yesterday / Jul 3" pill wherever the thread crosses a
-   calendar day — breaks long conversations into scannable chunks. */
-.date-separator {
-  display: flex;
-  justify-content: center;
-  margin: 14px 0 8px;
-}
-.date-separator:first-child { margin-top: 0; }
-.date-separator span {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--ink-soft);
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 12px;
-}
-
-/* WA-style inline timestamp: always visible, tucked in the bubble's
-   bottom-right corner. */
-.message-time {
-  position: absolute;
-  right: 10px;
-  bottom: 4px;
-  font-size: 10.5px;
-  color: var(--ink-soft);
-  opacity: 0.85;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-.bubble.mine .message-time { color: var(--maroon); }
-/* Same size/weight as .message-time but rendered inline (not absolute) and
-   hidden — its only job is to make the bubble's shrink-to-fit width account
-   for the timestamp, since absolutely-positioned children are otherwise
-   ignored when the browser computes that width. */
-.message-time-spacer {
-  visibility: hidden;
-  display: inline-block;
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  padding-left: 10px;
-}
-
-.chat-empty-centered {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-soft);
-  text-align: center;
-  padding: 20px;
-}
-.chat-input {
-  display: flex;
-  gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--line);
-  background: var(--card);
-  align-items: flex-end;
   flex-shrink: 0;
-}
-.chat-input input,
-.chat-input textarea {
-  flex: 1;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  border-radius: 18px;
-  padding: 10px 16px;
-  font-size: 16px; /* iOS Safari auto-zooms on focus for any input under 16px */
-  font-family: inherit;
-  resize: none;
-  max-height: 140px;
-  overflow-y: auto;
-  line-height: 1.4;
-}
-.chat-input input:focus,
-.chat-input textarea:focus { outline: 2px solid var(--orange); border-color: transparent; background: var(--card); }
-.chat-input .chat-send { margin-bottom: 1px; }
-/* Round send button with paper-plane icon — replaces the old "Send" text btn. */
-.chat-send {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background: var(--orange);
-  color: #fff;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  flex-shrink: 0;
-  transition: background 0.12s ease, transform 0.05s ease;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.chat-send:hover:not(:disabled) { background: var(--orange-dark); }
-.chat-send:active:not(:disabled) { transform: scale(0.94); }
-.chat-send:disabled { background: var(--line-strong); cursor: not-allowed; }
-.chat-send svg { width: 18px; height: 18px; }
+.contact-modal-close:hover:not(:disabled) { background: var(--paper); color: var(--ink); }
+.contact-modal-close:disabled { opacity: 0.4; cursor: default; }
+.contact-modal-close:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+.modal-contact .modal-body { padding: 22px 24px 6px; }
+
+/* Subject reads as metadata, not content — a quiet underline rather than a
+   boxed field, so the message below it carries the visual weight. */
+.contact-modal-subject { margin-bottom: 20px; }
+.contact-modal-subject input {
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 6px 0 8px;
+  background: transparent;
+  font-size: var(--fs-md);
+}
+.contact-modal-subject input:focus {
+  box-shadow: none;
+  border-bottom: 2px solid var(--orange);
+  padding-bottom: 7px;
+}
+
+.contact-modal-message { margin-bottom: 4px; }
+.contact-modal-textarea {
+  resize: vertical;
+  min-height: 160px;
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+  border-color: var(--line);
+}
+.contact-modal-textarea:disabled { background: var(--paper); color: var(--ink-soft); }
+.contact-modal-counter {
+  display: block;
+  text-align: right;
+  font-size: var(--fs-xs);
+  color: var(--ink-soft);
+  margin-top: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  transition: color 0.15s ease;
+}
+.contact-modal-counter.is-low { color: var(--orange-dark); font-weight: 600; }
+
+.contact-modal-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  background: rgba(163, 51, 39, 0.08);
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
+}
+.contact-modal-error svg { margin-top: 2px; }
+
+.contact-modal-footer {
+  background: var(--card);
+  border-top: 1px solid var(--line);
+}
+.contact-modal-cancel { border-color: transparent; }
+.contact-modal-cancel:hover:not(:disabled) { background: var(--paper); color: var(--maroon); }
+.contact-modal-send {
+  min-width: 108px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.contact-modal-send.is-sent {
+  background: var(--ok);
+  opacity: 1;
+}
+.contact-modal-send svg { margin: 0; animation: contact-send-pop 0.3s var(--ease); }
+
+.contact-modal-spinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  animation: contact-spin 0.7s linear infinite;
+}
+@keyframes contact-spin { to { transform: rotate(360deg); } }
+@keyframes contact-send-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-modal-spinner { animation: none; border-top-color: rgba(255, 255, 255, 0.45); }
+  .contact-modal-send svg { animation: none; }
+}
+
+@media (max-width: 640px) {
+  .contact-modal-header { padding: 16px; }
+  .modal-contact .modal-body { padding: 18px 16px 4px; }
+  .contact-modal-footer { padding: 12px 16px; }
+}
+
+
+/* Eendrag additions: the plain-English note about where replies go, and the
+   "Email me a copy" tick-box. */
+.contact-modal-note {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.contact-modal-note strong { color: var(--ink); word-break: break-all; }
+.contact-modal-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 8px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.contact-modal-copy input { width: 16px; height: 16px; accent-color: var(--orange); cursor: pointer; }
+.contact-modal-copy input:disabled { cursor: default; }
+
 
 /* ---------- Events ---------- */
 .event-list, .job-list, .business-list {
@@ -7029,8 +6467,6 @@ button.delete-danger svg { flex-shrink: 0; }
   .create-panel { padding: 14px; }
 }
 @media (max-width: 720px) {
-  .messages-layout { grid-template-columns: 1fr; }
-  .chat-back { display: inline-flex; }
   .field-row { flex-direction: column; gap: 0; }
 
   /* Mobile header is tight on width once the icon row (search, messages,
@@ -7042,7 +6478,6 @@ button.delete-danger svg { flex-shrink: 0; }
   .masthead-actions { gap: 8px; }
 
   /* Hidden on mobile per request — kept on desktop/tablet. */
-  .masthead-actions .header-icon-btn[aria-label="Messages"] { display: none; }
 
   /* Mobile gets an avatar (→ profile) in the header plus a bottom tab bar
      for the five core sections — but Groups/Mentoring/Business
@@ -7075,7 +6510,6 @@ button.delete-danger svg { flex-shrink: 0; }
     padding-right: 84px;
     padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
   }
-  .chat-fab { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
 
   .mobile-tabbar {
     position: fixed;

@@ -107,7 +107,7 @@ function MemberDetail({ data, onDeleted }) {
     },
     delete: {
       title: `Delete ${name}'s account?`,
-      body: 'Their login, profile, posts, comments, job listings, events, RSVPs, business listings, messages and uploaded files are all removed. This can’t be undone.',
+      body: 'Their login, profile, posts, comments, job listings, events, RSVPs, business listings and uploaded files are all removed. This can’t be undone.',
       label: 'Delete account', tone: 'danger', run: () => actions.remove(m),
       requireText: m.is_admin ? ((m.full_name || '').trim() || m.email) : null,
     },

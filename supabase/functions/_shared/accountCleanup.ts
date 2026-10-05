@@ -58,7 +58,7 @@ export function json(req: Request, body: unknown, status = 200) {
 // address, phone number, employment history) remained downloadable at its
 // original URL indefinitely, while Settings told them:
 //
-//   "Permanently deletes your account, profile, posts, photos, messages…"
+//   "Permanently deletes your account, profile, posts, photos…"
 //
 // That's an erasure problem, not just untidiness. And `avatar.jpg` hadn't even
 // been the avatar filename for months — Profile.jsx writes

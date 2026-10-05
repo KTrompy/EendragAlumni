@@ -23,13 +23,12 @@ const ENTITY_TAB = {
   member: 'admin',
   report: 'admin',
   mentorship: 'mentoring',
-  conversation: null,
 }
 
 // Bell + dropdown in the header. Polls once on mount, then stays live via
 // Supabase realtime (new row insert) so a badge appears without a refresh —
 // this is the app's only cross-feature "something happened" signal, so it
-// intentionally covers likes/comments/RSVPs/messages in one place instead
+// intentionally covers likes/comments/RSVPs in one place instead
 // of each feature inventing its own alert.
 const PAGE_SIZE = 30
 
@@ -146,7 +145,6 @@ export default function NotificationBell({ session, onNavigate }) {
     // the specific post/event this notification is about (e.g. /feed/:id)
     // instead of just landing generically on that tab's top.
     if (tab) onNavigate?.(tab, n.entity_type, n.entity_id)
-    else onNavigate?.('messages')
   }
 
   return (
@@ -176,7 +174,7 @@ export default function NotificationBell({ session, onNavigate }) {
                 <button type="button" className="link-btn" onClick={load}>Try again</button>
               </p>
             )}
-            {!loadError && items.length === 0 && <p className="empty small">Nothing yet — likes, comments, RSVPs and messages will show up here.</p>}
+            {!loadError && items.length === 0 && <p className="empty small">Nothing yet — likes, comments and RSVPs will show up here.</p>}
             {items.map((n) => (
               <button type="button"
                 key={n.id}

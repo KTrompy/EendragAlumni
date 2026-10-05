@@ -64,7 +64,7 @@ export default function AdminHelp() {
           <dt>Make admin / Remove admin</dt>
           <dd>An admin has exactly your powers, including deleting accounts and removing other admins. The site won&rsquo;t let you change your own role, remove the last admin, or make an admin of someone who hasn&rsquo;t finished signing up. Keep at least two admins.</dd>
           <dt>Delete account</dt>
-          <dd><strong>Permanent, with no backup.</strong> Removes their login, profile, posts, comments, listings, events, RSVPs, messages and uploaded files. Use it for spam and for people who ask to be removed (they can also do it themselves in Settings). Deleting another admin asks you to type their name first.</dd>
+          <dd><strong>Permanent, with no backup.</strong> Removes their login, profile, posts, comments, listings, events, RSVPs and uploaded files. Use it for spam and for people who ask to be removed (they can also do it themselves in Settings). Deleting another admin asks you to type their name first.</dd>
         </dl>
       </section>
 
@@ -134,7 +134,7 @@ export default function AdminHelp() {
         <ul>
           <li>React 18 + Vite SPA talking straight to Supabase. Row-level security and triggers do the real enforcement; the admin UI only hides what would fail.</li>
           <li>Database changes are numbered <code>schema-update-N.sql</code> files, run in order in the Supabase SQL Editor.</li>
-          <li>Edge Functions: <code>admin-delete-member</code>, <code>delete-account</code>, <code>send-approval-email</code>, <code>send-member-email</code>. Deploy with <code>supabase functions deploy &lt;name&gt;</code>.</li>
+          <li>Edge Functions: <code>admin-delete-member</code>, <code>delete-account</code>, <code>send-contact-email</code> (member-to-member email, nothing stored), <code>send-approval-email</code>, <code>send-member-email</code>. Deploy with <code>supabase functions deploy &lt;name&gt;</code>.</li>
           <li>Admin code lives in <code>src/components/admin/</code>; data access is in <code>adminApi.js</code>.</li>
         </ul>
       </section>

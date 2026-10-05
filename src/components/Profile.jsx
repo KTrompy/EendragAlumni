@@ -1458,7 +1458,7 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
       {confirmingDelete && (
         <ConfirmDialog
           title="Delete your account?"
-          message={error || 'This will permanently remove your profile, posts, messages and photos, and cannot be undone.'}
+          message={error || 'This will permanently remove your profile, posts and photos, and cannot be undone.'}
           confirmLabel={busy ? 'Deleting…' : 'Delete permanently'}
           onConfirm={deleteProfile}
           onCancel={() => { setConfirmingDelete(false); setError(null) }}
