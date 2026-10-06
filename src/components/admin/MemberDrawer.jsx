@@ -7,10 +7,11 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import useModal from '../../useModal.js'
 import { Avatar } from '../Directory.jsx'
 import { timeAgo } from '../../utils.js'
+import { formatLocation } from '../../signup.js'
 import {
   AdminDialog, LoadError, Loading, RowError, Status, formatDate, useAdmin, useAdminQuery, useDialogAction,
 } from './AdminUI.jsx'
-import { ACTION_TEXT, STATUS_LABEL, fetchMember, fetchMemberActivity, memberStatus } from './adminApi.js'
+import { ACTION_TEXT, STATUS_LABEL, applicationGaps, fetchMember, fetchMemberActivity, memberStatus, memberYears } from './adminApi.js'
 import { DeclineDialog, ResendButton, memberName, useMemberActions } from './memberActions.jsx'
 
 export default function MemberDrawer() {
@@ -73,6 +74,7 @@ function MemberDetail({ data, onDeleted }) {
   const status = memberStatus(m)
   const name = memberName(m)
   const recordsName = [m.first_name, m.last_name].filter(Boolean).join(' ')
+  const gaps = applicationGaps(m).filter((g) => g !== 'signup form not finished')
 
   async function direct(key, fn) {
     if (busy) return
@@ -135,13 +137,18 @@ function MemberDetail({ data, onDeleted }) {
         <dt>Email</dt>
         <dd><a href={`mailto:${m.email}`}>{m.email}</a></dd>
         {recordsName && recordsName !== m.full_name && (<><dt>Name on records</dt><dd>{recordsName}</dd></>)}
-        <dt>Class</dt>
-        <dd>{m.grad_year || <span className="adm-muted">Not given</span>}</dd>
-        {(m.city || m.country) && (<><dt>Location</dt><dd>{[m.city, m.country].filter(Boolean).join(', ')}</dd></>)}
+        {m.preferred_name && (<><dt>Preferred name</dt><dd>{m.preferred_name}</dd></>)}
+        <dt>Eendrag years</dt>
+        <dd>{memberYears(m) || <span className="adm-muted">Not given</span>}</dd>
+        <dt>Location</dt>
+        <dd>{formatLocation(m.city, m.country) || <span className="adm-muted">Not given</span>}</dd>
         <dt>Signed up</dt>
         <dd>{formatDate(m.created_at, true)}</dd>
-        <dt>Signup form</dt>
-        <dd>{m.consented_at ? `Completed ${formatDate(m.consented_at)}` : <span className="adm-muted">Not finished</span>}</dd>
+        <dt>Application</dt>
+        <dd>
+          {m.consented_at ? `Submitted ${formatDate(m.consented_at)}` : <span className="adm-muted">Not finished</span>}
+          {gaps.length > 0 && <span className="adm-sub adm-warn-text">Missing: {gaps.join(', ')}</span>}
+        </dd>
         <dt>Email confirmed</dt>
         <dd>{m.email_confirmed_at ? formatDate(m.email_confirmed_at) : <span className="adm-warn-text">Not confirmed</span>}</dd>
         {'last_sign_in_at' in m && (<><dt>Last sign-in</dt><dd>{m.last_sign_in_at ? timeAgo(m.last_sign_in_at) : <span className="adm-muted">Never</span>}</dd></>)}

@@ -59,3 +59,36 @@ export function PasswordStrengthMeter({ password }) {
     </div>
   )
 }
+
+// Signup guidance under the "Password" field: the one hard rule shown as a
+// checklist item that ticks itself off, plus the strength bar once there's
+// something to score. Kept quiet on purpose — a tip only appears when it's
+// useful, and nothing is red until the person has actually left the field
+// (that part is the field's own error message, not this).
+export function PasswordGuidance({ password, id }) {
+  const longEnough = password.length >= PASSWORD_MIN
+  const { score, label, percent } = passwordStrength(password)
+  const edgeSpace = !!password.trim() && password !== password.trim()
+  return (
+    <div className="pw-guide" id={id}>
+      <p className={longEnough ? 'pw-rule met' : 'pw-rule'}>
+        <span className="pw-rule-mark" aria-hidden="true">{longEnough ? '✓' : ''}</span>
+        At least {PASSWORD_MIN} characters
+      </p>
+      {password && (
+        <div className="pw-strength">
+          <div className="pw-strength-bar" aria-hidden="true">
+            <div className={`pw-strength-fill s${score}`} style={{ width: `${percent}%` }} />
+          </div>
+          <span className="pw-strength-label">{label}</span>
+        </div>
+      )}
+      {longEnough && score < 3 && (
+        <p className="pw-tip">A few random words together make a strong password that&rsquo;s easy to remember.</p>
+      )}
+      {edgeSpace && (
+        <p className="pw-tip">Your password starts or ends with a space &mdash; make sure that&rsquo;s intended.</p>
+      )}
+    </div>
+  )
+}

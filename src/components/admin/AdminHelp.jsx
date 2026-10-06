@@ -48,7 +48,11 @@ export default function AdminHelp() {
           <dt>Resend confirmation</dt>
           <dd>Sends a fresh link to an Unconfirmed member (Members → the person → Resend confirmation). Tell them to check spam. Supabase limits how often one address can be sent a link, so wait a minute between tries.</dd>
           <dt>Signup incomplete</dt>
-          <dd>Usually someone who used the Google button and closed the tab before the short form. Nothing to approve yet; they move to Pending by themselves when they come back.</dd>
+          <dd>Usually someone who used the Google button and closed the tab before the short form (it asks for the same details as the email signup: names, Eendrag years, city and country). They&rsquo;re under the <strong>Unfinished</strong> filter. Nothing to approve yet; they move to Pending by themselves when they come back.</dd>
+          <dt>Missing details</dt>
+          <dd>A row that says <strong>Missing: …</strong> was submitted without something the committee normally checks (usually an older Google signup with no city). Approve as normal if you can still verify them.</dd>
+          <dt>Emails they get</dt>
+          <dd>Email signups get Supabase&rsquo;s &ldquo;Confirm your Eendrag Alumni email&rdquo;, then &ldquo;We&rsquo;ve received your Eendrag Alumni application&rdquo; once they&rsquo;ve confirmed. Google signups skip the first one. Approving or declining sends the last one.</dd>
           <dt>Approve</dt>
           <dd>Gives full access: the directory, messaging and posting. They&rsquo;re emailed automatically (&ldquo;you&rsquo;re verified&rdquo;). If that email fails, you&rsquo;ll see an error and should tell them yourself. Undo straight after moves them back to pending.</dd>
           <dt>Decline</dt>

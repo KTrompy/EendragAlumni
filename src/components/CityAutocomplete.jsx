@@ -10,10 +10,15 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN
 // throughout the site. Suggestions range from full street addresses (house
 // number + street) down to city/region/country, so typing "30 Palm Street"
 // and typing just "Cape Town" both work — whatever's precise enough for the
-// field it's in. Only picking a suggestion commits a value — free-typed
-// text is held locally while you type and reverted the moment you click
-// away without picking, so what's saved is always a real, geocodable place
-// and always shows up correctly on the maps (no more silent typos).
+// field it's in. In strict mode only picking a suggestion commits a value —
+// free-typed text is held locally while you type and reverted the moment you
+// click away without picking, so what's saved is always a real, geocodable
+// place and always shows up correctly on the maps (no more silent typos).
+//
+// Mapbox is a third party, though, and it must never be the reason a form
+// can't be filled in. When the lookup itself fails (offline, blocked, no
+// token, Mapbox down) strict mode stops insisting and keeps what was typed,
+// and the warning says so.
 export default function CityAutocomplete({
   value,
   country,
@@ -29,6 +34,17 @@ export default function CityAutocomplete({
   // `strict={false}` there so free-typed text is kept as-is on blur, with
   // the live suggestions still offered as a convenience, not a requirement.
   strict = true,
+  // Non-strict only: on blur, if what's typed exactly matches one of the
+  // suggestions already on screen ("cape town" vs "Cape Town, Western Cape,
+  // South Africa"), treat it as picked so the coordinates come along too.
+  // Nobody should lose their map pin just for not clicking.
+  matchOnBlur = false,
+  // Extra attributes for the <input> itself (id, aria-describedby,
+  // aria-invalid…) so a caller can tie it to its label and error message.
+  inputProps,
+  onInputBlur,
+  unavailableMessage = 'Suggestions are unavailable right now — you can type the place in yourself.',
+  onLookupFailedChange,
 }) {
   const [text, setText] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
@@ -64,7 +80,23 @@ export default function CityAutocomplete({
   function handleBlur() {
     blurTimeoutRef.current = setTimeout(() => {
       setOpen(false)
-      if (!strict) return // free-typed text already committed via onChange as it was typed
+      onInputBlur?.()
+      if (!strict) {
+        // Free-typed text was already committed via onChange as it was typed.
+        if (matchOnBlur) {
+          const typed = text.trim().toLowerCase()
+          const exact = typed && suggestions.find((row) =>
+            (row.text || '').toLowerCase() === typed || row.place_name.toLowerCase() === typed)
+          if (exact) pick(exact)
+        }
+        return
+      }
+      // The lookup service is down, so there was nothing to pick from —
+      // keep what they typed rather than throwing it away.
+      if (lookupFailed) {
+        if (text.trim() !== (value || '').trim()) onChange(text.trim())
+        return
+      }
       // Only a picked suggestion is allowed to become the real value. If
       // someone typed something and clicked/tabbed away without picking,
       // discard it and fall back to whatever was last confirmed.
@@ -81,13 +113,20 @@ export default function CityAutocomplete({
 
   useEffect(() => () => { if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current) }, [])
 
+  const onLookupFailedChangeRef = useRef(onLookupFailedChange)
+  onLookupFailedChangeRef.current = onLookupFailedChange
+  useEffect(() => { onLookupFailedChangeRef.current?.(lookupFailed) }, [lookupFailed])
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     const q = text.trim()
     if (q.length < 2) { setSuggestions([]); setLoading(false); return }
 
     async function search(q2) {
-      if (!MAPBOX_TOKEN) return []
+      // No token configured is an outage as far as the person typing is
+      // concerned — report it the same way, so the field falls back to
+      // accepting typed text instead of silently never suggesting anything.
+      if (!MAPBOX_TOKEN) throw new Error('Mapbox token not configured')
       // Bias toward the person's IP-detected location, if we have it — this
       // ranks nearby results first without excluding matches further away
       // (unlike filtering by country), which is exactly what makes "26
@@ -100,7 +139,7 @@ export default function CityAutocomplete({
         `?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=6${proximity}` +
         `&types=address,poi,neighborhood,place,locality,region,country`
       const res = await fetch(url, { headers: { Accept: 'application/json' } })
-      if (!res.ok) return []
+      if (!res.ok) throw new Error(`Mapbox lookup failed (${res.status})`)
       const data = await res.json()
       return data?.features || []
     }
@@ -184,6 +223,7 @@ export default function CityAutocomplete({
   }
 
   return (
+    <>
     <div className="city-autocomplete has-clear" ref={anchorRef}>
       <input
         className={inputClassName}
@@ -206,6 +246,7 @@ export default function CityAutocomplete({
         role="combobox"
         aria-expanded={showDropdown}
         aria-autocomplete="list"
+        {...inputProps}
       />
       {text && (
         <button type="button" className="search-clear" onMouseDown={(e) => e.preventDefault()} onClick={clear} aria-label="Clear">×</button>
@@ -231,12 +272,15 @@ export default function CityAutocomplete({
           ))}
         </ul>
       </DropdownPortal>
+    </div>
+      {/* Outside the wrapper, so the clear (×) button — positioned against
+          the wrapper — stays centred on the input when a message appears. */}
       {lookupFailed && !loading && (
-        <p className="form-warning">Couldn&rsquo;t reach the place-lookup service just now — check your connection and try again.</p>
+        <p className="form-warning" role="status">{unavailableMessage}</p>
       )}
       {needsPick && !showDropdown && !lookupFailed && (
         <p className="form-warning">Please choose a suggestion from the list — that typed text wasn't saved.</p>
       )}
-    </div>
+    </>
   )
 }

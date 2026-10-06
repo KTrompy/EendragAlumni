@@ -1,6 +1,8 @@
 // Placeholder — no payment integration yet. When you're ready to accept
 // donations, hook up PayFast (SA-standard) or a Stripe Payment Link and
 // swap the "Get in touch" button for a real donate button.
+import { contactHref } from '../contact.js'
+
 export default function Donate() {
   return (
     <div className="donate-panel">
@@ -32,7 +34,7 @@ export default function Donate() {
         Reach out and we'll walk you through the options.
       </p>
 
-      <a className="btn primary" href="mailto:kyletrompeter0@gmail.com?subject=Supporting Eendrag">
+      <a className="btn primary" href={contactHref({ subject: 'Supporting Eendrag' })}>
         Get in touch
       </a>
 

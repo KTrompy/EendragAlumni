@@ -70,6 +70,13 @@ const RULES = [
     test: /otp_expired|token has expired|invalid or has expired/i,
     message: 'That link has expired or has already been used. Please request a new one.',
   },
+  // Offline, a dropped connection, or the request blocked on the way out.
+  // supabase-js surfaces these as the browser's raw fetch error, which reads
+  // like a bug ("Failed to fetch") rather than "check your connection".
+  {
+    test: /failed to fetch|networkerror|network request failed|load failed|fetch failed/i,
+    message: 'We couldn’t reach the server. Check your internet connection and try again — nothing you’ve entered has been lost.',
+  },
   {
     test: /signups not allowed|signup_disabled/i,
     message: 'New sign-ups are closed at the moment. Please get in touch if you think that’s wrong.',

@@ -9,10 +9,10 @@ import {
   Empty, LoadError, Loading, PageHeader, Pager, RowError, Segmented, Status,
   formatDate, useAdmin, useAdminQuery, useBusy, useRowErrors,
 } from './AdminUI.jsx'
-import { PAGE_SIZE, STATUS_LABEL, fetchMembersPage, memberStatus } from './adminApi.js'
+import { PAGE_SIZE, STATUS_LABEL, applicationGaps, fetchMembersPage, memberStatus, memberYears } from './adminApi.js'
 import { DeclineDialog, ResendButton, memberName, useMemberActions } from './memberActions.jsx'
 
-const FILTERS = ['all', 'pending', 'unconfirmed', 'declined', 'admins']
+const FILTERS = ['all', 'pending', 'unconfirmed', 'incomplete', 'declined', 'admins']
 const SORTS = ['joined', 'name', 'class']
 
 export default function Members() {
@@ -82,6 +82,9 @@ export default function Members() {
             { id: 'all', label: 'All' },
             { id: 'pending', label: 'Pending', count: counts?.pending },
             { id: 'unconfirmed', label: 'Unconfirmed', count: counts?.unconfirmed },
+            // Signed in (usually with Google) but never finished the form —
+            // nothing to approve yet, but worth seeing.
+            { id: 'incomplete', label: 'Unfinished', count: counts?.incomplete },
             { id: 'declined', label: 'Declined' },
             { id: 'admins', label: 'Admins' },
           ]}
@@ -92,7 +95,7 @@ export default function Members() {
             type="search"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Search name, email, city, class"
+            placeholder="Search name, email, city, year"
           />
         </label>
       </div>
@@ -110,10 +113,8 @@ export default function Members() {
               <thead>
                 <tr>
                   <th scope="col" aria-sort={ariaSort('name')}><SortButton col="name">Name</SortButton></th>
-                  <th scope="col" className="adm-col-opt">Email</th>
-                  <th scope="col" className="adm-col-opt" aria-sort={ariaSort('class')}><SortButton col="class">Class</SortButton></th>
+                  <th scope="col" className="adm-col-opt" aria-sort={ariaSort('class')}><SortButton col="class">Eendrag years</SortButton></th>
                   <th scope="col">Status</th>
-                  <th scope="col" className="adm-col-opt">Role</th>
                   <th scope="col" className="adm-col-opt" aria-sort={ariaSort('joined')}><SortButton col="joined">Joined</SortButton></th>
                   <th scope="col" className="adm-col-actions adm-col-opt"><span className="sr-only">Actions</span></th>
                 </tr>
@@ -136,6 +137,8 @@ export default function Members() {
 
 function MemberRow({ member: m, isMe, listPath, onOpen }) {
   const status = memberStatus(m)
+  // 'signup form not finished' is already what the status says.
+  const gaps = applicationGaps(m).filter((g) => g !== 'signup form not finished')
   const actions = useMemberActions()
   const { run, isBusy } = useBusy()
   const [errors, setError] = useRowErrors()
@@ -159,8 +162,6 @@ function MemberRow({ member: m, isMe, listPath, onOpen }) {
     onOpen()
   }
 
-  const role = m.is_admin ? 'Admin' : 'Member'
-
   return (
     <tr className="adm-row-link" onClick={onRowClick}>
       <td>
@@ -171,15 +172,16 @@ function MemberRow({ member: m, isMe, listPath, onOpen }) {
               {memberName(m)}
             </Link>
             {isMe && <span className="adm-you">You</span>}
-            <span className="adm-sub adm-only-sm">{m.email}{m.is_admin ? ' · Admin' : ''}</span>
+            <span className="adm-sub adm-members-email" title={m.email}>{m.email}{m.is_admin ? ' · Admin' : ''}</span>
+            {gaps.length > 0 && status !== 'approved' && (
+              <span className="adm-sub adm-warn-text">Missing: {gaps.join(', ')}</span>
+            )}
             <RowError message={errors[m.id]} />
           </div>
         </div>
       </td>
-      <td className="adm-col-opt adm-ellipsis" title={m.email}>{m.email}</td>
-      <td className="adm-col-opt">{m.grad_year || <span className="adm-muted">—</span>}</td>
+      <td className="adm-col-opt adm-nowrap">{memberYears(m) || <span className="adm-muted">—</span>}</td>
       <td><Status value={status}>{STATUS_LABEL[status]}</Status></td>
-      <td className="adm-col-opt">{role}</td>
       <td className="adm-col-opt adm-nowrap">{formatDate(m.created_at)}</td>
       <td className="adm-col-actions adm-col-opt">
         {status === 'pending' && (

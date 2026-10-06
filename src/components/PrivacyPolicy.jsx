@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import useModal from '../useModal.js'
+import { CONTACT_EMAIL, contactHref } from '../contact.js'
 
 // POPIA-facing privacy notice. Written to satisfy section 18 of the
 // Protection of Personal Information Act (South Africa) — what's collected,
@@ -13,7 +14,7 @@ import useModal from '../useModal.js'
 //     session and therefore before the router's protected routes exist.
 // Update the "Last updated" date below whenever the content changes —
 // POPIA notices are meant to reflect current practice, not history.
-const LAST_UPDATED = '3 August 2026'
+const LAST_UPDATED = '6 October 2026'
 
 export function PrivacyPolicyContent() {
   return (
@@ -30,25 +31,33 @@ export function PrivacyPolicyContent() {
 
       <h3>What we collect</h3>
       <p>
-        When you join, we collect your name, email address, the years you
-        lived in Eendrag, and a residential address, which the committee uses
-        to verify you actually lived in the house before approving your
-        account. From there, anything else on your profile is what you
-        choose to add: phone number, city/country and the coordinates used
-        to place you on the alumni map, occupation, employer, industry,
-        LinkedIn profile, a bio, a CV upload, and business or mentoring
-        details if you fill those sections in. We also keep a record of
-        posts, event RSVPs, job listings, direct messages and business
-        listings you create, and a last-seen timestamp used for the
-        "recently online" indicator.
+        When you apply to join, we collect your name (including a preferred
+        first name if you give one), your email address, the years you lived
+        in Eendrag, the city and country you live in, whether you'd like news
+        and event emails, and when you gave consent. The committee verifies
+        your application by checking your name and Eendrag years against
+        residence records. If you pick your city from the suggestions, we also
+        store its map coordinates so you appear on the alumni map.
+      </p>
+      <p>
+        Everything else on your profile is what you choose to add: a profile
+        photo, phone number, a postal address (used only to post you reunion
+        invitations, and never shown on your profile), occupation, employer,
+        industry, degree, LinkedIn profile, a bio, a CV upload, and business
+        or mentoring details if you fill those sections in. We also keep a
+        record of posts, comments, event RSVPs, job listings and business
+        listings you create, and a last-seen timestamp used for the "recently
+        online" indicator. Emails you send another member through the site are
+        delivered to their inbox and not stored by us.
       </p>
 
       <h3>Why we process it</h3>
       <p>
         To verify you're a genuine Eendrag alumnus before granting access, to
-        run the directory, map, messaging, jobs board, events calendar and
-        business directory features you use, and — only if you opt in during
-        signup — to email you occasional news and event updates. We never
+        send you emails about your application and account, to run the
+        directory, map, member-to-member email, jobs board, events calendar
+        and business directory features you use, and — only if you opt in —
+        to email you occasional news and event updates. We never
         sell or rent your information, and we don't use it for anything
         beyond running this community.
       </p>
@@ -57,13 +66,14 @@ export function PrivacyPolicyContent() {
       <p>
         Other approved members see whatever your privacy settings (Settings
         → Privacy) allow — you control who can see your phone number, email,
-        location and who can message you. Site admins can see full profiles
+        location and who can email you through the site. Site admins can see full profiles
         in order to run the platform and moderate content. We use a small
         number of external processors to operate the site: Supabase (hosted
         in Frankfurt, Germany) for the database, authentication and file
         storage; Mapbox for map tiles and turning addresses into map
-        coordinates; Cloudflare Turnstile for bot protection at signup; and
-        Google, only if you choose to sign in with a Google account. None of
+        coordinates; Resend to deliver the site's emails; Cloudflare Turnstile
+        for bot protection at sign-in and signup; and Google, only if you
+        choose to sign in with a Google account. None of
         these processors use your data for anything other than providing
         that service to the Hub.
       </p>
@@ -77,7 +87,7 @@ export function PrivacyPolicyContent() {
       <h3>How long we keep it</h3>
       <p>
         For as long as your account exists. If you delete your account (or
-        ask an admin to), your profile, posts, messages, uploaded files and
+        ask an admin to), your profile, posts, comments, uploaded files and
         other account data are permanently removed — this can't be undone,
         and there's no separate backup copy kept for marketing or analytics
         purposes.
@@ -106,7 +116,7 @@ export function PrivacyPolicyContent() {
       <h3>Contact / complaints</h3>
       <p>
         Questions, access requests or complaints about how your information
-        is handled: <a href="mailto:kyletrompeter0@gmail.com">kyletrompeter0@gmail.com</a>.
+        is handled: <a href={contactHref({ subject: 'Eendrag Alumni — privacy question' })}>{CONTACT_EMAIL}</a>.
         If you're not satisfied with our response, you can also complain to
         South Africa's Information Regulator (<a href="https://inforegulator.org.za" target="_blank" rel="noopener noreferrer">inforegulator.org.za</a>).
       </p>
@@ -139,6 +149,11 @@ export function PrivacyPolicyModal({ onClose }) {
         </div>
         <div className="modal-body">
           <PrivacyPolicyContent />
+        </div>
+        {/* A full-width close at the bottom: on a phone the × in the header
+            has scrolled out of reach by the time you've read to the end. */}
+        <div className="modal-footer">
+          <button type="button" className="btn primary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>,

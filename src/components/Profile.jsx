@@ -115,6 +115,20 @@ const REQUIRED_FIELD_CHECKS = {
   photo: (p) => !p.avatar_url,
 }
 
+// First login after approval (App.jsx passes `welcome`). Highlighting every
+// blank field on the page at that moment — a dozen or more, CV and mentoring
+// included — read as a second signup form. This is the short list that
+// actually makes someone findable in the directory; the rest can wait for the
+// Home "Complete your profile" prompt.
+const WELCOME_FIELDS = [
+  { key: 'photo', label: 'A profile photo' },
+  { key: 'occupation', label: 'What you do' },
+  { key: 'company', label: 'Where you work' },
+  { key: 'industry', label: 'Your industry' },
+  { key: 'degree', label: 'Your degree' },
+  { key: 'city', label: 'Your city' },
+]
+
 export default function Profile({ session, profile, onSaved, onDirtyChange, saveRef, onNavigateHome }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -155,6 +169,8 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   // the effect below that populates this from location.state.highlightMissing.
   // Empty otherwise, so this has no effect on a normal profile-page visit.
   const [missingFields, setMissingFields] = useState(() => new Set())
+  // Set on the first visit after approval — see WELCOME_FIELDS.
+  const [welcome, setWelcome] = useState(false)
   const fileRef = useRef(null)
   const cvRef = useRef(null)
   const aboutSectionRef = useRef(null)
@@ -211,11 +227,15 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
   // re-trigger it.
   useEffect(() => {
     if (!location.state?.highlightMissing || !profile) return
-    const missing = new Set([
-      ...Object.keys(REQUIRED_FIELD_CHECKS).filter((key) => REQUIRED_FIELD_CHECKS[key](profile)),
-      ...Object.keys(SKIPPABLE_FIELD_CHECKS).filter((key) => SKIPPABLE_FIELD_CHECKS[key](profile)),
-    ])
-    if (!profile.cv_url) missing.add('cv')
+    const isWelcome = !!location.state?.welcome
+    const missing = isWelcome
+      ? new Set(WELCOME_FIELDS.map((f) => f.key).filter((key) => REQUIRED_FIELD_CHECKS[key](profile)))
+      : new Set([
+        ...Object.keys(REQUIRED_FIELD_CHECKS).filter((key) => REQUIRED_FIELD_CHECKS[key](profile)),
+        ...Object.keys(SKIPPABLE_FIELD_CHECKS).filter((key) => SKIPPABLE_FIELD_CHECKS[key](profile)),
+      ])
+    if (!isWelcome && !profile.cv_url) missing.add('cv')
+    setWelcome(isWelcome)
     setMissingFields(missing)
     const mentoringFields = ['availability', 'expertise', 'services_offered', 'geographic_focus', 'business_website']
     if (mentoringFields.some((f) => missing.has(f))) setShowMentoring(true)
@@ -779,7 +799,28 @@ export default function Profile({ session, profile, onSaved, onDirtyChange, save
           closes before the photo/cropper/delete modals below, which are
           their own overlays and shouldn't be nested inside it. */}
       <form onSubmit={(e) => { e.preventDefault(); if (!busy) save() }} noValidate>
-      {missingFields.size > 0 && (
+      {welcome && (
+        <div className="profile-welcome" role="status">
+          <div>
+            <h3 className="profile-welcome-title">You&rsquo;re in &mdash; welcome to Eendrag Alumni.</h3>
+            {missingFields.size > 0 ? (
+              <>
+                <p>Let&rsquo;s finish setting up your profile. These help other Eendragters find you:</p>
+                <ul className="profile-welcome-list">
+                  {WELCOME_FIELDS.filter((f) => missingFields.has(f.key)).map((f) => <li key={f.key}>{f.label}</li>)}
+                </ul>
+                <p className="profile-welcome-note">They&rsquo;re highlighted below. Fill in what you can and hit Save &mdash; everything else is optional.</p>
+              </>
+            ) : (
+              <p>Your profile already has the essentials. Add anything else you&rsquo;d like other Eendragters to see.</p>
+            )}
+          </div>
+          <button type="button" className="link-btn small" onClick={() => { setWelcome(false); setMissingFields(new Set()) }}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {!welcome && missingFields.size > 0 && (
         <div className="profile-missing-banner">
           <span>
             Let&rsquo;s finish your profile — everything still blank is highlighted

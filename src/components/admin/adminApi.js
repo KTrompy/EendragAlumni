@@ -47,6 +47,30 @@ export function memberStatus(m) {
   return 'pending'
 }
 
+// "2015–2018", or just the final year for accounts from before start_year
+// was asked for (and before schema-update-65 returns it).
+export function memberYears(m) {
+  if (!m) return ''
+  if (m.start_year && m.grad_year) return `${m.start_year}–${m.grad_year}`
+  return m.grad_year ? String(m.grad_year) : ''
+}
+
+// What's still missing from an application, in the words an admin would use.
+// Email and Google signups are meant to produce the same record; this is how
+// an admin spots one that didn't (e.g. a Google joiner from before city and
+// country were asked for).
+export function applicationGaps(m) {
+  if (!m) return []
+  const gaps = []
+  if (!m.consented_at) gaps.push('signup form not finished')
+  if (!(m.first_name || '').trim() || !(m.last_name || '').trim()) gaps.push('name')
+  if ('start_year' in m && !m.start_year) gaps.push('first year')
+  if (!m.grad_year) gaps.push('final year')
+  if (!(m.city || '').trim()) gaps.push('city')
+  if (!(m.country || '').trim()) gaps.push('country')
+  return gaps
+}
+
 export const STATUS_LABEL = {
   approved: 'Approved',
   pending: 'Pending',

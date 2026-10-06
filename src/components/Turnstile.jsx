@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 
 // Standalone Cloudflare Turnstile widget.
 //
-// Auth.jsx has its own inline copy of this logic, tangled up with the signup
-// wizard's step state — deliberately left alone, because it works and it's the
-// highest-traffic path in the app. This component exists for everywhere else
-// that needs a captcha token, starting with Settings.jsx's password change.
+// Used by every screen that needs a captcha token: sign-in, forgot password,
+// the last step of the signup wizard, confirmation-email resends (Auth.jsx),
+// Settings.jsx's password change and the admin "resend link" button. Auth.jsx
+// used to carry its own inline copy of all this; it now uses this one.
 //
 // Why Settings needs one at all: savePassword() re-authenticates by calling
 // signInWithPassword() before changing anything. If CAPTCHA protection is
@@ -60,37 +60,48 @@ export default function Turnstile({ onToken, onErrorChange, resetSignal = 0, cla
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: TURNSTILE_SITE_KEY,
         callback: (token) => { onTokenRef.current?.(token); report(false) },
+        // Tokens expire after a few minutes. Turnstile re-challenges on its
+        // own (refresh-expired defaults to auto); dropping the stale token
+        // here means the form waits for the fresh one instead of sending a
+        // dead token and failing with a confusing "security check" error.
         'expired-callback': () => onTokenRef.current?.(null),
         'error-callback': () => { onTokenRef.current?.(null); report(true) },
       })
       report(false)
     }
 
+    let interval = null
     if (window.turnstile) {
       render()
     } else {
       // api.js is loaded async/defer in index.html — poll briefly. If it never
       // arrives (ad/privacy blocker, or challenges.cloudflare.com unreachable)
       // say so rather than leaving a blank box that silently blocks the form.
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         attempts += 1
         if (window.turnstile) {
           clearInterval(interval)
+          interval = null
           render()
         } else if (attempts >= MAX_ATTEMPTS) {
           clearInterval(interval)
+          interval = null
           report(true)
         }
       }, 150)
-      return () => { cancelled = true; clearInterval(interval) }
     }
 
+    // One teardown for both paths. The polling path used to return its own
+    // cleanup that only cleared the interval, so a widget rendered after the
+    // script finished loading was never removed on unmount.
     return () => {
       cancelled = true
+      if (interval) clearInterval(interval)
       if (widgetIdRef.current && window.turnstile) {
         try { window.turnstile.remove(widgetIdRef.current) } catch { /* already gone */ }
       }
       widgetIdRef.current = null
+      onTokenRef.current?.(null)
     }
   }, [])
 

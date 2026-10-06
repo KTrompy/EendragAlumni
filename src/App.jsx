@@ -5,6 +5,8 @@ import Auth from './components/Auth.jsx'
 import ResetPassword from './components/ResetPassword.jsx'
 import FinishSignup from './components/FinishSignup.jsx'
 import PendingVerification from './components/PendingVerification.jsx'
+import { ApplicationProgress } from './components/SignupFields.jsx'
+import { contactHref } from './contact.js'
 import Home from './components/Home.jsx'
 import People from './components/People.jsx'
 import { Avatar } from './components/Directory.jsx'
@@ -478,7 +480,13 @@ export default function App() {
     if (!profile.onboarding_complete) {
       supabase.from('profiles').update({ onboarding_complete: true }).eq('id', profile.id).then(() => {})
       setProfile((p) => (p ? { ...p, onboarding_complete: true } : p))
-      navigate('/profile', { state: { highlightMissing: true, focusFirst: true } })
+      // `welcome` makes Profile.jsx open with the "You're in" banner and
+      // highlight only the handful of fields that make the directory useful,
+      // rather than every blank field on the page.
+      // Deferred a tick so it lands after the "/" → "/home" <Navigate>
+      // redirect (which can fire in the same commit) instead of being undone
+      // by it.
+      setTimeout(() => navigate('/profile', { state: { highlightMissing: true, focusFirst: true, welcome: true } }), 0)
     }
     setCheckedFirstRun(true)
   }, [profile, checkedFirstRun]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -557,7 +565,7 @@ export default function App() {
   // would be walked through the whole FinishSignup form and only told the
   // answer afterwards.
   if (profile.declined_at) {
-    return <AccountDeclined reason={profile.declined_reason} onSignOut={() => supabase.auth.signOut()} />
+    return <AccountDeclined session={session} profile={profile} onSignOut={() => supabase.auth.signOut()} />
   }
 
   // Signed in but signup details/consent never captured — social-login
@@ -793,7 +801,7 @@ export default function App() {
               <span>Eendrag Alumni Hub — unofficial community site run by alumni, for alumni.</span>
               <span className="footer-credit">
                 Initiated and built by Kyle Trompeter —{' '}
-                <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">get in touch</a>
+                <a className="footer-link" href={contactHref()}>get in touch</a>
                 {' · '}
                 <button type="button" className="footer-link footer-link-btn" onClick={() => goTo('/donate')}>Support the house</button>
                 {' · '}
@@ -929,7 +937,7 @@ function ProfileLoadError({ onRetry, onSignOut }) {
           Your account is fine — we just couldn't reach it this time. This is
           usually a brief connection problem, so trying again normally sorts
           it. If it keeps happening,{' '}
-          <a className="footer-link" href="mailto:kyletrompeter0@gmail.com">let us know</a>.
+          <a className="footer-link" href={contactHref({ subject: 'Eendrag Alumni — my profile won’t load' })}>let us know</a>.
         </p>
         <button type="button" className="btn primary wide" onClick={onRetry}>Try again</button>
         <button type="button" className="link-btn" onClick={onSignOut}>Sign out</button>
@@ -956,7 +964,7 @@ function AccountRemoved({ onSignOut }) {
         <p className="auth-verify-note">
           It looks like it was removed by an administrator. If you think that&rsquo;s
           a mistake, get in touch and we&rsquo;ll sort it out &mdash;{' '}
-          <a className="footer-link" href="mailto:kyletrompeter0@gmail.com?subject=Eendrag%20Alumni%20%E2%80%94%20my%20account%20was%20removed">
+          <a className="footer-link" href={contactHref({ subject: 'Eendrag Alumni — my account was removed' })}>
             email an admin
           </a>.
         </p>
@@ -969,37 +977,49 @@ function AccountRemoved({ onSignOut }) {
 // Shown when an admin has checked someone against residence records and
 // couldn't place them (profiles.declined_at, schema-update-57).
 //
-// Deliberately not the PendingVerification screen with different words. That
-// one says an answer is coming; this one is the answer. It's also deliberately
-// not a dead end — the overwhelming majority of these will be older years
-// where the records are patchy or a surname has changed, so the whole point of
-// the screen is the route back to a human.
-function AccountDeclined({ reason, onSignOut }) {
+// This one is the answer, not "an answer is coming" — but it mustn't be a
+// dead end either. Most of these will be older years where records are patchy
+// or a surname has changed, so the whole point of the screen is the route
+// back to a person, with what they'll need to send already spelled out. The
+// account is left intact, so an admin can undo the decline.
+function AccountDeclined({ session, profile, onSignOut }) {
+  const email = session?.user?.email || ''
+  const years = profile?.start_year && profile?.grad_year ? `${profile.start_year}–${profile.grad_year}` : ''
+  const reason = (profile?.declined_reason || '').trim()
+  const href = contactHref({
+    subject: 'Eendrag Alumni — please recheck my application',
+    body:
+      `Hi,\n\nMy Eendrag Alumni application (${email}) wasn’t verified and I believe that’s incorrect.\n\n` +
+      `Years I lived in Eendrag: ${years || '…'}\n` +
+      'Someone who can confirm I lived there (name and contact details): …\n\n',
+  })
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <img src="/eendrag-logo.png" alt="Eendrag logo" className="auth-logo" />
-        <h1 className="auth-title">We couldn&rsquo;t verify your account</h1>
-        <p className="auth-verify-note">
-          Every new account is checked against Eendrag residence records before
-          anyone is let in, and we weren&rsquo;t able to match yours.
+        <img src="/eendrag-logo.png" alt="Eendrag logo" className="auth-logo small" />
+        <h1 className="su-title">Your application wasn&rsquo;t verified</h1>
+        <ApplicationProgress
+          steps={[
+            { label: 'Account created', state: 'done' },
+            { label: 'Email confirmed', state: 'done' },
+            { label: 'Eendrag verification', state: 'stopped', detail: 'The committee couldn’t confirm your Eendrag membership from the information provided.' },
+          ]}
+        />
+        {reason && (
+          <div className="su-callout">
+            <p><strong>Note from the committee:</strong> {reason}</p>
+          </div>
+        )}
+        <p className="su-lead">
+          That&rsquo;s often our records rather than you &mdash; older years in particular are
+          patchy, and names change. If you believe this is incorrect, get in touch with the
+          committee and include your Eendrag years and someone who can confirm your residence.
         </p>
-        {reason ? <p className="auth-verify-note"><strong>What we were told:</strong> {reason}</p> : null}
-        <p className="auth-verify-note">
-          That&rsquo;s often our records rather than you &mdash; the older years in
-          particular are patchy, and names change. If you did live in Eendrag,
-          get in touch with the years you were there and anyone who&rsquo;d vouch
-          for you, and we&rsquo;ll take another look.
-        </p>
-        <p className="auth-verify-contact">
-          <a
-            className="footer-link"
-            href={`mailto:kyletrompeter0@gmail.com?subject=${encodeURIComponent('Eendrag Alumni — please recheck my account')}`}
-          >
-            Email an admin
-          </a>
-        </p>
-        <button type="button" className="btn primary wide" onClick={onSignOut}>Sign out</button>
+        <div className="su-actions">
+          <a className="btn primary" href={href}>Get in touch with the committee</a>
+          <button type="button" className="btn ghost" onClick={onSignOut}>Sign out</button>
+        </div>
+        <p className="su-small su-center su-gap">Your account stays as it is &mdash; there&rsquo;s no need to sign up again.</p>
       </div>
     </div>
   )

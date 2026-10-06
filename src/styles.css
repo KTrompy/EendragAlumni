@@ -746,6 +746,33 @@ button.delete-danger svg { flex-shrink: 0; }
   font-size: 13.5px;
   color: var(--ink);
 }
+/* First visit after approval (Profile.jsx, WELCOME_FIELDS). */
+.profile-welcome {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--orange);
+  background: var(--card);
+  font-size: 14px;
+  color: var(--ink);
+}
+.profile-welcome p { margin: 0 0 8px; line-height: 1.5; }
+.profile-welcome-title { font-family: var(--display); font-size: 19px; color: var(--maroon); margin: 0 0 6px; }
+.profile-welcome-list { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0 0 10px; }
+.profile-welcome-list li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--orange-soft);
+  color: var(--orange-dark);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.profile-welcome .profile-welcome-note { margin: 0; font-size: 13px; color: var(--ink-soft); }
 
 /* ---------- Floating dropdown portal ----------
    Every type-ahead / picker panel on the site (city, country, industry,
@@ -990,7 +1017,6 @@ button.delete-danger svg { flex-shrink: 0; }
   max-width: 420px;
   box-shadow: var(--shadow-lift);
 }
-.auth-mark { text-align: center; margin-bottom: 8px; }
 .auth-logo {
   display: block;
   height: 72px;
@@ -1089,42 +1115,6 @@ button.delete-danger svg { flex-shrink: 0; }
 .auth-field-row { display: flex; gap: 10px; }
 .auth-field-row .field { flex: 1; }
 
-.auth-steps {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  margin: 14px 0 18px;
-}
-.auth-step-dot {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  background: rgba(0, 0, 0, 0.07);
-  color: var(--ink-soft);
-}
-.auth-step-dot.on { background: var(--orange); color: #fff; }
-.auth-step-dot.done { background: var(--maroon); color: #fff; }
-
-.auth-step-heading {
-  font-family: var(--display);
-  text-transform: uppercase;
-  font-size: 18px;
-  color: var(--maroon);
-  margin: 0 0 6px;
-  text-align: center;
-}
-.auth-step-sub {
-  font-size: 13.5px;
-  color: var(--ink-soft);
-  text-align: center;
-  margin: 0 0 14px;
-}
-
 .auth-wizard-actions {
   display: flex;
   justify-content: space-between;
@@ -1132,6 +1122,9 @@ button.delete-danger svg { flex-shrink: 0; }
   margin-top: 14px;
 }
 .auth-wizard-actions .btn { flex: 1; }
+/* Back is the secondary action — narrower, so "Creating your account…" fits
+   on one line in the primary button. */
+.auth-wizard-actions .btn.ghost { flex: 0 0 32%; }
 
 /* ---------- Auth: password strength meter ---------- */
 .pw-strength { display: flex; align-items: center; gap: 10px; margin: -6px 0 12px; }
@@ -1197,31 +1190,6 @@ button.delete-danger svg { flex-shrink: 0; }
 .pw-input-wrap input::-ms-clear { display: none; }
 .pw-input-wrap input::-webkit-credentials-auto-fill-button { margin-right: 28px; }
 
-/* ---------- Auth: consent step ---------- */
-.auth-consent-group {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 10px;
-  padding: 12px 14px 14px;
-  margin: 0 0 14px;
-}
-.auth-consent-group legend {
-  font-size: 13.5px;
-  font-weight: 600;
-  padding: 0 6px;
-}
-.auth-consent-row { display: flex; gap: 10px; }
-.auth-consent-row .onboarding-choice { flex: 1; padding: 10px 0; }
-.auth-consent-check {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin-bottom: 14px;
-  cursor: pointer;
-}
-.auth-consent-check input { margin-top: 3px; }
-
 /* ---------- Auth: verification pending / signup done ---------- */
 .auth-verify-note {
   font-size: 14px;
@@ -1230,31 +1198,302 @@ button.delete-danger svg { flex-shrink: 0; }
   text-align: center;
   margin: 14px 0 18px;
 }
-/* Result of "Check my status" when they're still pending — informational
-   rather than an error, so it gets the soft ink treatment instead of the
-   red .form-error. See PendingVerification.jsx. */
-.auth-verify-status {
-  font-size: 13.5px;
+
+/* ==========================================================================
+   Signup journey (Auth.jsx wizard, FinishSignup.jsx, PendingVerification.jsx,
+   the declined screen) — shared pieces live in SignupFields.jsx.
+   Same card, palette and Georgia headings as the rest of the auth pages;
+   the additions are about hierarchy and feedback, not decoration.
+   ========================================================================== */
+.auth-logo.small { height: 48px; width: 48px; margin-bottom: 8px; }
+.auth-card-wizard .auth-title { font-size: 20px; }
+.auth-card-wizard .auth-title + .su-wizard { margin-top: 14px; }
+
+/* Field label as a real <label for>, styled exactly like the old span. */
+.field > .su-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.su-optional {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-soft);
+}
+.su-optional::before { content: '— '; }
+.su-msg { font-size: 12.5px; line-height: 1.45; margin: 5px 0 0; }
+.su-hint { color: var(--ink-soft); }
+.su-error { color: var(--danger); font-weight: 600; }
+.su-valid { color: var(--ok); font-weight: 600; overflow-wrap: anywhere; }
+.su-field.is-invalid input,
+.su-field.is-invalid select { border-color: var(--danger); }
+.su-field.is-invalid input:focus,
+.su-field.is-invalid select:focus { box-shadow: 0 0 0 4px rgba(163, 51, 39, 0.14); border-color: var(--danger); }
+
+/* Step indicator: "Step 2 of 3 · Eendrag years" over a three-part bar. */
+.su-steps { margin: 4px 0 14px; }
+.su-steps-count {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.su-steps-bar { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.su-steps-bar li { flex: 1; height: 4px; border-radius: 2px; background: var(--line); }
+.su-steps-bar li.is-done { background: var(--maroon); }
+.su-steps-bar li.is-current { background: var(--orange); }
+
+.su-step-title,
+.su-title {
+  font-family: var(--display);
+  font-weight: 700;
+  color: var(--maroon);
+  text-align: center;
+  margin: 0 0 6px;
+}
+.su-step-title { font-size: 21px; }
+.su-step-title:focus { outline: none; }
+.su-title { font-size: 25px; }
+.su-step-sub, .su-lead {
+  font-size: 14px;
   line-height: 1.5;
   color: var(--ink-soft);
   text-align: center;
-  background: var(--orange-soft);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  margin: 0 0 16px;
+}
+.su-lead { color: var(--ink); }
+.su-subheading {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--maroon);
+  margin: 10px 0 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.su-small { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); margin: 0 0 12px; }
+.su-center { text-align: center; }
+.su-muted { color: var(--ink-soft); }
+.su-required-note { margin-bottom: 14px; }
+.su-gap { margin-top: 10px; }
+
+.su-inline-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--maroon);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.su-inline-link:hover { color: var(--orange-dark); }
+.su-inline-link:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: 2px; }
+
+.su-restored {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
   padding: 10px 12px;
   margin: 0 0 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(44, 110, 73, 0.08);
+  font-size: 13px;
+  color: var(--ink);
 }
-/* "Spotted a mistake / been waiting a while?" escape hatch under the
-   pending-verification actions. Deliberately quieter than the buttons above
-   it — it's a fallback, not the expected next step. */
-.auth-verify-contact {
-  font-size: 12.5px;
+.su-restored p { margin: 0; flex: 1 1 200px; }
+
+/* Password guidance under the password field. */
+.pw-guide { margin: -6px 0 14px; }
+.pw-rule { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 12.5px; color: var(--ink-soft); }
+.pw-rule-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  font-size: 10px; font-weight: 700; line-height: 1;
+}
+.pw-rule.met { color: var(--ok); font-weight: 600; }
+.pw-rule.met .pw-rule-mark { background: var(--ok); border-color: var(--ok); color: #fff; }
+.pw-guide .pw-strength { margin: 0 0 4px; }
+.pw-tip { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
+
+/* News preference — optional, so it reads as a plain choice. */
+.su-choice-group { border: 0; padding: 0; margin: 0 0 18px; min-width: 0; }
+.su-choice-group legend { padding: 0; margin: 0 0 8px; font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.su-choice-row { display: flex; gap: 10px; }
+.su-choice {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.su-choice:hover { border-color: var(--maroon-soft); }
+.su-choice input { width: 18px; height: 18px; margin: 0; accent-color: var(--maroon); flex-shrink: 0; }
+.su-choice.on { border-color: var(--maroon); background: rgba(90, 26, 43, 0.05); font-weight: 600; }
+.su-choice:focus-within { outline: 2px solid var(--orange); outline-offset: 2px; }
+.su-choice-group.is-invalid .su-choice { border-color: var(--danger); }
+
+/* Required consent — visibly separate from the optional preference above. */
+.su-consent {
+  position: relative;
+  padding: 16px 14px 12px;
+  margin: 0 0 16px;
+  border: 1.5px solid var(--maroon);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+}
+.su-consent.is-invalid { border-color: var(--danger); }
+.su-required-tag {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  padding: 0 6px;
+  background: var(--paper);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--maroon);
+}
+.su-consent-row { display: flex; gap: 10px; align-items: flex-start; }
+.su-consent-row input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--maroon); flex-shrink: 0; }
+.su-consent-row label { font-size: 14px; line-height: 1.45; color: var(--ink); cursor: pointer; }
+.su-consent .su-msg { margin-left: 28px; }
+.su-policy-link { display: block; margin: 6px 0 0 28px; font-size: 12.5px; }
+
+.su-captcha { margin: 4px 0 0; }
+.su-captcha .su-small { margin-bottom: 4px; }
+.su-summary { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--danger); text-align: center; }
+
+/* Choice screen: Google or email. */
+.su-journey { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 8px; }
+.su-journey li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink); }
+.su-journey li span {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  background: var(--maroon); color: #fff; font-size: 12px; font-weight: 700;
+}
+.su-journey-after { margin: 0 0 18px 32px; }
+.su-choice-screen .su-small.su-center { margin: 12px 0 0; }
+
+/* "May already have an account" panel. */
+.su-panel { text-align: center; }
+.su-email-box {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.su-email { overflow-wrap: anywhere; }
+
+/* Application progress (check-your-email, under review, Google finish). */
+.su-progress { list-style: none; margin: 4px 0 18px; padding: 0; }
+.su-progress-step { position: relative; display: flex; gap: 12px; padding: 0 0 14px; }
+.su-progress-step:last-child { padding-bottom: 0; }
+.su-progress-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 24px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--line);
+}
+.su-progress-step.is-done:not(:last-child)::before { background: var(--maroon); }
+.su-progress-mark {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  background: var(--paper);
+  font-size: 12px; font-weight: 700; color: #fff;
+}
+.su-progress-step.is-done .su-progress-mark { background: var(--maroon); border-color: var(--maroon); }
+.su-progress-step.is-current .su-progress-mark { border-color: var(--orange); box-shadow: inset 0 0 0 4px var(--paper); background: var(--orange); }
+.su-progress-step.is-stopped .su-progress-mark { background: var(--danger); border-color: var(--danger); }
+.su-progress-text { display: flex; flex-direction: column; min-width: 0; padding-top: 1px; }
+.su-progress-label { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.su-progress-step.is-todo .su-progress-label { color: var(--ink-soft); font-weight: 500; }
+.su-progress-step.is-current .su-progress-label { color: var(--maroon); }
+.su-progress-detail { font-size: 13px; line-height: 1.45; color: var(--ink-soft); margin-top: 2px; overflow-wrap: anywhere; }
+
+.su-callout {
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-size: 13.5px;
   line-height: 1.5;
-  color: var(--ink-soft);
-  text-align: center;
-  margin: 14px 0 4px;
 }
-.pending-verify-icon { font-size: 34px; text-align: center; margin-top: 10px; }
+.su-callout p { margin: 0 0 6px; }
+.su-callout p:last-child { margin-bottom: 0; }
+.su-status-line { margin: 0 0 12px; font-size: 13.5px; text-align: center; color: var(--ink-soft); }
+.su-status-line.is-pending { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--orange-soft); color: var(--ink); }
+.su-status-line .su-checked-at { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-soft); }
+.su-details {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.su-details dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0 0; }
+.su-details dt { color: var(--ink-soft); }
+.su-details dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.su-details-title { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin: 0; }
+.su-actions { display: grid; gap: 10px; }
+.su-actions .btn { width: 100%; text-align: center; text-decoration: none; display: block; }
+.su-resend { margin: 4px 0 12px; }
+.su-alt-action { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.su-done .su-small { margin-top: 14px; text-align: center; }
+.su-signed-in { text-align: center; font-size: 13px; color: var(--ink-soft); margin: -6px 0 16px; overflow-wrap: anywhere; }
+
+/* Contrast on the auth cards. White on the brand orange (#E8611C) is about
+   3.5:1, under the 4.5:1 WCAG AA asks for body-size text, and orange text on
+   the paper card is the same. These screens are where every member starts,
+   so they use the darker brand orange, which passes. */
+.auth-card .btn.primary { background: var(--orange-dark); }
+.auth-card .btn.primary:hover:not(:disabled) { background: #A93B10; }
+.auth-card .link-btn,
+.auth-card .auth-sub { color: var(--orange-dark); }
+
+/* Phones. The card keeps its look but loses some padding, and paired fields
+   stack once there's no longer room for a hint under each half. */
+@media (max-width: 480px) {
+  .auth-page { padding: 12px; align-items: start; }
+  .auth-card { padding: 24px 18px; }
+  .auth-field-row { flex-direction: column; gap: 0; }
+  .su-choice-row { flex-direction: column; }
+  .su-title { font-size: 22px; }
+}
 
 /* ---------- URL input with a fixed, visible https:// prefix ---------- */
 .url-input-wrap {
@@ -9899,10 +10138,25 @@ button.stretched-link {
   .adm-order { flex-direction: column; }
 }
 .adm-cell-person > div { min-width: 0; }
-.adm-row-title { overflow-wrap: anywhere; }
+/* break-word, not anywhere: `anywhere` also shrinks the cell's min-content
+   width to a single character, so with a long email and the Approve/Decline
+   buttons competing for room the Name column could collapse to a sliver
+   with one letter per line. break-word still wraps genuinely long names. */
+.adm-row-title { overflow-wrap: break-word; }
+@media (min-width: 721px) {
+  .adm-members th:first-child { min-width: 200px; }
+}
+/* Email sits under the name rather than in its own column (and "Admin" with
+   it): the content column is squeezed by two sidebars, and seven columns
+   couldn't fit without either crushing Name to one letter per line or
+   pushing Approve/Decline off-screen. */
+.adm-members .adm-members-email { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+/* width:0 + min-width:100% — the address fills the cell but adds nothing to
+   its minimum width, so a long email truncates instead of widening Name. */
+.adm-members .adm-members-email { width: 0; min-width: 100%; }
 @media (max-width: 720px) {
   .adm-members { table-layout: fixed; }
-  .adm-members th:nth-child(4) { width: 124px; }
+  .adm-members th:nth-child(3) { width: 124px; }
   .adm-members .adm-cell-person > div { overflow: hidden; }
-  .adm-members .adm-sub.adm-only-sm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+  .adm-members .adm-members-email { max-width: none; }
 }

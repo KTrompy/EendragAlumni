@@ -7,7 +7,13 @@
   manually:
 
     Supabase Dashboard → Authentication → Email Templates → Confirm signup
+    → Subject: Confirm your Eendrag Alumni email
     → replace the "Message body" with everything below → Save.
+
+  This is email 1 of the signup sequence. Email 2 ("We've received your
+  Eendrag Alumni application") is sent by the send-member-email Edge Function
+  once the address is confirmed, so this one only needs to get the link
+  clicked and say what happens after.
 
   Uses Supabase's Go-template variables ({{ .ConfirmationURL }} etc.), which
   the dashboard renders at send time — leave those as-is.
@@ -32,7 +38,7 @@
             <td style="padding:36px 32px 28px;">
               <h1 style="margin:0 0 16px; font-family:Georgia,'Times New Roman',serif; font-size:22px; color:#5A1A2B;">Confirm your email</h1>
               <p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#1A1A1A;">
-                Thanks for signing up for Eendrag Alumni. Confirm this email address to finish creating your account.
+                Thanks for applying to join Eendrag Alumni. Click the button below to confirm this is your email address.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
@@ -41,11 +47,14 @@
                   </td>
                 </tr>
               </table>
-              <p style="margin:28px 0 0; font-size:13px; line-height:1.6; color:#5C5C5C;">
-                An admin will still need to approve your account before you can sign in — you'll get a separate email once that happens.
+              <p style="margin:28px 0 0; font-size:14px; line-height:1.6; color:#1A1A1A;">
+                <strong>What happens next:</strong> once your email is confirmed, the Eendrag committee checks your details against residence records. We'll email you as soon as your account is approved.
+              </p>
+              <p style="margin:16px 0 0; font-size:13px; line-height:1.6; color:#5C5C5C;">
+                Link expired? Sign in at <a href="https://www.eendragalumni.org" style="color:#5C5C5C;">eendragalumni.org</a> with your email and password and we'll offer to send you a fresh one.
               </p>
               <p style="margin:16px 0 0; font-size:12px; line-height:1.6; color:#5C5C5C;">
-                If you didn't request this, you can ignore this email.
+                If you didn't apply to join Eendrag Alumni, you can ignore this email.
               </p>
             </td>
           </tr>

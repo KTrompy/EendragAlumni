@@ -3,14 +3,18 @@
 // The two transactional emails the signup flow was missing, in one function
 // because they share a template shell and a Resend call:
 //
-//   kind: 'received' — "we've got your details, the committee is checking
-//                      them". Sent by the member's own browser the moment
-//                      consent is captured (the last step of the Auth.jsx
-//                      wizard, or FinishSignup.jsx for Google joiners).
-//                      Google joiners previously got NO email whatsoever
-//                      between signing up and being approved — the account
-//                      was created silently and then went quiet, which is
-//                      indistinguishable from "the signup didn't work".
+//   kind: 'received' — "we've received your application, the committee is
+//                      checking it". Requested by the member's own browser
+//                      from PendingVerification.jsx — the first screen every
+//                      applicant reaches once their email is confirmed,
+//                      whether they joined by email or with Google.
+//                      It used to be requested from the signup form, which
+//                      only has a session when email confirmation is off, so
+//                      every normal email signup never received it.
+//                      Sent AT MOST ONCE per account: the function claims
+//                      profiles.application_email_sent_at (schema-update-65)
+//                      before sending, and only sends once the address is
+//                      confirmed and the application (consent) is complete.
 //
 //   kind: 'declined' — "we couldn't place you against residence records".
 //                      Admin-only. Before this, an admin could approve or
@@ -27,6 +31,9 @@
 //
 // Required secret (Project Settings → Edge Functions → Secrets):
 //   RESEND_API_KEY
+// Optional secret:
+//   CONTACT_EMAIL — the address members are told to write to. Keep it in step
+//   with VITE_CONTACT_EMAIL in Vercel (src/contact.js).
 //
 // Deploy:
 //   supabase functions deploy send-member-email
@@ -69,7 +76,10 @@ function json(req: Request, body: unknown, status = 200) {
 
 const SITE_URL = 'https://www.eendragalumni.org'
 const FROM_ADDRESS = 'Eendrag Alumni <no-reply@eendragalumni.org>'
-const ADMIN_CONTACT = 'kyletrompeter0@gmail.com'
+// Read per request so changing the secret takes effect without a redeploy.
+function contactEmail(): string {
+  return (Deno.env.get('CONTACT_EMAIL') || 'kyletrompeter0@gmail.com').trim()
+}
 
 // Same table-based shell as send-approval-email and the confirm-signup
 // template, so all four transactional emails read as one product. Inline
@@ -126,26 +136,38 @@ function escapeHtml(s: string): string {
 
 function receivedEmail(name: string) {
   const firstName = escapeHtml(name)
+  const contact = escapeHtml(contactEmail())
+  const step = (mark: string, colour: string, label: string, note: string) => `
+        <tr>
+          <td valign="top" style="width:28px; padding:0 0 12px;">
+            <span style="display:inline-block; width:20px; height:20px; border-radius:10px; background:${colour}; color:#FFFFFF; font-size:12px; line-height:20px; text-align:center; font-weight:700;">${mark}</span>
+          </td>
+          <td valign="top" style="padding:0 0 12px; font-size:14px; line-height:1.5; color:#1A1A1A;">
+            <strong>${label}</strong><br><span style="color:#5C5C5C;">${note}</span>
+          </td>
+        </tr>`
   return {
-    subject: 'We’ve got your Eendrag Alumni details',
+    subject: 'We’ve received your Eendrag Alumni application',
     html: shell(
-      `Thanks, ${firstName} — we’ve got your details`,
+      `Thanks, ${firstName} — your application is in`,
       `
       <p style="${P}">
-        Your signup is in. The alumni committee now checks your details against
-        Eendrag residence records, which is usually quick but can take a few days
-        if there’s a query.
+        Your email address is confirmed and we’ve received your application to
+        join Eendrag Alumni.
       </p>
-      <p style="${P}">
-        <strong>You don’t need to do anything.</strong> We’ll email you the moment
-        you’re confirmed, and you’ll be able to sign in then.
-      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+        ${step('&#10003;', '#5A1A2B', 'Email confirmed', 'Done.')}
+        ${step('&#10003;', '#5A1A2B', 'Application received', 'Done.')}
+        ${step('3', '#E8611C', 'Eendrag verification — next', 'The committee checks your details against residence records. Usually quick, but it can take a few days if there’s a query.')}
+        ${step('4', '#C9BFAE', 'Approval', 'We’ll email you again as soon as you’re approved, and you can sign in straight away.')}
+      </table>
+      <p style="${P}"><strong>You don’t need to do anything.</strong></p>
       <p style="margin:0; font-size:13px; line-height:1.6; color:#5C5C5C;">
-        Spotted a mistake in what you sent, or been waiting longer than a week?
-        Reply to <a href="mailto:${ADMIN_CONTACT}" style="color:#5C5C5C;">${ADMIN_CONTACT}</a>
+        Spotted a mistake in your details, or been waiting longer than a week?
+        Email <a href="mailto:${contact}" style="color:#5C5C5C;">${contact}</a>
         and we’ll sort it out.
       </p>`,
-      'You’re receiving this because you signed up at eendragalumni.org.',
+      'You’re receiving this because you applied to join at eendragalumni.org.',
     ),
   }
 }
@@ -169,10 +191,10 @@ function declinedEmail(name: string, reason: string) {
       <p style="${P}">
         That’s very often our mistake rather than yours — records from the older
         years in particular are patchy, and names change. If you did live in
-        Eendrag, reply to
-        <a href="mailto:${ADMIN_CONTACT}" style="color:#1A1A1A;">${ADMIN_CONTACT}</a>
-        with the years you were there and anyone who’d vouch for you, and we’ll
-        take another look.
+        Eendrag, email
+        <a href="mailto:${escapeHtml(contactEmail())}" style="color:#1A1A1A;">${escapeHtml(contactEmail())}</a>
+        with the years you were there and someone who can confirm your
+        residence, and we’ll take another look.
       </p>
       <p style="margin:0; font-size:13px; line-height:1.6; color:#5C5C5C;">
         Your account stays as it is in the meantime — there’s no need to sign up again.
@@ -237,7 +259,11 @@ Deno.serve(async (req) => {
     const adminClient = createClient(supabaseUrl!, serviceRoleKey!)
 
     const [{ data: profile }, { data: authUser, error: authUserErr }] = await Promise.all([
-      adminClient.from('profiles').select('full_name, first_name').eq('id', targetUserId).maybeSingle(),
+      adminClient
+        .from('profiles')
+        .select('full_name, first_name, preferred_name, consented_at, approved')
+        .eq('id', targetUserId)
+        .maybeSingle(),
       adminClient.auth.admin.getUserById(targetUserId),
     ])
 
@@ -246,7 +272,31 @@ Deno.serve(async (req) => {
       return json(req, { error: 'Could not find an email address for that member' }, 400)
     }
 
+    // 'received' only makes sense once there's a confirmed address and a
+    // finished application, and only once. Claim the send atomically so two
+    // tabs (or a reload mid-request) can't both send it; the claim is
+    // released below if Resend fails, so a later visit can retry.
+    let claimed = false
+    if (kind === 'received') {
+      if (!authUser?.user?.email_confirmed_at) return json(req, { skipped: 'email not confirmed yet' })
+      if (!profile?.consented_at) return json(req, { skipped: 'application not complete yet' })
+      if (profile?.approved) return json(req, { skipped: 'already approved' })
+      const { data: claim, error: claimErr } = await adminClient
+        .from('profiles')
+        .update({ application_email_sent_at: new Date().toISOString() })
+        .eq('id', targetUserId)
+        .is('application_email_sent_at', null)
+        .select('id')
+      if (claimErr) {
+        console.error('Could not claim application_email_sent_at:', claimErr.message)
+        return json(req, { error: 'Could not record the email (has schema-update-65 been run?)' }, 500)
+      }
+      if (!claim || claim.length === 0) return json(req, { skipped: 'already sent' })
+      claimed = true
+    }
+
     const firstName =
+      (profile?.preferred_name ?? '').trim() ||
       (profile?.first_name ?? '').trim() ||
       (profile?.full_name ?? '').trim().split(/\s+/)[0] ||
       'there'
@@ -271,6 +321,9 @@ Deno.serve(async (req) => {
     if (!resendRes.ok) {
       const detail = await resendRes.text()
       console.error('Resend send failed:', resendRes.status, detail)
+      if (claimed) {
+        await adminClient.from('profiles').update({ application_email_sent_at: null }).eq('id', targetUserId)
+      }
       return json(req, { error: 'Failed to send email' }, 502)
     }
 

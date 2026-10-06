@@ -21,6 +21,9 @@ export default function ListAutocomplete({
   placeholder,
   inputClassName,
   clearable = false,
+  // Extra attributes for the <input> (id, aria-describedby, aria-invalid…).
+  inputProps,
+  onInputBlur,
 }) {
   const [open, setOpen] = useState(false)
   const blurTimeoutRef = useRef(null)
@@ -32,7 +35,7 @@ export default function ListAutocomplete({
   // Same delayed-close trick as CityAutocomplete — without it, a tap on a
   // suggestion can lose to the input's blur event, especially on mobile.
   function handleBlur() {
-    blurTimeoutRef.current = setTimeout(() => setOpen(false), 150)
+    blurTimeoutRef.current = setTimeout(() => { setOpen(false); onInputBlur?.() }, 150)
   }
   function handleFocus() {
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
@@ -71,6 +74,7 @@ export default function ListAutocomplete({
         role="combobox"
         aria-expanded={showDropdown}
         aria-autocomplete="list"
+        {...inputProps}
       />
       {clearable && value && (
         <button
