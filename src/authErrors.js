@@ -48,6 +48,11 @@ const RULES = [
     test: /user already registered|already exists|user_already_exists/i,
     message: 'There’s already an account with that email address. Try signing in instead — or reset your password if you’ve forgotten it.',
   },
+  // Supabase's "Letters and digits" password requirement (weak_password).
+  {
+    test: /should contain at least one character of each|weak_password/i,
+    message: 'Your password needs at least one letter and one number.',
+  },
   {
     test: /password should be at least (\d+)/i,
     message: (m) => `Your password needs to be at least ${m[1]} characters.`,

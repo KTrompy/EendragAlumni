@@ -42,8 +42,19 @@ export function passwordProblem(pw, { emptyMessage = 'Choose a password.' } = {}
   if (!pw) return emptyMessage
   if (pw.length < PASSWORD_MIN) return PASSWORD_TOO_SHORT
   if (!pw.trim()) return 'Your password can’t be made up only of spaces.'
+  if (!hasLetterAndDigit(pw)) return PASSWORD_NEEDS_MIX
   return null
 }
+
+// Mirrors Supabase → Authentication → Email → Password requirements, which
+// is set to "Letters and digits". Without this check the form accepted a
+// password like "correct horse battery" and Supabase then rejected it at the
+// very last step with its own error. If that dashboard setting changes,
+// change this too.
+export function hasLetterAndDigit(pw) {
+  return /[A-Za-z]/.test(pw) && /\d/.test(pw)
+}
+export const PASSWORD_NEEDS_MIX = 'Password must include at least one letter and one number.'
 
 // Shared strength-meter markup. Renders nothing for an empty field so
 // callers can drop it in unconditionally.
@@ -67,6 +78,7 @@ export function PasswordStrengthMeter({ password }) {
 // (that part is the field's own error message, not this).
 export function PasswordGuidance({ password, id }) {
   const longEnough = password.length >= PASSWORD_MIN
+  const mixed = hasLetterAndDigit(password)
   const { score, label, percent } = passwordStrength(password)
   const edgeSpace = !!password.trim() && password !== password.trim()
   return (
@@ -74,6 +86,10 @@ export function PasswordGuidance({ password, id }) {
       <p className={longEnough ? 'pw-rule met' : 'pw-rule'}>
         <span className="pw-rule-mark" aria-hidden="true">{longEnough ? '✓' : ''}</span>
         At least {PASSWORD_MIN} characters
+      </p>
+      <p className={mixed ? 'pw-rule met' : 'pw-rule'}>
+        <span className="pw-rule-mark" aria-hidden="true">{mixed ? '✓' : ''}</span>
+        At least one letter and one number
       </p>
       {password && (
         <div className="pw-strength">
@@ -83,7 +99,7 @@ export function PasswordGuidance({ password, id }) {
           <span className="pw-strength-label">{label}</span>
         </div>
       )}
-      {longEnough && score < 3 && (
+      {longEnough && mixed && score < 3 && (
         <p className="pw-tip">A few random words together make a strong password that&rsquo;s easy to remember.</p>
       )}
       {edgeSpace && (
