@@ -121,14 +121,6 @@ export default function ContactModal({ target, draftText, profile, session, onCl
           </div>
 
           <div className="modal-body">
-            <p className="contact-modal-note">
-              This goes to {firstName}&rsquo;s inbox as an email.
-              {myEmail
-                ? <> When {firstName} replies, it will come to <strong>{myEmail}</strong>, so they&rsquo;ll see that address.</>
-                : <> When {firstName} replies, it will come to your account email, so they&rsquo;ll see that address.</>}
-              {' '}The site doesn&rsquo;t keep a copy.
-            </p>
-
             <label className="field contact-modal-subject">
               <span>Subject</span>
               <input

@@ -4256,18 +4256,7 @@ button.delete-danger svg { flex-shrink: 0; }
 }
 
 
-/* Eendrag additions: the plain-English note about where replies go, and the
-   "Email me a copy" tick-box. */
-.contact-modal-note {
-  margin: 0 0 16px;
-  padding: 10px 12px;
-  background: var(--paper);
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
-.contact-modal-note strong { color: var(--ink); word-break: break-all; }
+/* Eendrag addition: the "Email me a copy" tick-box. */
 .contact-modal-copy {
   display: flex;
   align-items: center;
